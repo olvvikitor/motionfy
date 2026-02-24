@@ -21,6 +21,7 @@ model User {
   country String
   spotifyAccessToken   String?
   spotifyRefreshToken  String?
+  spotifyExpiresAt      BigInt
 
   histories ListeningHistory[]
 }
