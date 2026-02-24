@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                   String   @id @default(uuid())
+  email                String?
+  spotifyId            String   @unique
+  img_profile String
+  display_name String
+  country String
+  spotifyAccessToken   String?
+  spotifyRefreshToken  String?
+
+  histories ListeningHistory[]
+}
+
+model Track {
+  id          String   @id @default(uuid())
+  spotifyId   String?  @unique
+  title       String
+  artist      String
+  album       String?
+  createdAt   DateTime @default(now())
+
+  lyrics      Lyrics?
+  mood        MoodAnalysis?
+  histories   ListeningHistory[]
+}
+
+model Lyrics {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  trackId   String   @unique
+  createdAt DateTime @default(now())
+
+  track     Track    @relation(fields: [trackId], references: [id])
+}
+
+model MoodAnalysis {
+  id          String   @id @default(uuid())
+  moodScore   Float
+  sentiment   String
+  emotions    Json
+  analyzedAt  DateTime @default(now())
+  trackId     String   @unique
+
+  track       Track    @relation(fields: [trackId], references: [id])
+}
+
+model ListeningHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  trackId   String
+  playedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  track     Track    @relation(fields: [trackId], references: [id])
+}
