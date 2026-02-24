@@ -18,6 +18,13 @@ export class UserRepository {
             }
         })
     }
+    async getUserById(id: string): Promise<User | null> {
+        return await this.prisma.user.findFirst({
+            where: {
+                id: id
+            }
+        })
+    }
     async update(userId, access_token, expires_in) {
         await this.prisma.user.update({
             where: { id: userId },

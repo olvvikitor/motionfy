@@ -5,10 +5,12 @@ import { ConfigModuleAplication } from "src/config/config.module";
 import { CreateUserService } from "./services/create.user.service";
 import { UserRepository } from "../user/repository/user.repository";
 import { JwtModuleProvider } from "src/shared/providers/jwt/JwtModuleProvider";
+import { SpotifyService } from "./services/spotfy.service";
 
 @Module({
     imports:[ConfigModuleAplication, JwtModuleProvider],
     controllers:[AuthController],
-    providers:[SpotifyStrategy,CreateUserService, UserRepository]
+    providers:[SpotifyStrategy,CreateUserService, UserRepository, SpotifyService],
+    exports:[SpotifyService]
 })
 export class AuthModule{}

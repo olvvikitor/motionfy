@@ -7,8 +7,8 @@ import { UserRepository } from '../../user/repository/user.repository';
 export class SpotifyService {
   constructor(private userRepository:UserRepository) {}
 
-  async getValidToken(email: string) {
-    const user = await this.userRepository.getUserByEmail(email)
+  async getValidToken(id: string) {
+    const user = await this.userRepository.getUserById(id)
 
     if (!user) throw new Error('User not found');
 
@@ -19,8 +19,8 @@ export class SpotifyService {
     return user.spotifyAccessToken;
   }
 
-  async refreshToken(email: string) {
-    const user = await this.userRepository.getUserByEmail(email)
+  async refreshToken(id: string) {
+    const user = await this.userRepository.getUserById(id)
 
     if (!user) throw new Error('User not found');
 

@@ -19,7 +19,7 @@ export class CreateUserService {
 
         }
         const token = this.jwtService.sign({
-            sub: data.id,
+            id: data.id,
             email: data.email
         })
         return token
