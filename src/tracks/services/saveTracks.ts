@@ -26,11 +26,8 @@ export default class SaveTracks {
                 if (!existingMood) {
                     // 3. Só chama a IA se for necessário
                     const mood = await this.iaService.analyzeMusicMood(musica.title, musica.artist);
-                    
                     // 4. Salva o humor (Certifique-se que o saveMood use upsert internamente)
                     await this.trackRepository.saveMood(musica.id, mood);
-                    console.log(`Aguardando 12s para a próxima requisição (Limite IA)...`);
-                    await this.sleep(12500);
                 }
             } catch (error) {
                 console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);

@@ -11,6 +11,7 @@ export class UserRepository {
             data: data
         })
     }
+    
     async getUserByEmail(email: string): Promise<User | null> {
         return await this.prisma.user.findFirst({
             where: {
@@ -18,6 +19,7 @@ export class UserRepository {
             }
         })
     }
+
     async getUserById(id: string): Promise<User | null> {
         return await this.prisma.user.findFirst({
             where: {
@@ -25,7 +27,8 @@ export class UserRepository {
             }
         })
     }
-    async update(userId, access_token, expires_in) {
+
+    async update(userId:string, access_token:string, expires_in:string) {
         await this.prisma.user.update({
             where: { id: userId },
             data: {

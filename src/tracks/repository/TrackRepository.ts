@@ -43,6 +43,13 @@ export class TrackRepository {
             }
         })
     }
+    async getMusicAndMoods(){
+        return await this.prisma.track.findMany({
+            include:{
+                mood:true
+            }
+        })
+    }
     async getTrackById(id: string): Promise<Track | null> {
         return await this.prisma.track.findFirst({
             where: {
