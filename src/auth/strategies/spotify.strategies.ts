@@ -45,7 +45,7 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
         super({
             clientID: process.env.SPOTIFY_CLIENT_ID!,
             clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-            callbackURL: process.env.ENVIROMENT === 'tel' ? 'http://127.0.0.1:3000/auth/spotify/callback' : 'http://10.71.200.1:3000/auth/spotify/callback',
+            callbackURL: process.env.ENVIROMENT === 'tel' ? 'http://10.71.200.1:3000/auth/spotify/callback' : 'http://127.0.0.1:3000/auth/spotify/callback',
             scope: [
                 'user-read-email',
                 'user-read-private',
@@ -63,9 +63,11 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
             },
         });
         const data = await response.json();
-        
-        
-        return {data, accessToken, refreshToken, 
-                expiresAt: Date.now() + 3600 * 1000}
+
+
+        return {
+            data, accessToken, refreshToken,
+            expiresAt: new Date(Date.now() + 3600 * 1000)
+        }
     }
 }

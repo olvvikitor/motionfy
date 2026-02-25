@@ -2,6 +2,7 @@ import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthGuard } from 'src/shared/providers/jwt/authGuardService';
 import UserService from '../services/user.service';
+import { UserResponseDto } from '../dto/UserResponseDto';
 export interface MRequest extends Request {
     user?: {
         id: string;
@@ -17,7 +18,7 @@ export class UserController {
 
     @Get('me')
     @UseGuards(AuthGuard)
-    async getInfoUser(@Req() req: MRequest) {
+    async getInfoUser(@Req() req: MRequest):Promise<UserResponseDto> {
         return await this.userService.getInfo(req.user?.id!)
     }
 

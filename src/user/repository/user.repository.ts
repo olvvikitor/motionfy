@@ -30,7 +30,7 @@ export class UserRepository {
             where: { id: userId },
             data: {
                 spotifyAccessToken: access_token,
-                spotifyExpiresAt: Date.now() + expires_in * 1000,
+                spotifyExpiresAt: expires_in,
             },
         });
     }
