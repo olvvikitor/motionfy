@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-spotify';
 import { Injectable } from '@nestjs/common';
@@ -45,7 +47,7 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
         super({
             clientID: process.env.SPOTIFY_CLIENT_ID!,
             clientSecret: process.env.SPOTIFY_CLIENT_SECRET!,
-            callbackURL: process.env.ENVIROMENT === 'tel' ? 'http://10.71.200.1:3000/auth/spotify/callback' : 'http://127.0.0.1:3000/auth/spotify/callback',
+            callbackURL: 'http://127.0.0.1:3000/auth/spotify/callback',
             scope: [
                 'user-read-email',
                 'user-read-private',

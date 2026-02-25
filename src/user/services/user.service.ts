@@ -33,7 +33,7 @@ export default class UserService {
         const token = await this.spotifyService.getValidToken(user.id)
 
         const response = await axios.get(
-            'https://api.spotify.com/v1/me/player/recently-played?limit=50',
+            'https://api.spotify.com/v1/me/player/recently-played?limit=15',
             {
                 headers: {
                     Authorization: `Bearer ${token}`,

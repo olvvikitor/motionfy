@@ -44,8 +44,8 @@ export class SpotifyService {
       },
     );
 
-    const { access_token, expires_in } = response.data
-    await this.userRepository.update(user.id, access_token, expires_in)
+    const { access_token } = response.data
+    await this.userRepository.update(user.id, access_token, new Date(Date.now() + 3600 * 1000))
     return access_token;
   }
 }
