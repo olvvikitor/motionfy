@@ -10,7 +10,7 @@ export class AiService {
     // Adicione sua API_KEY no .env
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     // Usaremos o gemini-1.5-flash por ser ultra rápido e barato
-    this.model = this.genAI.getGenerativeModel({ 
+    this.model = this.genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: { responseMimeType: "application/json" } // Força o retorno em JSON
     });
@@ -18,14 +18,34 @@ export class AiService {
 
   async analyzeMusicMood(title: string, artist: string) {
     const prompt = `
-      Analise a música "${title}" do artista "${artist}". 
-      Considere a letra, o ritmo e a sonoridade histórica desta faixa.
-      Retorne um objeto JSON estrito com:
-      {
-        "moodScore": número de 0.0 a 1.0,
-        "sentiment": "uma palavra em inglês (ex: Sad, Happy, Calm, Dark)",
-        "emotions": ["array", "com", "3", "emoções", "em", "inglês"]
-      }
+Analise profundamente a música ${title} dos artistas ${artist}.
+
+Considere obrigatoriamente:
+
+1. A letra: temas centrais, mensagens implícitas, subjetividade, conflitos internos, críticas sociais e simbologia.
+2. O ritmo e instrumental: intensidade, cadência, atmosfera sonora, escolhas de produção.
+3. O contexto histórico e cultural do hip-hop/rap brasileiro.
+4. O momento atual da carreira do artista BK e o que ele representa hoje na cena musical brasileira.
+5. A data atual e como a música dialoga com o cenário social contemporâneo.
+
+Com base nessa análise completa, avalie o impacto emocional predominante da faixa.
+
+Retorne exclusivamente um JSON válido, sem explicações, sem texto adicional, sem comentários.
+
+Formato obrigatório:
+
+{
+  "moodScore": número decimal entre 0.0 e 1.0 (onde 0.0 é extremamente negativo/pesado e 1.0 é extremamente positivo/eufórico),
+  "sentiment": "uma única palavra em Português-BR representando o sentimento predominante",
+  "emotions": ["exatamente 3 emoções distintas em Português-BR"]
+}
+
+Regras:
+- Não inclua nenhum texto fora do JSON.
+- Não use quebras de padrão.
+- Não inclua explicações.
+- As emoções devem ser palavras únicas.
+- O JSON deve ser estritamente válido.
     `;
 
     try {
@@ -35,7 +55,7 @@ export class AiService {
     } catch (error) {
       console.log("Erro ao chamar o Gemini:", error);
       // Retorno de fallback caso a IA falhe ou não conheça a música
-      return { moodScore: 0.5, sentiment: 'Neutral', emotions: ['neutral'] };
+      return { moodScore: 0.5, sentiment: 'Neutro', emotions: ['neutro'] };
     }
   }
 }

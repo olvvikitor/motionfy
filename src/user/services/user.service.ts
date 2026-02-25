@@ -41,6 +41,6 @@ export default class UserService {
             },
         );
         await this.saveTrackService.saveMusic(response.data.items)
-        return await
+        return response.data
     }
 }
