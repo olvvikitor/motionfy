@@ -69,7 +69,7 @@ export default class UserService {
         return response.data
     }
     async getMoodUserToday(id: string): Promise<ResponseAi|any> {
-        const historyMusic = await this.trackRepository.getHistoryListenToday(id)
+        const historyMusic = await this.trackRepository.getLastListened(id)
         const tracks = historyMusic.map(item => item.track);
         // return tracks
         return await this.AiService.analyzeMusicMoodByHistoryToday(tracks)

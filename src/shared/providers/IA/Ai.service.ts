@@ -1,14 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
 
+export const EMOTIONAL_DIMENSIONS = [
+  "Valencia",
+  "Energia",
+  "Dominancia",
+  "Melancolia",
+  "Euforia",
+  "Tensao",
+  "ConexaoSocial",
+  "Introspeccao",
+  "Empoderamento",
+  "Vulnerabilidade"
+] as const;
+
+export type EmotionalVector = {
+  [K in typeof EMOTIONAL_DIMENSIONS[number]]: number;
+};
 
 export type ResponseAi = {
-  moodScore: number,
-  sentiment: string,
-  emoticon:string
-  emotions: string[]
-}
+  moodScore: number;
+  dominantSentiment: string;
+  emoticon: string;
+  emotionalVector: EmotionalVector;
+  tracks: {
+    music: string;
+    artist: string;
+    emotionalVector: EmotionalVector;
+    dominantSentiment: string,
+  }[];
+};
+
+const SENTIMENT_CLUSTERS = {
+  Euforico: ["Euforia", "Energia"],
+  Confiante: ["Empoderamento", "Dominancia"],
+  Melancolico: ["Melancolia"],
+  Reflexivo: ["Introspeccao"],
+  Ansioso: ["Tensao"],
+  Neutro: []
+} as const;
 
 @Injectable()
 export class AiService {
@@ -16,113 +47,152 @@ export class AiService {
   private model: any;
 
   constructor() {
-    // Adicione sua API_KEY no .env
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    // Usaremos o gemini-1.5-flash por ser ultra rápido e barato
+
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
-      generationConfig: { responseMimeType: "application/json" } // Força o retorno em JSON
+      model: "gemini-2.5-flash-lite",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          required: ["moodScore", "emotionalVector", "tracks"],
+          properties: {
+            moodScore: {
+              type: SchemaType.NUMBER,
+            },
+            emotionalVector: {
+              type: SchemaType.OBJECT,
+              required: [...EMOTIONAL_DIMENSIONS],
+              properties: Object.fromEntries(
+                EMOTIONAL_DIMENSIONS.map((dimension) => [
+                  dimension,
+                  { type: SchemaType.NUMBER },
+                ])
+              ),
+            },
+            tracks: {
+              type: SchemaType.ARRAY,
+              items: {
+                type: SchemaType.OBJECT,
+                required: ["music", "artist", "emotionalVector"],
+                properties: {
+                  music: { type: SchemaType.STRING },
+                  artist: { type: SchemaType.STRING },
+                  emotionalVector: {
+                    type: SchemaType.OBJECT,
+                    required: [...EMOTIONAL_DIMENSIONS],
+                    properties: Object.fromEntries(
+                      EMOTIONAL_DIMENSIONS.map((dimension) => [
+                        dimension,
+                        { type: SchemaType.NUMBER },
+                      ])
+                    ),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
-  async analyzeMusicMoodMusic(title: string, artist: string) {
-    const prompt = `
-        Analise profundamente a música ${title} dos artistas ${artist}.
+  private calculateDominantSentiment(vector: EmotionalVector): string {
+    const clusters = {
+      Euforico: (vector.Euforia + vector.Energia) / 2,
+      Confiante: (vector.Empoderamento + vector.Dominancia) / 2,
+      Melancolico: vector.Melancolia,
+      Reflexivo: vector.Introspeccao,
+      Ansioso: vector.Tensao
+    };
 
-        Considere obrigatoriamente:
+    let dominant = "Neutro";
+    let highestScore = 0.45; // baseline mínimo
 
-        1. A letra: temas centrais, mensagens implícitas, subjetividade, conflitos internos, críticas sociais e simbologia.
-        2. O ritmo e instrumental: intensidade, cadência, atmosfera sonora, escolhas de produção.
-        3. O contexto histórico e cultural do hip-hop/rap brasileiro.
-        4. O momento atual da carreira do artista BK e o que ele representa hoje na cena musical brasileira.
-        5. A data atual e como a música dialoga com o cenário social contemporâneo.
-
-        Com base nessa análise completa, avalie o impacto emocional predominante da faixa.
-
-        Retorne exclusivamente um JSON válido, sem explicações, sem texto adicional, sem comentários.
-
-        Formato obrigatório:
-
-        {
-          "moodScore": número decimal entre 0.0 e 1.0 (onde 0.0 é extremamente negativo/pesado e 1.0 é extremamente positivo/eufórico),
-          "sentiment": "uma única palavra em Português-BR representando o sentimento predominante",
-          "emotions": ["exatamente 3 emoções distintas em Português-BR"]
-        }
-
-        Regras:
-        - Não inclua nenhum texto fora do JSON.
-        - Não use quebras de padrão.
-        - Não inclua explicações.
-        - As emoções devem ser palavras únicas.
-        - O JSON deve ser estritamente válido.
-            `;
-
-    try {
-      const result = await this.model.generateContent(prompt);
-      const response = result.response.text();
-      return JSON.parse(response);
-    } catch (error) {
-      console.log("Erro ao chamar o Gemini:", error);
-      // Retorno de fallback caso a IA falhe ou não conheça a música
-      return { moodScore: 0.5, sentiment: 'Neutro', emotions: ['neutro'] };
+    for (const [sentiment, score] of Object.entries(clusters)) {
+      if (score > highestScore) {
+        highestScore = score;
+        dominant = sentiment;
+      }
     }
+
+    return dominant;
   }
 
-  async analyzeMusicMoodByHistoryToday(musics: Track[]):Promise<ResponseAi> {
-    const musicasLimpas = musics.map((musica) => {
-      return { title: musica.title, artist: musica.artist }
-    })
+  private mapSentimentToEmoji(sentiment: string): string {
+    const map: Record<string, string> = {
+      Euforico: "😄",
+      Melancolico: "😔",
+      Confiante: "💪",
+      Reflexivo: "🤔",
+      Ansioso: "😰",
+      Neutro: "😐",
+    };
+
+    return map[sentiment] ?? "😐";
+  }
+
+  async analyzeMusicMoodByHistoryToday(musics: Track[]): Promise<ResponseAi> {
+    const musicasLimpas = musics.map((musica) => ({
+      title: musica.title,
+      artist: musica.artist,
+    }));
+
     const prompt = `
-        Você é um especialista em análise emocional de músicas
-        Analise profundamente as seguintes músicas:
-        ${JSON.stringify(musicasLimpas)}
+        Você é um especialista em análise emocional de músicas.
 
-        A análise deve considerar obrigatoriamente:
+        Analise todas as músicas abaixo e gere um vetor emocional universal para cada uma:
 
-        - Letra: temas centrais, conflitos internos, críticas sociais, subjetividade e simbologias.
-        - Ritmo e instrumental: intensidade, atmosfera, energia, escolhas de produção.
-        - Contexto cultural do rap brasileiro.
-        - O momento atual da carreira de BK na cena musical.
-        - O cenário social contemporâneo no Brasil.
+        ${JSON.stringify(musicasLimpas, null, 2)}
 
-        Com base na análise integrada de TODOS esses fatores, determine o impacto emocional predominante.
+        Para cada dimensão emocional abaixo, atribua um valor entre 0.0 e 1.0:
 
-        ⚠️ Responda APENAS com um JSON válido.
-        ⚠️ Não inclua explicações.
-        ⚠️ Não inclua comentários.
-        ⚠️ Não inclua texto antes ou depois do JSON.
-        ⚠️ Não utilize markdown.
-        ⚠️ O JSON deve ser estritamente válido.
+        ${EMOTIONAL_DIMENSIONS.join("\n")}
 
-        Formato obrigatório:
-
-        {
-          "moodScore": número decimal entre 0.0 e 1.0 com no máximo 2 casas decimais,
-          "sentiment": "uma única palavra ex:(Motivado, Focado, Ansioso) em Português-BR",
-          "emoticon": "um emote que represente o sentimento, no design do iphone"
-          "emotions": ["exatamente 3 palavras únicas em Português-BR"]
-        }
-
-        Regras obrigatórias:
-
-        - moodScore deve refletir a intensidade emocional geral.
-        - 0.0 = extremamente negativo/pesado
-        - 0.5 = emocionalmente neutro/ambivalente
-        - 1.0 = extremamente positivo/eufórico
-        - As emoções não podem se repetir.
-        - As emoções devem ser palavras únicas (sem frases).
-        - Não use acentos inconsistentes.
-        - O JSON deve ser válido para JSON.parse().
+        ⚠️ Gere obrigatoriamente um objeto para cada música no campo "tracks".
+        ⚠️ O campo "tracks" deve conter exatamente ${musicasLimpas.length} itens.
+        ⚠️ Responda APENAS com JSON válido.
         `;
 
     try {
       const result = await this.model.generateContent(prompt);
       const response = result.response.text();
-      return JSON.parse(response) as ResponseAi;
+      const parsed = JSON.parse(response) as ResponseAi;
+
+      const tracksWithSentiment = parsed.tracks.map((track) => {
+        const dominantSentiment = this.calculateDominantSentiment(
+          track.emotionalVector
+        );
+        return {
+          ...track,
+          dominantSentiment,
+        };
+      });
+
+
+      const dominantSentiment = this.calculateDominantSentiment(parsed.emotionalVector);
+      const emoticon = this.mapSentimentToEmoji(dominantSentiment);
+
+      return {
+        ...parsed,
+        dominantSentiment,
+        emoticon,
+        tracks: tracksWithSentiment
+      };
     } catch (error) {
       console.log("Erro ao chamar o Gemini:", error);
-      // Retorno de fallback caso a IA falhe ou não conheça a música
-      return { moodScore: 0.5, sentiment: 'Neutro', emotions: ['neutro'], emoticon:"😐"};
+
+      const fallbackVector = Object.fromEntries(
+        EMOTIONAL_DIMENSIONS.map((d) => [d, 0.5])
+      ) as EmotionalVector;
+
+      return {
+        moodScore: 0.5,
+        dominantSentiment: "Neutro",
+        emoticon: "😐",
+        emotionalVector: fallbackVector,
+        tracks: [],
+      };
     }
   }
 }
