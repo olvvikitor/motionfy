@@ -57,14 +57,14 @@ export class TrackRepository {
             }
         })
     }
-    async saveHistoryListen(userId:string, trackId:string, playedAt:Date): Promise<any> {
+    async saveHistoryListen(userId: string, trackId: string, playedAt: Date): Promise<any> {
         await this.prisma.listeningHistory.upsert({
-           where:{
-            userId_trackId_playedAt:{
-                playedAt:playedAt, trackId:trackId, userId:userId
-            }
-           },
-            update:{},
+            where: {
+                userId_trackId_playedAt: {
+                    playedAt: playedAt, trackId: trackId, userId: userId
+                }
+            },
+            update: {},
             create: {
                 userId,
                 trackId,
@@ -72,6 +72,28 @@ export class TrackRepository {
             }
         })
     }
+    async getHistoryListenToday(userId: string) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
 
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
+        const records = await this.prisma.listeningHistory.findMany({
+            where: {
+                userId,
+                playedAt: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
+            },
+            include: {
+                track: true,
+            },
+        });
+
+        return records
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 25);
+    }
 }

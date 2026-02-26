@@ -33,4 +33,11 @@ export class UserController {
     async getSavedMusics(@Req() req:MRequest){
         return await this.userService.getSavedTracks(req.user?.id!)
     }
+    
+    @Get('mood')
+    @UseGuards(AuthGuard)
+    async getMoodUser(@Req() req:MRequest){
+        return await this.userService.getMoodUserToday(req.user?.id!)
+    }
+
 }

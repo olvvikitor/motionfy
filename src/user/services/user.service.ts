@@ -7,10 +7,17 @@ import axios from "axios";
 import { UserResponseDto } from "../dto/UserResponseDto";
 import SaveTracks from "src/tracks/services/saveTracks";
 import { SpotifyRecentlyPlayedItem } from "src/shared/types/TrackResponseSpotify";
+import { TrackRepository } from "src/tracks/repository/TrackRepository";
+import { AiService, ResponseAi } from "src/shared/providers/IA/Ai.service";
 
 @Injectable()
 export default class UserService {
-    constructor(private userRepository: UserRepository, @Inject() private spotifyService: SpotifyService, @Inject() private saveTrackService: SaveTracks) {
+    constructor(private userRepository: UserRepository,
+        @Inject() private spotifyService: SpotifyService,
+        @Inject() private saveTrackService: SaveTracks,
+        @Inject() private trackRepository: TrackRepository,
+        @Inject() private AiService:AiService
+    ) {
     }
 
     async getInfo(id: string): Promise<UserResponseDto> {
@@ -60,5 +67,11 @@ export default class UserService {
         );
         await this.saveTrackService.saveMusicsSaved(response.data.items)
         return response.data
+    }
+    async getMoodUserToday(id: string): Promise<ResponseAi|any> {
+        const historyMusic = await this.trackRepository.getHistoryListenToday(id)
+        const tracks = historyMusic.map(item => item.track);
+        // return tracks
+        return await this.AiService.analyzeMusicMoodByHistoryToday(tracks)
     }
 }
