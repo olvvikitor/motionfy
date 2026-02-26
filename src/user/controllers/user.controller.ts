@@ -27,4 +27,10 @@ export class UserController {
     async getLastGet(@Req() req:MRequest){
         return await this.userService.lastTracks(req.user?.id!)
     }
+
+    @Get('savedTracks')
+    @UseGuards(AuthGuard)
+    async getSavedMusics(@Req() req:MRequest){
+        return await this.userService.getSavedTracks(req.user?.id!)
+    }
 }

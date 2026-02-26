@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,58 +7,55 @@ datasource db {
 }
 
 model User {
-  id                   String   @id @default(uuid())
-  email                String?
-  spotifyId            String   @unique
-  img_profile String
-  display_name String
-  country String
-  spotifyAccessToken   String?
-  spotifyRefreshToken  String?
-  spotifyExpiresAt      DateTime
-
-  histories ListeningHistory[]
+  id                  String             @id @default(uuid())
+  email               String?
+  spotifyId           String             @unique
+  spotifyAccessToken  String?
+  spotifyRefreshToken String?
+  country             String
+  display_name        String
+  img_profile         String
+  spotifyExpiresAt    DateTime
+  histories           ListeningHistory[]
 }
 
 model Track {
-  id          String   @id @default(uuid())
-  spotifyId   String?  @unique
-  title       String
-  artist      String
-  album       String?
-  createdAt   DateTime @default(now())
-
-  lyrics      Lyrics?
-  mood        MoodAnalysis?
-  histories   ListeningHistory[]
+  id        String             @id @default(uuid())
+  spotifyId String?            @unique
+  title     String
+  artist    String
+  album     String?
+  createdAt DateTime           @default(now())
+  histories ListeningHistory[]
+  lyrics    Lyrics?
+  mood      MoodAnalysis?
 }
 
 model Lyrics {
   id        String   @id @default(uuid())
-  content   String   @db.Text
+  content   String
   trackId   String   @unique
   createdAt DateTime @default(now())
-
   track     Track    @relation(fields: [trackId], references: [id])
 }
 
 model MoodAnalysis {
-  id          String   @id @default(uuid())
-  moodScore   Float
-  sentiment   String
-  emotions    Json
-  analyzedAt  DateTime @default(now())
-  trackId     String   @unique
-
-  track       Track    @relation(fields: [trackId], references: [id])
+  id         String   @id @default(uuid())
+  moodScore  Float
+  sentiment  String
+  emotions   Json
+  analyzedAt DateTime @default(now())
+  trackId    String   @unique
+  track      Track    @relation(fields: [trackId], references: [id])
 }
 
 model ListeningHistory {
-  id        String   @id @default(uuid())
-  userId    String
-  trackId   String
-  playedAt  DateTime @default(now())
+  id       String   @id @default(uuid())
+  userId   String
+  trackId  String
+  playedAt DateTime
+  track    Track    @relation(fields: [trackId], references: [spotifyId])
+  user     User     @relation(fields: [userId], references: [id])
 
-  user      User     @relation(fields: [userId], references: [id])
-  track     Track    @relation(fields: [trackId], references: [id])
+  @@unique([userId, trackId, playedAt])
 }

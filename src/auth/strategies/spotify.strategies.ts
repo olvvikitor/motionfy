@@ -52,6 +52,7 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
                 'user-read-email',
                 'user-read-private',
                 'user-read-recently-played',
+                'user-library-read'
             ],
         });
     }

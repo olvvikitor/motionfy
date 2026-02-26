@@ -28,7 +28,7 @@ export class UserRepository {
         })
     }
 
-    async update(userId:string, access_token:string, expires_in:string) {
+    async update(userId:string, access_token:string, expires_in:Date) {
         await this.prisma.user.update({
             where: { id: userId },
             data: {

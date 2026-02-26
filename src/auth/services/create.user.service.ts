@@ -14,7 +14,7 @@ export class CreateUserService {
         }
         else {
             await this.userRepository.update(
-                data.id, data.spotifyAccessToken, data.spotifyExpiresAt
+                data.id, data.spotifyAccessToken!, data.spotifyExpiresAt
             )
 
         }

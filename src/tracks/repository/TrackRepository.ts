@@ -43,10 +43,10 @@ export class TrackRepository {
             }
         })
     }
-    async getMusicAndMoods(){
+    async getMusicAndMoods() {
         return await this.prisma.track.findMany({
-            include:{
-                mood:true
+            include: {
+                mood: true
             }
         })
     }
@@ -54,6 +54,21 @@ export class TrackRepository {
         return await this.prisma.track.findFirst({
             where: {
                 id: id
+            }
+        })
+    }
+    async saveHistoryListen(userId:string, trackId:string, playedAt:Date): Promise<any> {
+        await this.prisma.listeningHistory.upsert({
+           where:{
+            userId_trackId_playedAt:{
+                playedAt:playedAt, trackId:trackId, userId:userId
+            }
+           },
+            update:{},
+            create: {
+                userId,
+                trackId,
+                playedAt
             }
         })
     }
