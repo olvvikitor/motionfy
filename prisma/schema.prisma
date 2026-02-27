@@ -17,26 +17,17 @@ model User {
   img_profile         String
   spotifyExpiresAt    DateTime
   histories           ListeningHistory[]
+  moodAnalyses MoodAnalysis[]
 }
 
 model Track {
-  id        String             @id @default(uuid())
-  spotifyId String?            @unique
-  title     String
-  artist    String
-  album     String?
-  createdAt DateTime           @default(now())
-  histories ListeningHistory[]
-  lyrics    Lyrics?
-  mood      MoodAnalysis?
-}
-
-model Lyrics {
-  id        String   @id @default(uuid())
-  content   String
-  trackId   String   @unique
-  createdAt DateTime @default(now())
-  track     Track    @relation(fields: [trackId], references: [id])
+  id             String             @id @default(uuid())
+  spotifyId      String?            @unique
+  title          String
+  artist         String
+  album          String?
+  createdAt      DateTime           @default(now())
+  histories      ListeningHistory[]
 }
 
 model MoodAnalysis {
@@ -45,8 +36,9 @@ model MoodAnalysis {
   sentiment  String
   emotions   Json
   analyzedAt DateTime @default(now())
-  trackId    String   @unique
-  track      Track    @relation(fields: [trackId], references: [id])
+  tracksAnalyzeds Json
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
 }
 
 model ListeningHistory {

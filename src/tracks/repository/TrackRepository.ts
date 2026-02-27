@@ -13,43 +13,7 @@ export class TrackRepository {
             create: data,
         });
     }
-    async saveLyrics(trackId: string, lirycs: string) {
-        await this.prisma.lyrics.upsert({
-            where: { id: trackId },
-            update: {},
-            create: { content: lirycs, trackId: trackId }
-        })
-    }
-    async saveMood(trackId: string, mood: any) {
-        await this.prisma.moodAnalysis.create({
-            data: {
-                moodScore: mood.moodScore,
-                sentiment: mood.sentiment,
-                emotions: mood.emotions,
-                trackId: trackId
-            }
-        });
-    }
-    async findMoodMusicById(trackId: string) {
-        return await this.prisma.moodAnalysis.findUnique({
-            where: { trackId: trackId }
-        });
-    }
 
-    async getLyrics(trackId: string) {
-        return await this.prisma.lyrics.findUnique({
-            where: {
-                trackId: trackId
-            }
-        })
-    }
-    async getMusicAndMoods() {
-        return await this.prisma.track.findMany({
-            include: {
-                mood: true
-            }
-        })
-    }
     async getTrackById(id: string): Promise<Track | null> {
         return await this.prisma.track.findFirst({
             where: {
@@ -87,5 +51,12 @@ export class TrackRepository {
         });
 
         return records;
+    }
+    async getMoodUser(userId: string) {
+        return await this.prisma.moodAnalysis.findFirst({
+            where:{
+                userId:userId
+            }
+        })
     }
 }

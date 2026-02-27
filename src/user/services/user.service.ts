@@ -16,13 +16,18 @@ export default class UserService {
         @Inject() private spotifyService: SpotifyService,
         @Inject() private saveTrackService: SaveTracks,
         @Inject() private trackRepository: TrackRepository,
-        @Inject() private AiService:AiService
+        @Inject() private AiService: AiService
     ) {
     }
 
     async getInfo(id: string): Promise<UserResponseDto> {
         const user = await this.userRepository.getUserById(id)
+
+
         if (!user) throw new NotFoundException('Usuario não encontrado')
+
+        this.lastTracks(id);
+
         return {
             country: user.country,
             display_name: user.display_name,
@@ -32,6 +37,7 @@ export default class UserService {
             spotifyId: user.spotifyId
         }
     }
+
     async lastTracks(id: string): Promise<SpotifyRecentlyPlayedItem[]> {
         const user = await this.userRepository.getUserById(id)
 
@@ -68,10 +74,32 @@ export default class UserService {
         await this.saveTrackService.saveMusicsSaved(response.data.items)
         return response.data
     }
-    async getMoodUserToday(id: string): Promise<ResponseAi|any> {
-        const historyMusic = await this.trackRepository.getLastListened(id)
+    async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
+        const historyMusic = await this.trackRepository.getLastListened(id);
         const tracks = historyMusic.map(item => item.track);
-        // return tracks
-        return await this.AiService.analyzeMusicMoodByHistoryToday(tracks)
+
+        const response = await this.AiService.analyzeMusicMoodByHistoryToday(tracks);
+
+        const mood = {
+            moodScore: response.moodScore,
+            sentiment: response.dominantSentiment,
+            emotions: response.emotionalVector,
+            tracks:response.tracks
+        };
+
+        // 🔥 dispara sem bloquear a resposta
+        setImmediate(()=>{
+            this.userRepository
+                .SaveMood(id, mood)
+                .catch(err => {
+                    console.error('Erro ao salvar mood:', err);
+                });
+        })
+
+        return response;
+    }
+    async getMoodUserToday(id: string): Promise<any> {
+        const response = await this.trackRepository.getMoodUser(id);
+        return response;
     }
 }

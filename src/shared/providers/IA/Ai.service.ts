@@ -22,7 +22,6 @@ export type EmotionalVector = {
 export type ResponseAi = {
   moodScore: number;
   dominantSentiment: string;
-  emoticon: string;
   emotionalVector: EmotionalVector;
   tracks: {
     music: string;
@@ -32,14 +31,6 @@ export type ResponseAi = {
   }[];
 };
 
-const SENTIMENT_CLUSTERS = {
-  Euforico: ["Euforia", "Energia"],
-  Confiante: ["Empoderamento", "Dominancia"],
-  Melancolico: ["Melancolia"],
-  Reflexivo: ["Introspeccao"],
-  Ansioso: ["Tensao"],
-  Neutro: []
-} as const;
 
 @Injectable()
 export class AiService {
@@ -50,7 +41,7 @@ export class AiService {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -99,38 +90,39 @@ export class AiService {
 
   private calculateDominantSentiment(vector: EmotionalVector): string {
     const clusters = {
-      Euforico: (vector.Euforia + vector.Energia) / 2,
-      Confiante: (vector.Empoderamento + vector.Dominancia) / 2,
-      Melancolico: vector.Melancolia,
-      Reflexivo: vector.Introspeccao,
-      Ansioso: vector.Tensao
+      // Estados Positivos Energéticos
+      LaEmCima: (vector.Euforia + vector.Energia + vector.Valencia) / 3,
+      NoFluxo: (vector.Empoderamento + vector.Energia + vector.Valencia) / 3,
+      PartiuConquistar: (vector.Empoderamento + vector.Dominancia + vector.Energia) / 3,
+      ModoChefe: (vector.Empoderamento + vector.Dominancia) / 2,
+
+      // Estados Positivos Calmos
+      GoodVibes: (vector.Valencia + vector.Introspeccao - vector.Tensao) / 2,
+      GratidaoTotal: (vector.Valencia + vector.ConexaoSocial) / 2,
+      CliminhaDeAmor: (vector.Euforia + vector.ConexaoSocial + vector.Valencia) / 3,
+      FeNoFuturo: (vector.Valencia + vector.Empoderamento) / 2,
+
+      // Estados Reflexivos
+      SaudadeBoa: (vector.Melancolia + vector.Introspeccao) / 2,
+      Pensativo: vector.Introspeccao,
+      ViajandoNaMente: (vector.Introspeccao + vector.Valencia) / 2,
+
+      // Estados Negativos Energéticos
+      Pilhado: (vector.Tensao + vector.Energia) / 2,
+      DeSacoCheio: (vector.Tensao + vector.Dominancia - vector.Valencia) / 2,
+      Estourado: (vector.Tensao + vector.Dominancia + vector.Energia) / 3,
+
+      // Estados Negativos Passivos
+      Badzinho: (vector.Melancolia - vector.Energia) / 2,
+      CoracaoAberto: vector.Vulnerabilidade,
+      NaSua: (vector.Melancolia + vector.Introspeccao - vector.ConexaoSocial) / 3,
+      SemGas: (vector.Melancolia - vector.Empoderamento) / 2
     };
 
-    let dominant = "Neutro";
-    let highestScore = 0.45; // baseline mínimo
-
-    for (const [sentiment, score] of Object.entries(clusters)) {
-      if (score > highestScore) {
-        highestScore = score;
-        dominant = sentiment;
-      }
-    }
-
-    return dominant;
+    return Object.entries(clusters)
+      .sort((a, b) => b[1] - a[1])[0][0];
   }
 
-  private mapSentimentToEmoji(sentiment: string): string {
-    const map: Record<string, string> = {
-      Euforico: "😄",
-      Melancolico: "😔",
-      Confiante: "💪",
-      Reflexivo: "🤔",
-      Ansioso: "😰",
-      Neutro: "😐",
-    };
-
-    return map[sentiment] ?? "😐";
-  }
 
   async analyzeMusicMoodByHistoryToday(musics: Track[]): Promise<ResponseAi> {
     const musicasLimpas = musics.map((musica) => ({
@@ -169,14 +161,11 @@ export class AiService {
         };
       });
 
-
       const dominantSentiment = this.calculateDominantSentiment(parsed.emotionalVector);
-      const emoticon = this.mapSentimentToEmoji(dominantSentiment);
 
       return {
         ...parsed,
         dominantSentiment,
-        emoticon,
         tracks: tracksWithSentiment
       };
     } catch (error) {
@@ -189,7 +178,6 @@ export class AiService {
       return {
         moodScore: 0.5,
         dominantSentiment: "Neutro",
-        emoticon: "😐",
         emotionalVector: fallbackVector,
         tracks: [],
       };
