@@ -40,7 +40,7 @@ export class UserController {
         return await this.userService.getMoodUserToday(req.user?.id!)
     }
     
-    @Get('RefreshMood')
+    @Get('refreshMood')
     @UseGuards(AuthGuard)
     async RefreshMoodUser(@Req() req:MRequest){
         return await this.userService.RefreshMoodUserToday(req.user?.id!)

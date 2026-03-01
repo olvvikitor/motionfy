@@ -39,19 +39,30 @@ export class UserRepository {
         });
     }
     async SaveMood(userId: string, mood: {
-        moodScore:number,
-        sentiment:string,
-        emotions:EmotionalVector,
-        tracks:any
+        moodScore: number,
+        sentiment: string,
+        emotions: EmotionalVector,
+        tracks: any
     }) {
         await this.prisma.moodAnalysis.create({
             data: {
                 userId: userId,
-                tracksAnalyzeds:mood.tracks,
-                emotions:mood.emotions,
-                moodScore:mood.moodScore,
-                sentiment:mood.sentiment
+                tracksAnalyzeds: mood.tracks,
+                emotions: mood.emotions,
+                moodScore: mood.moodScore,
+                sentiment: mood.sentiment
             }
+        })
+    }
+    async getMoodUser(userId: string) {
+        return await this.prisma.moodAnalysis.findFirst({
+            where: {
+                userId: userId
+            },
+            orderBy:{
+                analyzedAt:"desc"
+            }
+            
         })
     }
 }

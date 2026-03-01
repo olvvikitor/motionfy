@@ -52,11 +52,5 @@ export class TrackRepository {
 
         return records;
     }
-    async getMoodUser(userId: string) {
-        return await this.prisma.moodAnalysis.findFirst({
-            where:{
-                userId:userId
-            }
-        })
-    }
+
 }

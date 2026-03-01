@@ -99,7 +99,7 @@ export default class UserService {
         return response;
     }
     async getMoodUserToday(id: string): Promise<any> {
-        const response = await this.trackRepository.getMoodUser(id);
+        const response = await this.userRepository.getMoodUser(id);
         return response;
     }
 }

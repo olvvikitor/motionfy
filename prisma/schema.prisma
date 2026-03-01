@@ -37,7 +37,7 @@ model MoodAnalysis {
   emotions   Json
   analyzedAt DateTime @default(now())
   tracksAnalyzeds Json
-  userId     String   @unique
+  userId     String  
   user       User     @relation(fields: [userId], references: [id])
 }
 
