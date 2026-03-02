@@ -12,11 +12,8 @@ export class SpotifyService {
 
     if (!user) throw new Error('User not found');
 
-    if (Date.now() > Number(user.spotifyExpiresAt)) {
-      return this.refreshToken(user.id);
-    }
 
-    return user.spotifyAccessToken;
+    return user.accessToken;
   }
 
   async refreshToken(id: string) {
@@ -28,7 +25,7 @@ export class SpotifyService {
       'https://accounts.spotify.com/api/token',
       new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: user.spotifyRefreshToken!,
+        refresh_token: user.refreshToken!,
       }),
       {
         headers: {
@@ -45,7 +42,7 @@ export class SpotifyService {
     );
 
     const { access_token } = response.data
-    await this.userRepository.update(user.id, access_token, new Date(Date.now() + 3600 * 1000))
+    await this.userRepository.update(user.id, access_token)
     return access_token;
   }
 }

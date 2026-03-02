@@ -7,39 +7,40 @@ datasource db {
 }
 
 model User {
-  id                  String             @id @default(uuid())
-  email               String?
-  spotifyId           String             @unique
-  spotifyAccessToken  String?
-  spotifyRefreshToken String?
-  country             String
-  display_name        String
-  img_profile         String
-  spotifyExpiresAt    DateTime
-  histories           ListeningHistory[]
+  id           String             @id @default(uuid())
+  email        String?
+  accessToken  String?
+  refreshToken String?
+  country      String
+  provider     String
+  display_name String
+  img_profile  String
+  @@unique([email, provider])
+
+  histories    ListeningHistory[]
   moodAnalyses MoodAnalysis[]
 }
 
 model Track {
-  id             String             @id @default(uuid())
-  spotifyId      String?            @unique
-  title          String
-  artist         String
-  album          String?
-  img_url String?
-  createdAt      DateTime           @default(now())
-  histories      ListeningHistory[]
+  id        String             @id @default(uuid())
+  spotifyId String?            @unique
+  title     String
+  artist    String
+  album     String?
+  img_url   String?
+  createdAt DateTime           @default(now())
+  histories ListeningHistory[]
 }
 
 model MoodAnalysis {
-  id         String   @id @default(uuid())
-  moodScore  Float
-  sentiment  String
-  emotions   Json
-  analyzedAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  moodScore       Float
+  sentiment       String
+  emotions        Json
+  analyzedAt      DateTime @default(now())
   tracksAnalyzeds Json
-  userId     String  
-  user       User     @relation(fields: [userId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
 }
 
 model ListeningHistory {

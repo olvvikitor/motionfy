@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Prisma, User } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
-import { EmotionalVector } from "src/shared/providers/IA/Ai.service";
+import { EmotionalVector } from "src/shared/infra/IA/Ai.service";
 
 @Injectable()
 export class UserRepository {
@@ -29,12 +29,11 @@ export class UserRepository {
         })
     }
 
-    async update(userId: string, access_token: string, expires_in: Date) {
+    async update(userId: string, access_token: string) {
         await this.prisma.user.update({
             where: { id: userId },
             data: {
-                spotifyAccessToken: access_token,
-                spotifyExpiresAt: expires_in,
+                accessToken: access_token,
             },
         });
     }

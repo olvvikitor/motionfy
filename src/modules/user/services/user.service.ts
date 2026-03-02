@@ -2,13 +2,13 @@ import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { UserRepository } from "../repository/user.repository";
 import { User } from "@prisma/client";
 import { NotFoundError } from "rxjs";
-import { SpotifyService } from "src/auth/services/spotfy.service";
 import axios from "axios";
 import { UserResponseDto } from "../dto/UserResponseDto";
-import SaveTracks from "src/tracks/services/saveTracks";
+import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { SpotifyRecentlyPlayedItem } from "src/shared/types/TrackResponseSpotify";
-import { TrackRepository } from "src/tracks/repository/TrackRepository";
-import { AiService, ResponseAi } from "src/shared/providers/IA/Ai.service";
+import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
+import { AiService, ResponseAi } from "src/shared/infra/IA/Ai.service";
+import { SpotifyService } from "src/modules/auth/services/spotfy.service";
 
 @Injectable()
 export default class UserService {
@@ -34,7 +34,7 @@ export default class UserService {
             email: user.email!,
             id: user.id,
             img_profile: user.img_profile,
-            spotifyId: user.spotifyId
+            provider:user.provider
         }
     }
 

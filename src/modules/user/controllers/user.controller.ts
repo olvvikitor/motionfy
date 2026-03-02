@@ -1,8 +1,8 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthGuard } from 'src/shared/providers/jwt/authGuardService';
 import UserService from '../services/user.service';
 import { UserResponseDto } from '../dto/UserResponseDto';
+import { AuthGuard } from '@nestjs/passport';
 export interface MRequest extends Request {
     user?: {
         id: string;

@@ -2,11 +2,10 @@ import { Module } from "@nestjs/common";
 import { ConfigModuleAplication } from "src/config/config.module";
 import { TrackRepository } from "./repository/TrackRepository";
 import SaveTracks from "./services/saveTracks";
-import { LyricsModule } from "src/shared/providers/genius/genius.module";
-import { AiModule } from "src/shared/providers/IA/Ai.module";
+import { AiModule } from "src/shared/infra/IA/Ai.module";
 
 @Module({
-    imports:[ConfigModuleAplication,LyricsModule,AiModule],
+    imports:[ConfigModuleAplication,AiModule],
     providers:[TrackRepository, SaveTracks],
     exports:[SaveTracks,TrackRepository]
 })
