@@ -8,6 +8,9 @@ export const mapSpotifyHistoryToPrisma = (items: SpotifyRecentlyPlayedItem[]): T
     // Une múltiplos artistas em uma string separada por vírgula
     artist: item.track.artists.map((a) => a.name).join(", "),
     album: item.track.album.name,
+    img_url: item.track.album.images[2].url,
+
+
     // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
     createdAt: new Date(item.played_at as string),
   }));
@@ -19,6 +22,8 @@ export const mapSpotifySavedTracksToPrisma = (items: SpotifySavedTracksItem[]): 
     // Une múltiplos artistas em uma string separada por vírgula
     artist: item.track.artists.map((a) => a.name).join(", "),
     album: item.track.album.name,
+    img_url: item.track.album.images[2].url,
+
     // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
     createdAt: new Date(item.added_at as string),
   }));

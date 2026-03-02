@@ -19,7 +19,7 @@ export class AuthController {
         const userResponse = req.user
         let url_perfil = ''
 
-        if (userResponse.data.images) {
+        if (userResponse.data.images.length > 0) {
             url_perfil = userResponse.data.images[0].url as string
         }
 
@@ -29,7 +29,7 @@ export class AuthController {
             email: userResponse.data.email,
             id: userResponse.data.id,
             spotifyExpiresAt: userResponse.expiresAt,
-            img_profile: userResponse.data.images[0].url || '',
+            img_profile: url_perfil,
             spotifyAccessToken: userResponse.accessToken,
             spotifyId: userResponse.data.id,
             spotifyRefreshToken: userResponse.refreshToken

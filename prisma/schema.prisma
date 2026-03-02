@@ -26,6 +26,7 @@ model Track {
   title          String
   artist         String
   album          String?
+  img_url String?
   createdAt      DateTime           @default(now())
   histories      ListeningHistory[]
 }

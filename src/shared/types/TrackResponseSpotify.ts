@@ -1,4 +1,4 @@
-export type SpotifyRecentlyPlayedItem= {
+export type SpotifyRecentlyPlayedItem = {
   track: {
     id: string;
     name: string;
@@ -7,11 +7,16 @@ export type SpotifyRecentlyPlayedItem= {
     }[];
     album: {
       name: string;
+      images: {
+        height: string,
+        url: string,
+        whidth: number
+      }[]
     };
   };
   played_at: string;
 }
-export type SpotifySavedTracksItem ={
+export type SpotifySavedTracksItem = {
   track: {
     id: string;
     name: string;
@@ -20,7 +25,12 @@ export type SpotifySavedTracksItem ={
     }[];
     album: {
       name: string;
-    };
+      images: {
+        height: string,
+        url: string,
+        whidth: number
+      }[]
+    }
   };
-  added_at:string
+  added_at: string
 }

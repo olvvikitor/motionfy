@@ -9,8 +9,8 @@ export class TrackRepository {
     async createNewTrack(data: Prisma.TrackCreateInput): Promise<Track> {
         return await this.prisma.track.upsert({
             where: { spotifyId: data.spotifyId! },
-            update: {},
-            create: data,
+            update: {...data},
+            create: {...data, img_url:data.img_url},
         });
     }
 

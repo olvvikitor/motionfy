@@ -53,7 +53,7 @@ export default class UserService {
                 },
             },
         );
-        await this.saveTrackService.saveMusicsHistoryLine(response.data.items, user.id)
+        const tracks = await this.saveTrackService.saveMusicsHistoryLine(response.data.items, user.id)
         return response.data
     }
     async getSavedTracks(id: string): Promise<SpotifyRecentlyPlayedItem[]> {

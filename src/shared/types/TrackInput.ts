@@ -3,5 +3,6 @@ export interface TrackInput {
   title: string;
   artist: string;
   album: string;
+  img_url:string
   createdAt: Date;
 }

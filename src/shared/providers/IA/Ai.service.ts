@@ -2,6 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
 
+
+// No topo do seu service ou em um arquivo de tipos
+export type SentimentResult = {
+  label: string;
+  score: number;
+};
 export const EMOTIONAL_DIMENSIONS = [
   "Valencia",
   "Energia",
@@ -26,8 +32,11 @@ export type ResponseAi = {
   tracks: {
     music: string;
     artist: string;
+    img_url: string,
+    id: string,
     emotionalVector: EmotionalVector;
     dominantSentiment: string,
+    moodScore: number
   }[];
 };
 
@@ -65,10 +74,12 @@ export class AiService {
               type: SchemaType.ARRAY,
               items: {
                 type: SchemaType.OBJECT,
-                required: ["music", "artist", "emotionalVector"],
+                required: ["id", "music", "artist", "emotionalVector"],
                 properties: {
+                  id: { type: SchemaType.STRING },
                   music: { type: SchemaType.STRING },
                   artist: { type: SchemaType.STRING },
+
                   emotionalVector: {
                     type: SchemaType.OBJECT,
                     required: [...EMOTIONAL_DIMENSIONS],
@@ -92,83 +103,40 @@ export class AiService {
     return Math.max(0, Math.min(1, value));
   }
 
-  private calculateDominantSentiment(vector: EmotionalVector): string {
-
+  private calculateDominantSentiment(vector: EmotionalVector): SentimentResult {
     const clusters = {
-      // 🔥 POSITIVO + ALTA ENERGIA
-      EuforiaAtiva: this.clamp(
-        (vector.Valencia * 0.4 +
-          vector.Energia * 0.3 +
-          vector.Euforia * 0.3)
-      ),
-
-      ConfiancaDominante: this.clamp(
-        (vector.Empoderamento * 0.4 +
-          vector.Dominancia * 0.3 +
-          vector.Energia * 0.3)
-      ),
-
-      // 🌤 POSITIVO + BAIXA ENERGIA
-      Serenidade: this.clamp(
-        (vector.Valencia * 0.4 +
-          vector.Introspeccao * 0.3 -
-          vector.Tensao * 0.3)
-      ),
-
-      ConexaoAfetiva: this.clamp(
-        (vector.Valencia * 0.4 +
-          vector.ConexaoSocial * 0.4 +
-          vector.Vulnerabilidade * 0.2)
-      ),
-
-      // 🌙 REFLEXIVO
-      NostalgiaProfunda: this.clamp(
-        (vector.Melancolia * 0.4 +
-          vector.Introspeccao * 0.4 +
-          vector.Valencia * 0.2)
-      ),
-
-      Contemplacao: this.clamp(
-        (vector.Introspeccao * 0.6 +
-          vector.Valencia * 0.2 +
-          vector.Energia * 0.2)
-      ),
-
-      // ⚡ NEGATIVO + ALTA ENERGIA
-      IrritacaoAtiva: this.clamp(
-        (vector.Tensao * 0.4 +
-          vector.Energia * 0.3 +
-          vector.Dominancia * 0.3)
-      ),
-
-      RaivaExplosiva: this.clamp(
-        (vector.Tensao * 0.4 +
-          vector.Dominancia * 0.4 +
-          vector.Energia * 0.2)
-      ),
-
-      // 🌧 NEGATIVO + BAIXA ENERGIA
-      Desanimo: this.clamp(
-        (vector.Melancolia * 0.5 +
-          vector.Energia * -0.3 +
-          vector.Empoderamento * -0.2)
-      ),
-
-      VulnerabilidadeEmocional: this.clamp(
-        (vector.Vulnerabilidade * 0.6 +
-          vector.Introspeccao * 0.4)
-      )
+      EuforiaAtiva: this.clamp(vector.Valencia * 0.4 + vector.Energia * 0.3 + vector.Euforia * 0.3),
+      ConfiancaDominante: this.clamp(vector.Empoderamento * 0.4 + vector.Dominancia * 0.3 + vector.Energia * 0.3),
+      Serenidade: this.clamp(vector.Valencia * 0.4 + vector.Introspeccao * 0.3 - vector.Tensao * 0.3),
+      ConexaoAfetiva: this.clamp(vector.Valencia * 0.4 + vector.ConexaoSocial * 0.4 + vector.Vulnerabilidade * 0.2),
+      NostalgiaProfunda: this.clamp(vector.Melancolia * 0.4 + vector.Introspeccao * 0.4 + vector.Valencia * 0.2),
+      Contemplacao: this.clamp(vector.Introspeccao * 0.6 + vector.Valencia * 0.2 + vector.Energia * 0.2),
+      IrritacaoAtiva: this.clamp(vector.Tensao * 0.4 + vector.Energia * 0.3 + vector.Dominancia * 0.3),
+      RaivaExplosiva: this.clamp(vector.Tensao * 0.4 + vector.Dominancia * 0.4 + vector.Energia * 0.2),
+      Desanimo: this.clamp(vector.Melancolia * 0.5 + vector.Energia * -0.3 + vector.Empoderamento * -0.2),
+      VulnerabilidadeEmocional: this.clamp(vector.Vulnerabilidade * 0.6 + vector.Introspeccao * 0.4)
     };
 
-    return Object.entries(clusters)
-      .sort((a, b) => b[1] - a[1])[0][0];
-  }
+    // Ordena para pegar o maior valor
+    const [label, score] = Object.entries(clusters)
+      .sort((a, b) => b[1] - a[1])[0];
 
+    return { label, score };
+  }
   async analyzeMusicMoodByHistoryToday(musics: Track[]): Promise<ResponseAi> {
-    const musicasLimpas = musics.map((musica) => ({
-      title: musica.title,
-      artist: musica.artist,
-    }));
+    // 🔒 Criamos um mapa para guardar a imagem sem enviar para IA
+    const imageMap = new Map<string, string>();
+
+    const musicasLimpas = musics.map((musica) => {
+      imageMap.set(musica.id, musica.img_url!);
+
+      return {
+        id: musica.id,
+        title: musica.title,
+        artist: musica.artist,
+        // ❌ NÃO enviamos img_url para análise
+      };
+    });
 
     const prompt = `
 Você é um especialista em psicologia da música, análise semântica e teoria emocional.
@@ -229,22 +197,27 @@ ${JSON.stringify(musicasLimpas, null, 2)}
       const parsed = JSON.parse(response) as ResponseAi;
 
       const tracksWithSentiment = parsed.tracks.map((track) => {
-        const dominantSentiment = this.calculateDominantSentiment(
-          track.emotionalVector
-        );
+        // Cálculo matemático real baseado no vetor que o Gemini gerou
+        const { label, score } = this.calculateDominantSentiment(track.emotionalVector);
+
         return {
           ...track,
-          dominantSentiment,
+          img_url: imageMap.get(track.id) ?? '',
+          dominantSentiment: label,
+          moodScore: score, // Agora o score é fiel ao vetor!
         };
       });
 
-      const dominantSentiment = this.calculateDominantSentiment(parsed.emotionalVector);
+      // Sentimento dominante do dia (geral)
+      const overallSentiment = this.calculateDominantSentiment(parsed.emotionalVector);
 
       return {
         ...parsed,
-        dominantSentiment,
+        dominantSentiment: overallSentiment.label,
+        moodScore: overallSentiment.score,
         tracks: tracksWithSentiment
       };
+
     } catch (error) {
       console.log("Erro ao chamar o Gemini:", error);
 
