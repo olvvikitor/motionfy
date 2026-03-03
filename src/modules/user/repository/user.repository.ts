@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Prisma, User } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
-import { EmotionalVector } from "src/shared/infra/IA/Ai.service";
+import { CoreAxes, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 
 @Injectable()
 export class UserRepository {
@@ -41,6 +41,7 @@ export class UserRepository {
         moodScore: number,
         sentiment: string,
         emotions: EmotionalVector,
+        coreAxes: CoreAxes
         tracks: any
     }) {
         await this.prisma.moodAnalysis.create({
@@ -49,6 +50,7 @@ export class UserRepository {
                 tracksAnalyzeds: mood.tracks,
                 emotions: mood.emotions,
                 moodScore: mood.moodScore,
+                coreAxes: mood.coreAxes,
                 sentiment: mood.sentiment
             }
         })
@@ -58,10 +60,10 @@ export class UserRepository {
             where: {
                 userId: userId
             },
-            orderBy:{
-                analyzedAt:"desc"
+            orderBy: {
+                analyzedAt: "desc"
             }
-            
+
         })
     }
 }

@@ -70,6 +70,7 @@ export  class UserService {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
             emotions: response.emotionalVector,
+            coreAxes: response.coreAxes,
             tracks: response.tracks
         };
 

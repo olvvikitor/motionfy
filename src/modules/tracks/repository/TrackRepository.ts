@@ -36,7 +36,7 @@ export class TrackRepository {
             }
         })
     }
-    async getLastListened(userId: string, limit = 10) {
+    async getLastListened(userId: string, limit = 2) {
         const records = await this.prisma.listeningHistory.findMany({
             where: {
                 userId,
