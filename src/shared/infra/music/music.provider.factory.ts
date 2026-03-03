@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { SpotifyProvider } from "./spotify/spotify.service";
-import MusicProviderInterface from "./music.provider.interface";
+import {MusicProviderInterface} from "./music.provider.interface";
 
 @Injectable()
 export class MusicProviderFactory{
     constructor(
-        private spotifyProvider:SpotifyProvider,
+        @Inject() private spotifyProvider:SpotifyProvider,
     ){}
     getProvider(provider:string):MusicProviderInterface{
         if(provider === 'spotify'){

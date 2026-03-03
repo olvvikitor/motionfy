@@ -2,6 +2,7 @@ import {Injectable } from "@nestjs/common";
 import { TrackRepository } from "../repository/TrackRepository";
 import { SpotifyRecentlyPlayedItem, SpotifySavedTracksItem } from "src/shared/types/TrackResponseSpotify";
 import { mapSpotifyHistoryToPrisma, mapSpotifySavedTracksToPrisma } from "../mappers/spotifyToPrisma";
+import { TrackInput } from "src/shared/types/TrackInput";
 
 @Injectable()
 export default class SaveTracks {
@@ -25,19 +26,15 @@ export default class SaveTracks {
             }
         }
     }
-    async saveMusicsHistoryLine(tracks: SpotifyRecentlyPlayedItem[], idUser: string): Promise<void> {
-        const tracksProcessed = mapSpotifyHistoryToPrisma(tracks);
+    async saveMusicsHistoryLine(tracks: TrackInput[], idUser: string): Promise<void> {
 
-        // Usamos um for...of para processar uma por uma e evitar 503/P2002
-        for (const trackData of tracksProcessed) {
+        for (const trackData of tracks) {
             try {
-                // 1. Cria ou recupera a track (use Upsert no Repository para evitar duplicados)
                 await this.trackRepository.createNewTrack(trackData);
                 await this.trackRepository.saveHistoryListen(idUser, trackData.spotifyId, trackData.createdAt)
 
             } catch (error) {
                 console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);
-                // Continua para a próxima música mesmo se uma falhar
                 continue;
             }
         }

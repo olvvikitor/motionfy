@@ -1,25 +1,25 @@
-import { Body, Controller, Get, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { CreateUserService } from '../services/create.user.service';
 import { User } from '@prisma/client';
-import { AuthService } from './auth.service';
+import { CreateUserService } from 'src/modules/user/services/create.user.service';
+import { AuthService } from '../services/auth.service';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private authService: AuthService) { }
+    constructor(private readonly createUser: CreateUserService, private readonly authService:AuthService) { }
 
+    @Get('spotify')
+    @UseGuards(AuthGuard('spotify'))
+    async spotifyLogin() {
+    }
 
-    @Get(':provider')
-    @UseGuards(AuthGuard())
-    async login() { }
+    @Get('spotify/callback')
+    @UseGuards(AuthGuard('spotify'))
+    async spotifyCallback(@Req() req: any, @Res() res) {
+        const { accessToken, refreshToken } = req.user
 
-    @Get(':provider/callback')
-    @UseGuards()
-    async callback(
-        @Param('provider') provider: string,
-        @Req() req: any,
-        @Res() res: any) {
-        const token = await this.authService.handleCallback(provider, req.user)
+        const token = await this.authService.handleCallback('spotify', {accessToken, refreshToken})
+
         return res.redirect(`http://localhost:3002/auth-success?token=${token}`);
     }
 }

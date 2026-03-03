@@ -1,13 +1,13 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
-import { CreateUserService } from "../services/create.user.service";
 import { User } from "@prisma/client";
+import { CreateUserService } from "src/modules/user/services/create.user.service";
 
 @Injectable()
 export class AuthService {
     constructor(
-        private provideFactory: MusicProviderFactory,
-        private createUserService: CreateUserService
+        @Inject() private provideFactory: MusicProviderFactory,
+        @Inject() private createUserService: CreateUserService
     ) { }
 
     async handleCallback(providerName: string, userData: any) {
@@ -24,6 +24,7 @@ export class AuthService {
             accessToken: userData.accessToken,
             refreshToken: userData.refreshToken
         }
-        await this.createUserService.create(user)
+
+        return await this.createUserService.create(user)
     }
 }

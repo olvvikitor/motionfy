@@ -5,7 +5,10 @@ import { AppModule } from './app.module';
 import { BigIntInterceptor } from "./shared/interceptors/bigInt.interceptor";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+
+  });
   process.env.ENVIROMENT === 'tel' ? console.log('http://10.71.200.1:3000/auth/spotify/callback') : console.log('http://127.0.0.1:3000/auth/spotify/callback')
   app.enableCors()
   app.useGlobalInterceptors(new BigIntInterceptor());
