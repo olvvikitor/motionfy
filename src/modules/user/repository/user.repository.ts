@@ -29,11 +29,26 @@ export class UserRepository {
         })
     }
 
-    async update(userId: string, access_token: string) {
+    async update(userId: string, access_token: string
+    ) {
         await this.prisma.user.update({
             where: { id: userId },
             data: {
                 accessToken: access_token,
+            },
+        });
+    }
+    async updateAfterCreate(userId: string, data: {
+        push: boolean
+        email: boolean
+        weekly: boolean
+    }) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                notificateEmail: data.email,
+                notificatePush: data.push,
+                notificateWeek: data.weekly,
             },
         });
     }

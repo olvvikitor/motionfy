@@ -1,8 +1,9 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import {UserService} from '../services/user.service';
 import { UserResponseDto } from '../dto/UserResponseDto';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
+import { CreateUserService } from '../services/create.user.service';
 
 export interface MRequest extends Request {
     user?: {
@@ -15,7 +16,7 @@ export interface MRequest extends Request {
 @Controller('user')
 export class UserController {
 
-    constructor(private readonly userService: UserService) {
+    constructor(private readonly userService: UserService, private readonly crateUser:CreateUserService) {
     }
 
     @Get('me')
@@ -40,6 +41,12 @@ export class UserController {
     @UseGuards(JwtAuthGuard)
     async getMoodUser(@Req() req: MRequest) {
         return await this.userService.getMoodUserToday(req.user?.id!)
+    }
+
+    @Put('updateAfterCreate')
+    @UseGuards(JwtAuthGuard)
+    async updateAfterCreate(@Body() payload:{data: { push: true, email: true, weekly: true }},  @Req() req:MRequest){
+       return await this.crateUser.updateAfterCreate(req.user?.id!,payload.data) 
     }
 
     @Get('refreshMood')

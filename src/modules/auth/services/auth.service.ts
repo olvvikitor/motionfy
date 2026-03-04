@@ -21,6 +21,9 @@ export class AuthService {
             country: profile.country,
             img_profile: profile.imageUrl ?? '',
             provider: providerName,
+            notificateEmail: false,
+            notificatePush: false,
+            notificateWeek: false,
             accessToken: userData.accessToken,
             refreshToken: userData.refreshToken
         }
