@@ -8,6 +8,7 @@ export type ResponseAi = {
   moodScore: number;
   dominantSentiment: string;
   emotionalVector: EmotionalVector;
+  reasoning: string; // <--- Adicione aqui
   coreAxes: CoreAxes;
   tracks: {
     id: string;
@@ -16,17 +17,20 @@ export type ResponseAi = {
     img_url: string;
     emotionalVector: EmotionalVector;
     dominantSentiment: string;
+    reasoning: string;
     moodScore: number;
-    coreAxes:CoreAxes;
+    coreAxes: CoreAxes;
   }[];
 };
 
 type GeminiResponse = {
   moodScore: number;
   emotionalVector: EmotionalVector;
+  reasoning: string; // <--- Adicione aqui
   tracks: {
     id: string;
     music: string;
+    reasoning: string; // <--- Adicione aqui
     artist: string;
     emotionalVector: EmotionalVector;
   }[];
@@ -41,8 +45,10 @@ export class AiService {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
+        temperature: 0.2,
+        topP: 0.6,
         responseMimeType: "application/json",
         responseSchema: {
           type: SchemaType.OBJECT,
@@ -56,15 +62,17 @@ export class AiService {
                 EMOTIONAL_DIMENSIONS.map(d => [d, { type: SchemaType.NUMBER }])
               ),
             },
+            reasoning: { type: SchemaType.STRING },
             tracks: {
               type: SchemaType.ARRAY,
               items: {
                 type: SchemaType.OBJECT,
                 required: ["id", "music", "artist", "emotionalVector"],
                 properties: {
-                  id:     { type: SchemaType.STRING },
-                  music:  { type: SchemaType.STRING },
+                  id: { type: SchemaType.STRING },
+                  music: { type: SchemaType.STRING },
                   artist: { type: SchemaType.STRING },
+                  reasoning: { type: SchemaType.STRING },// <--- Adicione aqui
                   emotionalVector: {
                     type: SchemaType.OBJECT,
                     required: [...EMOTIONAL_DIMENSIONS],
@@ -83,46 +91,27 @@ export class AiService {
 
   private buildPrompt(musics: { id: string; title: string; artist: string }[]): string {
     return `
-Você é um especialista em psicologia da música, análise semântica e teoria emocional.
+Você é um especialista em psicologia da música e análise psicométrica. Sua tarefa é realizar uma extração técnica de vetores emocionais.
 
-Sua tarefa é gerar um vetor emocional universal para cada música fornecida.
+### DIRETRIZES DE PONTUAÇÃO (POLARIZAÇÃO OBRIGATÓRIA)
 
-### CONTEXTO DE ANÁLISE
+Para evitar o viés da média (valores próximos a 0.5), aplique as seguintes regras:
+- SEJA DECISIVO: Se uma música é claramente energética, a pontuação deve ser > 0.8. Se não é, deve ser < 0.3. Evite 0.5 a menos que a música seja genuinamente neutra.
+- VALÊNCIA vs ENERGIA: Diferencie claramente "Tristeza Ativa" (Raiva/Frustração) de "Tristeza Passiva" (Melancolia).
+- CONTEXTO HISTÓRICO: Considere que o Rock Grunge (90s) tem uma 'Melancolia' agressiva (alta tensão), enquanto o Folk tem uma 'Melancolia' suave (baixa tensão).
+- REASONING: Para cada música, escreva uma frase curta (máx. 15 palavras) justificando o vetor baseado na letra e instrumentação.
+### DEFINIÇÕES DAS DIMENSÕES (ANCORAGEM)
 
-Para cada música, leve em consideração obrigatoriamente:
-
-1. A LETRA (tema, narrativa, intensidade emocional, vocabulário)
-2. O GÊNERO MUSICAL (impacto cultural e padrão emocional típico do gênero)
-3. O ANO DE LANÇAMENTO (contexto histórico, tendência emocional da época)
-4. A ENERGIA típica associada ao estilo musical
-5. O clima emocional predominante (valência positiva/negativa)
-6. A profundidade lírica (superficial vs introspectiva)
-
-### REGRAS IMPORTANTES
-
-- Não ignore o gênero musical.
-- Não ignore o ano.
-- Ajuste o vetor emocional considerando o contexto histórico da época.
-- Rock dos anos 90 ≠ Pop dos anos 2010 (considere diferenças culturais).
-- Trap moderno tende a ter energia alta e valência ambígua.
-- Música religiosa tende a alta transcendência e esperança.
-- Música romântica pode ter alta intensidade emocional, mesmo com baixa energia.
-
-### DIMENSÕES EMOCIONAIS
-
-Para cada dimensão abaixo, gere um valor entre 0.0 e 1.0:
-
-${EMOTIONAL_DIMENSIONS.join("\n")}
-
-### ESCALA
-
-0.0 → ausência total da emoção  
-0.5 → presença moderada  
-1.0 → emoção dominante e intensa  
-
-Use valores decimais com no máximo 2 casas.
-
-### ESTRUTURA DE RESPOSTA
+1. Valencia: 1.0 = Extrema alegria/esperança; 0.0 = Desespero/Ódio profundo.
+2. Energia: 1.0 = Ritmo frenético, alta pressão sonora; 0.0 = Silencioso, minimalista.
+3. Dominancia: 1.0 = Empoderamento, agressividade, controle; 0.0 = Submissão, fragilidade.
+4. Melancolia: 1.0 = Luto, perda profunda, saudade; 0.0 = Euforia total.
+5. Euforia: 1.0 = Êxtase, celebração maníaca; 0.0 = Apatia.
+6. Tensao: 1.0 = Ansiedade, dissonância, conflito; 0.0 = Relaxamento muscular total.
+7. ConexaoSocial: 1.0 = Hinos de união, letras sobre "nós"; 0.0 = Solidão absoluta, isolamento.
+8. Introspeccao: 1.0 = Filosofia existencialista, segredos íntimos; 0.0 = Letra de festa, comercial.
+9. Empoderamento: 1.0 = Superação de desafios, autoconfiança; 0.0 = Derrota, baixa autoestima.
+10. Vulnerabilidade: 1.0 = Exposição de feridas emocionais, choro; 0.0 = Armadura emocional, frieza.
 
 ⚠️ Responda APENAS com JSON válido.  
 ⚠️ Não inclua explicações.  
@@ -182,6 +171,7 @@ ${JSON.stringify(musics, null, 2)}
         dominantSentiment: fallbackEmotion.dominantSentiment,
         emotionalVector: fallbackVector,
         coreAxes: fallbackEmotion.coreAxes,
+        reasoning: '',
         tracks: [],
       };
     }

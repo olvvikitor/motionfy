@@ -13,6 +13,6 @@ export class AuthController {
 
         const token = await this.authService.handleCallback('spotify', {accessToken, refreshToken})
 
-        return res.redirect(`http://localhost:3002/auth-success?token=${token}`);
+        return res.redirect(`http://localhost:3002/terminate?token=${token}`);
     }
 }

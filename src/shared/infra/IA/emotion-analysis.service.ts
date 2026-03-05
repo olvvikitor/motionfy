@@ -36,16 +36,25 @@ export type EmotionClassification = {
 };
 
 const CLUSTER_POSITIONS: Record<string, { x: number; y: number }> = {
-    EuforiaAtiva: { x: 0.9, y: 0.9 },
-    ConfiancaDominante: { x: 0.7, y: 0.8 },
-    Serenidade: { x: 0.8, y: -0.5 },
-    ConexaoAfetiva: { x: 0.9, y: -0.2 },
-    NostalgiaProfunda: { x: -0.4, y: -0.6 },
-    Contemplacao: { x: 0.2, y: -0.4 },
-    IrritacaoAtiva: { x: -0.6, y: 0.6 },
-    RaivaExplosiva: { x: -0.9, y: 0.9 },
-    Desanimo: { x: -0.8, y: -0.8 },
-    VulnerabilidadeEmocional: { x: -0.3, y: -0.5 },
+  // --- QUADRANTE: POSITIVO / ATIVO (Energia Alta, Humor Bom) ---
+  EuforiaAtiva:         { x: 0.85, y: 0.80 }, // Festa, Êxtase
+  ConfiancaDominante:   { x: 0.60, y: 0.60 }, // Empoderamento, Rock motivacional
+  
+  // --- QUADRANTE: POSITIVO / CALMO (Energia Baixa, Humor Bom) ---
+  ConexaoAfetiva:       { x: 0.80, y: 0.10 }, // Amor, Amizade, Calor humano (mais social)
+  Serenidade:           { x: 0.70, y: -0.60 }, // Relaxamento, Natureza, Meditação
+  Contemplacao:         { x: 0.20, y: -0.85 }, // Filosofia, Psicodelia, "Viajar" (MUITO calmo)
+
+  // --- QUADRANTE: NEGATIVO / CALMO (Energia Baixa, Humor Ruim) ---
+  NostalgiaProfunda:    { x: -0.40, y: -0.50 }, // Saudade, Melancolia "doce"
+  Desanimo:             { x: -0.85, y: -0.70 }, // Tristeza profunda, Apatia
+
+  // --- QUADRANTE: NEGATIVO / ATIVO (Energia Alta, Humor Ruim) ---
+  IrritacaoAtiva:       { x: -0.50, y: 0.60 }, // Ansiedade, Tensão, Nervosismo
+  RaivaExplosiva:       { x: -0.90, y: 0.90 }, // Agressividade, Metal pesado, Grito
+
+  // --- ESTADO DE TRANSIÇÃO (Centro-Esquerda) ---
+  VulnerabilidadeEmocional: { x: -0.15, y: -0.20 }, // Incerteza, Fragilidade, Introspecção crua
 };
 
 @Injectable()
@@ -97,7 +106,7 @@ export class EmotionAnalysisService {
             distance: this.euclideanDistance(polaridade, ativacao, position.x, position.y),
         }));
 
-        const similarities = distances.map(d => 1 / (d.distance + 0.001));
+        const similarities = distances.map(d => Math.pow(1 / (d.distance + 0.001), 4));
         const probabilities = this.softmax(similarities);
 
         const emotionProbabilities = distances
