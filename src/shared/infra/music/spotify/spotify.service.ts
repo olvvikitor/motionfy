@@ -46,8 +46,6 @@ export class SpotifyProvider implements MusicProviderInterface {
 
 
         return tracksProcessed
-
-
     }
     async refreshToken(refreshToken: string) {
 

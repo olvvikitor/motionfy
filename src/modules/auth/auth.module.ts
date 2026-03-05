@@ -7,11 +7,12 @@ import { MusicProviderModule } from "src/shared/infra/music/music.provider.modul
 
 import { AuthService } from "./services/auth.service";
 import { UserModule } from "../user/user.module";
+import { YoutubeStrategy } from "./strategies/youtube.strategy";
 
 @Module({
     imports: [ConfigModuleAplication, JwtModuleProvider, MusicProviderModule, forwardRef(() => UserModule)],
     controllers: [AuthController],
-    providers: [SpotifyStrategy, AuthService],
+    providers: [SpotifyStrategy,YoutubeStrategy, AuthService],
     exports: []
 })
 export class AuthModule { }

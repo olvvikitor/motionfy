@@ -19,5 +19,5 @@ export  interface MusicProviderInterface{
     getProfile(accessToken:string):Promise<ProviderUserProfile>
     getTopTracks(accessToken:string):Promise<TrackInput[]>
     getLastRecentlyPlayed(accessToken:string):Promise<TrackInput[]>
-    refreshToken(access_token:string):Promise<void>
+    refreshToken(access_token:string):Promise<any>
 }

@@ -28,6 +28,6 @@ export class AuthService {
             refreshToken: userData.refreshToken
         }
 
-        return await this.createUserService.create(user)
+        return await this.createUserService.create(user, providerName)
     }
 }

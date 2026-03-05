@@ -13,10 +13,10 @@ export class UserRepository {
         })
     }
 
-    async getUserByEmail(email: string): Promise<User | null> {
+    async getUserByEmail(email: string, provider): Promise<User | null> {
         return await this.prisma.user.findFirst({
             where: {
-                email: email
+                AND: [{ email: email, provider: provider }]
             }
         })
     }

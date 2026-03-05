@@ -7,8 +7,8 @@ import { JwtService } from "@nestjs/jwt";
 export class CreateUserService {
     constructor(private userRepository: UserRepository, private jwtService: JwtService) {
     }
-    async create(data: User): Promise<string> {
-        const user = await this.userRepository.getUserByEmail(data.email!)
+    async create(data: User, provider:string): Promise<string> {
+        const user = await this.userRepository.getUserByEmail(data.email!, provider)
         if (!user) {
             await this.userRepository.createNewUser(data)
         }

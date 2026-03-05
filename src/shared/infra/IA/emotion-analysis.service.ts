@@ -35,26 +35,72 @@ export type EmotionClassification = {
     emotionProbabilities: { label: string; probability: number }[];
 };
 
-const CLUSTER_POSITIONS: Record<string, { x: number; y: number }> = {
-  // --- QUADRANTE: POSITIVO / ATIVO (Energia Alta, Humor Bom) ---
-  EuforiaAtiva:         { x: 0.85, y: 0.80 }, // Festa, Êxtase
-  ConfiancaDominante:   { x: 0.60, y: 0.60 }, // Empoderamento, Rock motivacional
-  
-  // --- QUADRANTE: POSITIVO / CALMO (Energia Baixa, Humor Bom) ---
-  ConexaoAfetiva:       { x: 0.80, y: 0.10 }, // Amor, Amizade, Calor humano (mais social)
-  Serenidade:           { x: 0.70, y: -0.60 }, // Relaxamento, Natureza, Meditação
-  Contemplacao:         { x: 0.20, y: -0.85 }, // Filosofia, Psicodelia, "Viajar" (MUITO calmo)
+// ---------------------------------------------------------------------------
+// CLUSTER MAP  (polaridade × ativacao, ambos em [-1, +1])
+//
+// 18 clusters cobrindo todo o espaço emocional.
+// Novos clusters marcados com ← NOVO
+//
+//   POSITIVO/ATIVO (+p, +a)
+//     EuforiaAtiva       ( 0.85,  0.80)  Festa, EDM, pop eufórico
+//     ConfiancaDominante ( 0.55,  0.55)  Rock motivacional, empoderamento
+//     RockEletrizante    ( 0.35,  0.90)  ← NOVO  Alta energia, valência neutra-positiva
+//     TensaoCriativa     ( 0.10,  0.75)  ← NOVO  Rock enérgico sem alegria clara
+//
+//   POSITIVO/CALMO (+p, -a)
+//     AmorCalmo          ( 0.90, -0.20)  ← NOVO  Bossa nova, love songs suaves
+//     ConexaoAfetiva     ( 0.75,  0.10)  Amor, amizade, calor humano
+//     NostalgiaFeliz     ( 0.40, -0.35)  ← NOVO  Saudade boa, "aquela época"
+//     Serenidade         ( 0.65, -0.60)  Relaxamento, natureza, ambient
+//     PazInterior        ( 0.50, -0.85)  ← NOVO  Meditação, folk minimalista
+//     Contemplacao       ( 0.20, -0.85)  Filosofia, psicodelia, existencialismo
+//
+//   NEGATIVO/ATIVO (-p, +a)
+//     TensaoDramatica    (-0.10,  0.90)  ← NOVO  Angústia intensa, post-rock tenso
+//     Frustracao         (-0.25,  0.30)  ← NOVO  Frustração contida, pós-punk
+//     IrritacaoAtiva     (-0.50,  0.60)  Ansiedade, tensão, nervosismo
+//     RaivaExplosiva     (-0.90,  0.90)  Metal pesado, hardcore
+//
+//   NEGATIVO/CALMO (-p, -a)
+//     NostalgiaProfunda  (-0.40, -0.50)  Saudade dolorosa, melancolia "doce"
+//     Desanimo           (-0.85, -0.70)  Tristeza profunda, apatia, derrota
+//
+//   CENTRO / TRANSIÇÃO
+//     VulnerabilidadeEmocional (-0.15, -0.20)  Fragilidade, introspecção crua
+//     Ambivalencia             ( 0.05,  0.10)  ← NOVO  Indie ambíguo, emoção difusa
+//     Estupor                  (-0.60,  0.15)  ← NOVO  Entorpecimento, blues lento
+// ---------------------------------------------------------------------------
 
-  // --- QUADRANTE: NEGATIVO / CALMO (Energia Baixa, Humor Ruim) ---
-  NostalgiaProfunda:    { x: -0.40, y: -0.50 }, // Saudade, Melancolia "doce"
-  Desanimo:             { x: -0.85, y: -0.70 }, // Tristeza profunda, Apatia
+const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }> = {
 
-  // --- QUADRANTE: NEGATIVO / ATIVO (Energia Alta, Humor Ruim) ---
-  IrritacaoAtiva:       { x: -0.50, y: 0.60 }, // Ansiedade, Tensão, Nervosismo
-  RaivaExplosiva:       { x: -0.90, y: 0.90 }, // Agressividade, Metal pesado, Grito
+  // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
+  EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
+  ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.38 },
+  RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 }, // ← NOVO
+  TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.36 }, // ← NOVO
 
-  // --- ESTADO DE TRANSIÇÃO (Centro-Esquerda) ---
-  VulnerabilidadeEmocional: { x: -0.15, y: -0.20 }, // Incerteza, Fragilidade, Introspecção crua
+  // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
+  AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.35 }, // ← NOVO
+  ConexaoAfetiva:           { x:  0.75, y:  0.10, sigma: 0.38 },
+  NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.40 }, // ← NOVO
+  Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
+  PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 }, // ← NOVO
+  Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
+
+  // ── NEGATIVO / ATIVO ──────────────────────────────────────────────────────
+  TensaoDramatica:          { x: -0.10, y:  0.90, sigma: 0.30 }, // ← NOVO
+  Frustracao:               { x: -0.25, y:  0.30, sigma: 0.38 }, // ← NOVO
+  IrritacaoAtiva:           { x: -0.50, y:  0.60, sigma: 0.38 },
+  RaivaExplosiva:           { x: -0.90, y:  0.90, sigma: 0.28 },
+
+  // ── NEGATIVO / CALMO ──────────────────────────────────────────────────────
+  NostalgiaProfunda:        { x: -0.40, y: -0.50, sigma: 0.38 },
+  Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
+
+  // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
+  VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.45 },
+  Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.42 }, // ← NOVO
+  Estupor:                  { x: -0.60, y:  0.15, sigma: 0.38 }, // ← NOVO
 };
 
 @Injectable()
@@ -72,19 +118,37 @@ export class EmotionAnalysisService {
         return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
     }
 
+    // RBF kernel: k(d, σ) = exp(−d² / (2σ²))
+    // Saída em [0,1], gradiente suave — pequenas variações no vetor
+    // causam pequenas variações na classificação.
+    private rbfSimilarity(distance: number, sigma: number): number {
+        return Math.exp(-(distance * distance) / (2 * sigma * sigma));
+    }
+
+    // Softmax com estabilidade numérica (subtrai o máximo antes)
     private softmax(values: number[]): number[] {
-        const exp = values.map(v => Math.exp(v));
+        const max = Math.max(...values);
+        const exp = values.map(v => Math.exp(v - max));
         const sum = exp.reduce((a, b) => a + b, 0);
         return exp.map(v => v / sum);
     }
 
     calculateCoreAxes(vector: EmotionalVector): CoreAxes {
+        // polaridade: Valencia é o eixo hedônico direto
         const polaridade = this.normalize(vector.Valencia);
 
-        const ativacao = this.normalize(
-            this.clamp(vector.Energia * 0.6 + vector.Tensao * 0.4)
-        );
+        // ativacao: composição fisiológica
+        //   Energia    → arousal positivo (BPM, intensidade sonora)
+        //   Tensao     → arousal negativo (stress, dissonância)
+        //   Euforia    → amplifica ativação quando positiva
+        //   Melancolia → suprime ativação (estados passivos/contemplativos)
+        const rawAtivacao =
+            vector.Energia    * 0.45 +
+            vector.Tensao     * 0.30 +
+            vector.Euforia    * 0.15 -
+            vector.Melancolia * 0.10;
 
+        const ativacao = this.normalize(this.clamp(rawAtivacao));
         const quadrante = this.classifyQuadrant(polaridade, ativacao);
 
         return { polaridade, ativacao, quadrante };
@@ -92,8 +156,8 @@ export class EmotionAnalysisService {
 
     classifyQuadrant(p: number, a: number): string {
         if (p >= 0 && a >= 0) return "PositivoAtivo";
-        if (p >= 0 && a < 0) return "PositivoCalmo";
-        if (p < 0 && a >= 0) return "NegativoAtivo";
+        if (p >= 0 && a <  0) return "PositivoCalmo";
+        if (p <  0 && a >= 0) return "NegativoAtivo";
         return "NegativoCalmo";
     }
 
@@ -101,23 +165,31 @@ export class EmotionAnalysisService {
         const coreAxes = this.calculateCoreAxes(vector);
         const { polaridade, ativacao } = coreAxes;
 
-        const distances = Object.entries(CLUSTER_POSITIONS).map(([label, position]) => ({
-            label,
-            distance: this.euclideanDistance(polaridade, ativacao, position.x, position.y),
-        }));
+        // 1. Afinidade RBF para cada cluster
+        const entries = Object.entries(CLUSTER_POSITIONS);
+        const affinities = entries.map(([label, cluster]) => {
+            const distance = this.euclideanDistance(polaridade, ativacao, cluster.x, cluster.y);
+            const affinity = this.rbfSimilarity(distance, cluster.sigma);
+            return { label, affinity };
+        });
 
-        const similarities = distances.map(d => Math.pow(1 / (d.distance + 0.001), 4));
-        const probabilities = this.softmax(similarities);
+        // 2. Softmax sobre afinidades → probabilidades comparáveis
+        const affinityValues = affinities.map(a => a.affinity);
+        const probabilities = this.softmax(affinityValues);
 
-        const emotionProbabilities = distances
-            .map((d, i) => ({ label: d.label, probability: probabilities[i] }))
+        const emotionProbabilities = affinities
+            .map((a, i) => ({ label: a.label, probability: probabilities[i] }))
             .sort((a, b) => b.probability - a.probability);
 
         const dominant = emotionProbabilities[0];
 
+        // 3. moodScore = quão positivo é o humor em [0, 1]
+        //    Semântica direta: 0 = desespero, 0.5 = neutro, 1 = euforia pura
+        const moodScore = (polaridade + 1) / 2;
+
         return {
             dominantSentiment: dominant.label,
-            moodScore: dominant.probability,
+            moodScore,
             coreAxes,
             emotionProbabilities,
         };
