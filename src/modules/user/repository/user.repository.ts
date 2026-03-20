@@ -13,11 +13,28 @@ export class UserRepository {
         })
     }
 
-    async getUserByEmail(email: string, provider): Promise<User | null> {
+    async getUserByEmail(email: string, provider: string): Promise<User | null> {
         return await this.prisma.user.findFirst({
             where: {
-                AND: [{ email: email, provider: provider }]
+                email: email,
+                provider: provider
             }
+        })
+    }
+
+    // Busca usuário independente de provedor para a autenticação baseada em E-mail.
+    async getUserByEmailAuth(email: string): Promise<User | null> {
+        return await this.prisma.user.findFirst({
+            where: {
+                email: email
+            }
+        })
+    }
+
+    async updatePassword(userId: string, hashedPw: string): Promise<void> {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPw }
         })
     }
 

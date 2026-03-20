@@ -46,7 +46,7 @@ export class AiService {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       generationConfig: {
         // FIX: temperature mais alta reduz regressão à média quando o schema JSON
         // já garante que o modelo não vai "delirar" fora do formato esperado.

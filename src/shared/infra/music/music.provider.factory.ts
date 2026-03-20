@@ -15,7 +15,7 @@ export class MusicProviderFactory{
             return this.spotifyProvider;
         }
         if(provider === 'youtube'){
-            return this.ytProvider;
+            'return this.ytProvider;'
         }
         throw new BadRequestException('Provider não existe ou não foi passado')
     }

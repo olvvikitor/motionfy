@@ -18,7 +18,7 @@ export class YoutubeStrategy extends PassportStrategy(Strategy, 'youtube') {
         super({
             clientID: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            callbackURL: 'http://localhost:3000/auth/youtube/callback',
+            callbackURL: process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:3000/auth/youtube/callback',
             scope: [
                 'https://www.googleapis.com/auth/youtube.readonly',
                 'https://www.googleapis.com/auth/youtube',
