@@ -7,6 +7,7 @@ import { AiModule } from './shared/infra/IA/Ai.module';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MusicProviderModule } from './shared/infra/music/music.provider.module';
+import { FriendshipModule } from './modules/friendship/friendship.module';
 
 @Module({
   imports: [MusicProviderModule,
@@ -15,7 +16,9 @@ import { MusicProviderModule } from './shared/infra/music/music.provider.module'
     AuthModule,
     UserModule,
     AiModule,
-    TracksModule],
+    TracksModule,
+    FriendshipModule,
+  ],
   controllers: [],
   providers: [],
 })
