@@ -64,6 +64,7 @@ model MoodAnalysis {
   id              String   @id @default(uuid())
   moodScore       Float
   sentiment       String
+  image_mood      String?
   coreAxes Json
   emotions        Json
   analyzedAt      DateTime @default(now())

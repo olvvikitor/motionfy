@@ -6,6 +6,11 @@ import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
 import { AiService, ResponseAi } from "src/shared/infra/IA/Ai.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
+import { ImagePromptService } from "src/shared/infra/IA/ImagePrompt.service";
+
+export type ListeningNowResponse =
+    | ({ isPlaying: true } & ResponseAi)
+    | { isPlaying: false };
 
 @Injectable()
 export class UserService {
@@ -15,13 +20,13 @@ export class UserService {
         private saveTrackService: SaveTracks,
         private trackRepository: TrackRepository,
         private aiService: AiService,
+        private prompt_imageService: ImagePromptService
     ) { }
 
     async getInfo(id: string): Promise<UserResponseDto> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
-        // Dispara sem bloquear a resposta, com tratamento de erro
         setImmediate(() => {
             this.lastTracks(id).catch(err =>
                 console.error('Erro ao atualizar lastTracks:', err)
@@ -48,24 +53,40 @@ export class UserService {
     }
 
     async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
+
         const historyMusic = await this.trackRepository.getLastListened(id);
         const tracks = historyMusic.map(item => item.track);
 
         const response = await this.aiService.analyzeMusicMoodByHistoryToday(tracks);
 
+        const image_mood = this.prompt_imageService.build(
+            {
+                ativacao: response.coreAxes.ativacao,
+                moodScore: response.moodScore,
+                sentiment: response.dominantSentiment,
+                emotions:response.emotionalVector
+            }
+
+        )
+        const image_charged = await this.aiService.genereateImage(image_mood)
+
         const mood = {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
+            image_mood: image_charged,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,
         };
+        
 
         setImmediate(() => {
             this.userRepository
                 .SaveMood(id, mood)
                 .catch(err => console.error('Erro ao salvar mood:', err));
         });
+        response.image_mood = image_charged
+
 
         return response;
     }
@@ -80,15 +101,16 @@ export class UserService {
         return user.accessToken!;
     }
 
-    async listeningNow(id: string): Promise<ResponseAi> {
+    async listeningNow(id: string): Promise<ListeningNowResponse> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
         const providerMusic = this.providerMusic.getProvider(user.provider);
         const currentTrack = await providerMusic.getListeningNow(user.refreshToken!);
 
+        // Nada tocando no momento — retorna flag limpa ao invés de 404
         if (!currentTrack) {
-            throw new NotFoundException('Nenhuma música encontrada para o usuário');
+            return { isPlaying: false };
         }
 
         const trackToAnalyze: Track = {
@@ -101,7 +123,8 @@ export class UserService {
             createdAt: currentTrack.createdAt ?? new Date(),
         };
 
-        return await this.aiService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
+        const analysis = await this.aiService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
 
+        return { isPlaying: true, ...analysis };
     }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
 import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionalVector, EmotionAnalysisService } from './emotion-analysis.service';
+import { ImagePromptService } from './ImagePrompt.service';
 
 
 
@@ -11,6 +12,7 @@ export type ResponseAi = {
   emotionalVector: EmotionalVector;
   reasoning: string;
   coreAxes: CoreAxes;
+  image_mood: string
   tracks: {
     id: string;
     music: string;
@@ -40,16 +42,17 @@ type GeminiResponse = {
 @Injectable()
 export class AiService {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private music_model: any;
+  private image_model: any
 
-  constructor(private readonly emotionAnalysis: EmotionAnalysisService) {
+  constructor(private readonly emotionAnalysis: EmotionAnalysisService, private image_promprService: ImagePromptService) {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-    this.model = this.genAI.getGenerativeModel({
+    this.music_model = this.genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
         // FIX: temperature mais alta reduz regressão à média quando o schema JSON
-        // já garante que o modelo não vai "delirar" fora do formato esperado.
+        // já garante que o music_modelo não vai "delirar" fora do formato esperado.
         temperature: 0.7,
         topP: 0.9,
         responseMimeType: "application/json",
@@ -90,6 +93,10 @@ export class AiService {
         },
       },
     });
+
+    this.image_model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash-image',
+    })
   }
 
   private buildPrompt(musics: { id: string; title: string; artist: string }[]): string {
@@ -183,7 +190,7 @@ ${JSON.stringify(musics, null, 2)}
     const musicasLimpas = musics.map(({ id, title, artist }) => ({ id, title, artist }));
 
     try {
-      const result = await this.model.generateContent(this.buildPrompt(musicasLimpas));
+      const result = await this.music_model.generateContent(this.buildPrompt(musicasLimpas));
       const parsed = JSON.parse(result.response.text()) as GeminiResponse;
 
       const tracksWithSentiment = parsed.tracks.map((track) => {
@@ -205,8 +212,10 @@ ${JSON.stringify(musics, null, 2)}
         ...parsed,
         dominantSentiment: overallEmotion.dominantSentiment,
         moodScore: overallEmotion.moodScore,
+        image_mood: '',
         coreAxes: overallEmotion.coreAxes,
         tracks: tracksWithSentiment,
+
       };
 
     } catch (error) {
@@ -221,8 +230,35 @@ ${JSON.stringify(musics, null, 2)}
         emotionalVector: fallbackVector,
         coreAxes: fallbackEmotion.coreAxes,
         reasoning: '',
+        image_mood: '',
         tracks: [],
       };
     }
+  }
+
+  async genereateImage(prompt: string) {
+    const result = await this.image_model.generateContent({
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+    });
+
+    const response = result.response;
+
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+
+    const imagePart = parts.find((part: any) => part.inlineData);
+
+    if (!imagePart?.inlineData?.data) {
+      throw new Error('Nenhuma imagem foi gerada.');
+    }
+
+    const base64 = imagePart.inlineData.data;
+    const mimeType = imagePart.inlineData.mimeType || "image/png";
+
+    return `data:${mimeType};base64,${base64}`;
   }
 }

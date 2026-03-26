@@ -72,6 +72,7 @@ export class UserRepository {
     async SaveMood(userId: string, mood: {
         moodScore: number,
         sentiment: string,
+        image_mood: string,
         emotions: EmotionalVector,
         coreAxes: CoreAxes
         tracks: any
@@ -83,6 +84,7 @@ export class UserRepository {
                 emotions: mood.emotions,
                 moodScore: mood.moodScore,
                 coreAxes: mood.coreAxes,
+                image_mood: mood.image_mood,
                 sentiment: mood.sentiment
             }
         })

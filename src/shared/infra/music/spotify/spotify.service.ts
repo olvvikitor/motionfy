@@ -7,18 +7,29 @@ import { TrackInput } from "src/shared/types/TrackInput";
 @Injectable()
 export class SpotifyProvider implements MusicProviderInterface {
     constructor() { }
+
     async getListeningNow(accessToken: string): Promise<TrackInput> {
         try {
             const token = await this.refreshToken(accessToken);
 
             const response = await axios.get(
                 'https://api.spotify.com/v1/me/player/currently-playing',
-                { headers: { Authorization: `Bearer ${token}` } },
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    // 204 = nada tocando — axios não lança erro, mas validateStatus
+                    // garante que só 2xx passa sem exceção
+                    validateStatus: (status) => status < 500,
+                },
             );
 
+            // 204 No Content → usuário não está ouvindo nada agora
+            if (response.status === 204 || !response.data || !response.data.item) {
+                throw new HttpException('No track currently playing', HttpStatus.NOT_FOUND);
+            }
 
-            if (!response.data || !response.data.item) {
-                throw new HttpException('Nenhuma música está sendo reproduzida no momento', HttpStatus.NOT_FOUND);
+            // 400 / 401 / 403 → problema de autenticação ou requisição inválida
+            if (response.status >= 400) {
+                throw new HttpException('Failed to fetch currently playing track', response.status);
             }
 
             const track = response.data.item;
@@ -32,7 +43,17 @@ export class SpotifyProvider implements MusicProviderInterface {
                 createdAt: new Date(),
             };
         } catch (err) {
-            this.handleAxiosError(err, 'Erro ao buscar música atual do Spotify');
+            // Qualquer erro inesperado → trata como "nada tocando" para não derrubar o request
+            if (err instanceof AxiosError) {
+                const status = err.response?.status;
+                // Erros de rede ou servidor → propaga
+                if (!status || status >= 500) {
+                    this.handleAxiosError(err, 'Erro ao buscar música atual do Spotify');
+                }
+                // 400/401/403/404 → silencia, nada tocando
+                throw new HttpException('Failed to fetch currently playing track', HttpStatus.BAD_REQUEST);
+            }
+            throw err;
         }
     }
 
