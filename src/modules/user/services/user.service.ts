@@ -39,6 +39,7 @@ export class UserService {
             email: user.email!,
             id: user.id,
             img_profile: user.img_profile,
+            face_photo_path: user.face_photo_path,
             provider: user.provider,
         };
     }
@@ -53,6 +54,8 @@ export class UserService {
     }
 
     async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
+        const user = await this.userRepository.getUserById(id);
+        if (!user) throw new NotFoundException('Usuario não encontrado');
 
         const historyMusic = await this.trackRepository.getLastListened(id);
         const tracks = historyMusic.map(item => item.track);
@@ -64,11 +67,12 @@ export class UserService {
                 ativacao: response.coreAxes.ativacao,
                 moodScore: response.moodScore,
                 sentiment: response.dominantSentiment,
-                emotions:response.emotionalVector
+                emotions: response.emotionalVector,
+                faceReferencePath: user.face_photo_path,
             }
 
         )
-        const image_charged = await this.aiService.genereateImage(image_mood)
+        const image_charged = await this.aiService.genereateImage(image_mood, user.face_photo_path ?? undefined)
 
         const mood = {
             moodScore: response.moodScore,

@@ -27,6 +27,7 @@ export class AuthService {
             display_name: profile.displayName,
             country: profile.country,
             img_profile: profile.imageUrl ?? '',
+            face_photo_path: null,
             provider: providerName,
             notificateEmail: false,
             notificatePush: false,

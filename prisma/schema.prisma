@@ -16,6 +16,7 @@ model User {
   provider     String
   display_name String
   img_profile  String
+  face_photo_path String?
   notificateEmail Boolean @default(false)
   notificatePush Boolean @default(false)
   notificateWeek Boolean @default(false)

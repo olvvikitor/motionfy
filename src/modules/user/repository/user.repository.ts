@@ -69,6 +69,16 @@ export class UserRepository {
             },
         });
     }
+
+    async updateFacePhotoPath(userId: string, facePhotoPath: string): Promise<void> {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                face_photo_path: facePhotoPath,
+            },
+        });
+    }
+
     async SaveMood(userId: string, mood: {
         moodScore: number,
         sentiment: string,

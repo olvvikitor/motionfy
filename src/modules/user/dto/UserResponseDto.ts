@@ -3,6 +3,7 @@ export type UserResponseDto={
     email: string
     provider: string
     img_profile:string
+    face_photo_path?: string | null
     display_name: string
     country: string
 }

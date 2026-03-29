@@ -3,6 +3,8 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
 import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionalVector, EmotionAnalysisService } from './emotion-analysis.service';
 import { ImagePromptService } from './ImagePrompt.service';
+import { promises as fs } from 'fs';
+import { extname, join } from 'path';
 
 
 
@@ -236,21 +238,62 @@ ${JSON.stringify(musics, null, 2)}
     }
   }
 
-  async genereateImage(prompt: string) {
+  private getMimeTypeByExt(filePath: string): string {
+    const ext = extname(filePath).toLowerCase();
+    if (ext === '.png') return 'image/png';
+    if (ext === '.webp') return 'image/webp';
+    if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
+    return 'image/jpeg';
+  }
+
+  private resolveLocalUploadPath(facePhotoPath: string): string | null {
+    const normalized = facePhotoPath.replace(/\\/g, '/');
+
+    if (normalized.startsWith('/api/uploads/')) {
+      return join(process.cwd(), normalized.replace('/api/uploads/', 'uploads/'));
+    }
+
+    if (normalized.startsWith('/uploads/')) {
+      return join(process.cwd(), normalized.replace('/uploads/', 'uploads/'));
+    }
+
+    return null;
+  }
+
+  async genereateImage(prompt: string, facePhotoPath?: string) {
+    const requestParts: any[] = [{ text: prompt }];
+
+    if (facePhotoPath) {
+      try {
+        const localPath = this.resolveLocalUploadPath(facePhotoPath);
+        if (localPath) {
+          const fileBuffer = await fs.readFile(localPath);
+          requestParts.push({
+            inlineData: {
+              mimeType: this.getMimeTypeByExt(localPath),
+              data: fileBuffer.toString('base64'),
+            },
+          });
+        }
+      } catch (error) {
+        console.warn('Falha ao carregar imagem de referência do usuário:', error);
+      }
+    }
+
     const result = await this.image_model.generateContent({
       contents: [
         {
           role: 'user',
-          parts: [{ text: prompt }],
+          parts: requestParts,
         },
       ],
     });
 
     const response = result.response;
 
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    const responseParts = response.candidates?.[0]?.content?.parts ?? [];
 
-    const imagePart = parts.find((part: any) => part.inlineData);
+    const imagePart = responseParts.find((part: any) => part.inlineData);
 
     if (!imagePart?.inlineData?.data) {
       throw new Error('Nenhuma imagem foi gerada.');

@@ -1,13 +1,16 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { User } from "@prisma/client";
 import { UserRepository } from "../../user/repository/user.repository";
 import { JwtService } from "@nestjs/jwt";
+import { FILE_STORAGE } from "src/shared/infra/storage/interfaces/file-storage.interface";
+import type { FileStorageService, UploadFile } from "src/shared/infra/storage/interfaces/file-storage.interface";
 
 @Injectable()
 export class CreateUserService {
     constructor(
         private userRepository: UserRepository,
         private jwtService: JwtService,
+        @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
     ) { }
 
     async create(data: User, provider: string): Promise<string> {
@@ -33,5 +36,21 @@ export class CreateUserService {
             throw new BadRequestException('Refaça o procedimento de criação');
         }
         await this.userRepository.updateAfterCreate(id_user, data);
+    }
+
+    async uploadFacePhoto(id_user: string, file: UploadFile): Promise<{ path: string }> {
+        const user = await this.userRepository.getUserById(id_user);
+        if (!user) {
+            throw new BadRequestException('Refaça o procedimento de criação');
+        }
+
+        if (user.face_photo_path) {
+            await this.fileStorage.deleteFacePhoto(user.face_photo_path);
+        }
+
+        const path = await this.fileStorage.uploadFacePhoto(file, id_user);
+        await this.userRepository.updateFacePhotoPath(id_user, path);
+
+        return { path };
     }
 }
