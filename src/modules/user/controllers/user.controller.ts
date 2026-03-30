@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post, Put, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { UserService } from '../services/user.service';
 import { UserResponseDto } from '../dto/UserResponseDto';
@@ -41,6 +41,25 @@ export class UserController {
         return await this.userService.getMoodUserToday(req.user!.id);
     }
 
+    @Get('mood-history')
+    @UseGuards(JwtAuthGuard)
+    async getMoodHistory(@Req() req: MRequest, @Query('limit') limit?: string) {
+        const parsedLimit = limit ? parseInt(limit, 10) : 20;
+        return await this.userService.getMoodHistory(req.user!.id, isNaN(parsedLimit) ? 20 : parsedLimit);
+    }
+
+    @Get('mood-week')
+    @UseGuards(JwtAuthGuard)
+    async getMoodWeek(@Req() req: MRequest) {
+        return await this.userService.getMoodWeek(req.user!.id);
+    }
+
+    @Get('stats')
+    @UseGuards(JwtAuthGuard)
+    async getUserStats(@Req() req: MRequest) {
+        return await this.userService.getUserStats(req.user!.id);
+    }
+
     @Put('updateAfterCreate')
     @UseGuards(JwtAuthGuard)
     async updateAfterCreate(@Body() payload: UpdateAfterCreateDto, @Req() req: MRequest) {
@@ -50,58 +69,48 @@ export class UserController {
     @Post('upload-face-photo')
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('file', {
-        limits: {
-            fileSize: 5 * 1024 * 1024,
-        },
+        limits: { fileSize: 5 * 1024 * 1024 },
         fileFilter: (_req, file, cb) => {
             const isImage = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
-            if (!isImage) {
-                return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
-            }
-
+            if (!isImage) return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
             cb(null, true);
         },
     }))
     async uploadFacePhoto(@UploadedFile() file: UploadFile, @Req() req: MRequest) {
-        if (!file) {
-            throw new BadRequestException('Arquivo de imagem não enviado.');
-        }
-
+        if (!file) throw new BadRequestException('Arquivo de imagem não enviado.');
         return await this.createUser.uploadFacePhoto(req.user!.id, file);
     }
 
     @Put('face-photo')
     @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('file', {
-        limits: {
-            fileSize: 5 * 1024 * 1024,
-        },
+        limits: { fileSize: 5 * 1024 * 1024 },
         fileFilter: (_req, file, cb) => {
             const isImage = /^image\/(jpeg|png|webp)$/.test(file.mimetype);
-            if (!isImage) {
-                return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
-            }
-
+            if (!isImage) return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
             cb(null, true);
         },
     }))
     async updateFacePhoto(@UploadedFile() file: UploadFile, @Req() req: MRequest) {
-        if (!file) {
-            throw new BadRequestException('Arquivo de imagem não enviado.');
-        }
-
+        if (!file) throw new BadRequestException('Arquivo de imagem não enviado.');
         return await this.createUser.uploadFacePhoto(req.user!.id, file);
     }
 
     @Get('refreshMood')
     @UseGuards(JwtAuthGuard)
-    async RefreshMoodUser(@Req() req: MRequest) {
-        return await this.userService.RefreshMoodUserToday(req.user!.id);
+    async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string) {
+        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId);
+    }
+
+    @Get('refreshMood/studios')
+    @UseGuards(JwtAuthGuard)
+    async listRefreshMoodStudios() {
+        return await this.userService.getRefreshMoodStudios();
     }
 
     @Get('musicListeningNow')
     @UseGuards(JwtAuthGuard)
     async getMusicListenNow(@Req() req: MRequest) {
-        return await this.userService.listeningNow(req.user!.id)
+        return await this.userService.listeningNow(req.user!.id);
     }
 }

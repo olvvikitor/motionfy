@@ -51,7 +51,7 @@ export class AiService {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
     this.music_model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         // FIX: temperature mais alta reduz regressão à média quando o schema JSON
         // já garante que o music_modelo não vai "delirar" fora do formato esperado.
@@ -98,6 +98,11 @@ export class AiService {
 
     this.image_model = this.genAI.getGenerativeModel({
       model: 'gemini-2.5-flash-image',
+      generationConfig:{
+        temperature:0.8,
+        topP:0.8,
+        topK:55
+      }
     })
   }
 
@@ -261,7 +266,20 @@ ${JSON.stringify(musics, null, 2)}
   }
 
   async genereateImage(prompt: string, facePhotoPath?: string) {
-    const requestParts: any[] = [{ text: prompt }];
+    const styleLock = `
+STYLE LOCK (HIGHEST PRIORITY):
+- Generate ONLY a 2D anime illustration.
+- Never generate photorealistic, live-action, CGI-realistic, or 3D-rendered output.
+- Keep medium detail and soft illustrative edges; avoid hyper-sharp texture detail.
+- Do not render realistic skin pores, realistic lens effects, photographic noise, or DSLR look.
+- Treat any face reference image as identity guidance only (face proportions), never as photographic texture/style source.
+- If any result tends toward realism, restylize to clearly illustrated anime drawing.
+`;
+
+    const requestParts: any[] = [
+      { text: styleLock.trim() },
+      { text: prompt },
+    ];
 
     if (facePhotoPath) {
       try {

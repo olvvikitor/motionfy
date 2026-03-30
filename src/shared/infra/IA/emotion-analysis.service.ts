@@ -81,7 +81,7 @@ const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }>
 
   // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
   AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.35 }, // ← NOVO
-  ConexaoAfetiva:           { x:  0.75, y:  0.10, sigma: 0.38 },
+  ConexaoAfetiva:           { x:  0.75, y:  0.20, sigma: 0.25 },
   NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.40 }, // ← NOVO
   Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
   PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 }, // ← NOVO

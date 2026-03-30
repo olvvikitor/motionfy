@@ -7,26 +7,27 @@ datasource db {
 }
 
 model User {
-  id           String             @id @default(uuid())
-  email        String?
-  password     String?
-  accessToken  String?
-  refreshToken String?
-  country      String
-  provider     String
-  display_name String
-  img_profile  String
+  id              String  @id @default(uuid())
+  email           String?
+  password        String?
+  accessToken     String?
+  refreshToken    String?
+  country         String
+  provider        String
+  display_name    String
+  img_profile     String
   face_photo_path String?
   notificateEmail Boolean @default(false)
-  notificatePush Boolean @default(false)
-  notificateWeek Boolean @default(false)
-  @@unique([email, provider])
+  notificatePush  Boolean @default(false)
+  notificateWeek  Boolean @default(false)
 
   histories    ListeningHistory[]
   moodAnalyses MoodAnalysis[]
 
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
+
+  @@unique([email, provider])
 }
 
 model Friendship {
@@ -61,12 +62,23 @@ model Track {
   histories ListeningHistory[]
 }
 
+model TracksAnalysis {
+  id                String @unique @default(uuid())
+  spotifyid         String @unique 
+  moodScore         Float
+  dominantSentiment String
+  coreAxes          Json
+  emotionalVector   Json
+  reasoning         String
+  analyzedAt        DateTime @default(now())
+}
+
 model MoodAnalysis {
   id              String   @id @default(uuid())
   moodScore       Float
   sentiment       String
   image_mood      String?
-  coreAxes Json
+  coreAxes        Json
   emotions        Json
   analyzedAt      DateTime @default(now())
   tracksAnalyzeds Json

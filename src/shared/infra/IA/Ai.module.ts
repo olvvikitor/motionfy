@@ -5,6 +5,6 @@ import { ImagePromptService } from "./ImagePrompt.service";
 
 @Module({
     providers:[AiService, EmotionAnalysisService,ImagePromptService],
-    exports:[AiService,ImagePromptService],
+    exports:[AiService,ImagePromptService,EmotionAnalysisService],
 })
 export class AiModule{}

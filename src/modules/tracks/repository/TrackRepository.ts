@@ -2,6 +2,26 @@ import { Inject, Injectable } from "@nestjs/common";
 import { Prisma, Track } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
 
+export type TrackAnalysisWriteInput = {
+    spotifyid: string;
+    moodScore: number;
+    dominantSentiment: string;
+    coreAxes: Prisma.JsonValue;
+    emotionalVector: Prisma.JsonValue;
+    reasoning: string;
+    analyzedAt?: Date;
+};
+
+export type TrackAnalysisReadItem = {
+    spotifyid: string;
+    moodScore: number;
+    dominantSentiment: string;
+    coreAxes: Prisma.JsonValue;
+    emotionalVector: Prisma.JsonValue;
+    reasoning: string;
+    analyzedAt: Date;
+};
+
 @Injectable()
 export class TrackRepository {
     constructor(@Inject() private prisma: PrismaService) {
@@ -9,8 +29,8 @@ export class TrackRepository {
     async createNewTrack(data: Prisma.TrackCreateInput): Promise<Track> {
         return await this.prisma.track.upsert({
             where: { spotifyId: data.spotifyId! },
-            update: {...data},
-            create: {...data, img_url:data.img_url},
+            update: { ...data },
+            create: { ...data, img_url: data.img_url },
         });
     }
 
@@ -36,6 +56,98 @@ export class TrackRepository {
             }
         })
     }
+    async findAnalyzedByMusicId(musiId: string[]): Promise<Array<{ spotifyid: string }>> {
+        if (!musiId.length) return [];
+
+        return await this.prisma.tracksAnalysis.findMany({
+            where: {
+                spotifyid: { in: musiId }
+            },
+            select: {
+                spotifyid: true,
+            },
+        })
+    }
+    async saveTrackAnalysesBulk(analyses: TrackAnalysisWriteInput[]): Promise<void> {
+        if (!analyses.length) return;
+
+        await this.prisma.$transaction(
+            analyses.map((music) => {
+                return this.prisma.tracksAnalysis.upsert({
+                    where: {
+                        spotifyid: music.spotifyid
+                    },
+                    update: {
+                        moodScore: music.moodScore,
+                        dominantSentiment: music.dominantSentiment,
+                        coreAxes: music.coreAxes as any,
+                        emotionalVector: music.emotionalVector as any,
+                        reasoning: music.reasoning,
+                        analyzedAt: music.analyzedAt ?? new Date(),
+                    },
+                    create: {
+                        spotifyid: music.spotifyid,
+                        moodScore: music.moodScore,
+                        dominantSentiment: music.dominantSentiment,
+                        coreAxes: music.coreAxes as any,
+                        emotionalVector: music.emotionalVector as any,
+                        reasoning: music.reasoning,
+                        analyzedAt: music.analyzedAt ?? new Date(),
+                    }
+                })
+            })
+        )
+    }
+
+    async getTrackAnalysesByMusicIds(spotifyIds: string[]): Promise<TrackAnalysisReadItem[]> {
+        if (!spotifyIds.length) return [];
+
+        return await this.prisma.tracksAnalysis.findMany({
+            where: {
+                spotifyid: { in: spotifyIds },
+            },
+            select: {
+                spotifyid: true,
+                moodScore: true,
+                dominantSentiment: true,
+                coreAxes: true,
+                emotionalVector: true,
+                reasoning: true,
+                analyzedAt: true,
+            },
+        });
+    }
+
+    async getMoodAnalysisTracksByUser(userId: string): Promise<Array<{ analyzedAt: Date; tracksAnalyzeds: Prisma.JsonValue }>> {
+        return await this.prisma.moodAnalysis.findMany({
+            where: { userId },
+            select: {
+                analyzedAt: true,
+                tracksAnalyzeds: true,
+            },
+            orderBy: {
+                analyzedAt: "desc",
+            },
+        });
+    }
+
+    async findTrackReferences(referenceIds: string[]): Promise<Array<{ id: string; spotifyId: string | null }>> {
+        if (!referenceIds.length) return [];
+
+        return await this.prisma.track.findMany({
+            where: {
+                OR: [
+                    { id: { in: referenceIds } },
+                    { spotifyId: { in: referenceIds } },
+                ],
+            },
+            select: {
+                id: true,
+                spotifyId: true,
+            },
+        });
+    }
+
     async getLastListened(userId: string, limit = 15) {
         const records = await this.prisma.listeningHistory.findMany({
             where: {
