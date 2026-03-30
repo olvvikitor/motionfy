@@ -381,39 +381,101 @@ Final output check before generation:
         const key = this.normalizeSentiment(sentiment);
 
         const sentimentExpressions: Record<string, string[]> = {
-            euforiaativa: ["radiant smile, sparkling eyes, infectious excitement", "joyful open expression with visible emotional overflow"],
-            confiancadominante: ["steady confident gaze, relaxed jaw, self-assured expression", "uplifted chin, focused eyes, calm determination"],
-            rockeletrizante: ["bright intense eyes, excited grin, high performance energy", "expressive face with dynamic upbeat tension"],
-            tensaocriativa: ["concentrated stare, slight brow tension, creative restlessness", "focused expression balancing tension and drive"],
-            amorcalmo: ["gentle smile, warm eyes, affectionate serenity", "soft romantic expression with peaceful calm"],
-            conexaoafetiva: ["welcoming eyes, tender smile, emotionally open expression", "friendly warm expression with social closeness"],
-            nostalgiafeliz: ["nostalgic smile with bright moist eyes", "tender expression blending longing and gratitude"],
-            serenidade: ["soft neutral smile, tranquil eyes, relaxed features", "peaceful expression with effortless calm"],
-            pazinterior: ["meditative face, slow-breathing calm, almost weightless gaze", "deeply relaxed expression with inner stillness"],
-            contemplacao: ["thoughtful distant gaze, quiet introspection", "reflective expression with subtle emotional depth"],
-            tensaodramatica: ["wide alert eyes, compressed lips, visible inner pressure", "anxious intense expression with dramatic emotional load"],
-            frustracao: ["frustrated expression, narrowed eyes, restrained irritation", "annoyed face with controlled emotional friction"],
-            irritacaoativa: ["angry eyebrows, tense jaw, reactive expression", "irritated stare with sharp facial tension"],
-            raivaexplosiva: ["furious eyes, clenched jaw, explosive anger", "aggressive intense expression with high confrontation"],
-            nostalgiaprofunda: ["sad nostalgic eyes, fragile half-smile", "emotionally heavy expression with deep longing"],
-            desanimo: ["drained gaze, low facial energy, visible emotional fatigue", "apathetic expression with subtle sadness"],
-            vulnerabilidadeemocional: ["watery eyes, fragile expression, emotional exposure", "soft vulnerable face with visible sensitivity"],
-            ambivalencia: ["uncertain eyes, conflicted expression, mixed emotion", "hesitant facial expression with emotional ambiguity"],
-            estupor: ["blank stare, emotionally numb expression", "detached eyes with minimal facial reaction"],
-            // Legacy aliases for compatibility
-            surtando: ["furious eyes, clenched jaw, explosive energy", "wide intense eyes, aggressive posture, visible tension"],
-            adrenalinapura: ["excited eyes, open smile, adrenaline in body language", "focused joyful expression with energetic movement"],
-            caoscontrolado: ["intense focused gaze, restless expression", "confident but edgy face, controlled tension"],
-            pressentindo: ["suspicious eyes, subtle anxiety in expression", "alert gaze with uneasy facial tension"],
-            decara: ["frustrated expression, pressed lips, narrowed eyes", "annoyed face with visible emotional load"],
-            pdavida: ["angry eyebrows, tense jaw, confrontational stare", "irritated expression with sharp body gesture"],
-            apaixonadx: ["soft smile, warm eyes, affectionate expression", "romantic gaze with gentle facial softness"],
-            saudadeboa: ["nostalgic half-smile, teary bright eyes", "tender expression mixing joy and longing"],
-            chorandonobanheiro: ["watery eyes, fragile expression, emotional exhaustion", "sad face with visible vulnerability"],
-            deboa: ["relaxed smile, calm gaze, peaceful expression", "light and effortless expression"],
-            zerado: ["serene neutral face, slow breathing vibe", "meditative expression with gentle eyes"],
-            toconfuso: ["uncertain eyes, conflicted expression", "hesitant face with mixed emotion"],
-            travado: ["blank stare, emotionally numb expression", "detached eyes, minimal facial reaction"],
+
+            euforiaativa: [
+                "wide radiant smile, eyes slightly squinted from joy, visible energetic overflow",
+                "open mouth excitement, lifted cheeks, expressive high-energy happiness"
+            ],
+
+            confiancadominante: [
+                "steady direct gaze, chin slightly raised, relaxed but firm jaw",
+                "subtle confident smirk, controlled expression with inner authority"
+            ],
+
+            rockeletrizante: [
+                "intense shining eyes, asymmetrical excited grin, high adrenaline presence",
+                "dynamic facial tension with expressive performance energy"
+            ],
+
+            tensaocriativa: [
+                "focused eyes with slight brow tension, lips pressed in concentration",
+                "restless micro-expressions suggesting creative pressure building"
+            ],
+
+            amorcalmo: [
+                "soft affectionate smile, relaxed eyelids, slow peaceful warmth",
+                "gentle romantic expression with calm emotional presence"
+            ],
+
+            conexaoafetiva: [
+                "direct inviting eye contact, warm open smile, subtle head tilt",
+                "engaged facial expression signaling empathy and social connection"
+            ],
+
+            nostalgiafeliz: [
+                "soft smile with slightly glossy eyes, upward distant gaze",
+                "bittersweet expression mixing warmth with gentle longing"
+            ],
+
+            serenidade: [
+                "neutral relaxed face, minimal muscle tension, steady calm gaze",
+                "balanced expression with emotional stability and quiet ease"
+            ],
+
+            pazinterior: [
+                "eyes almost closed, slow breathing expression, deeply grounded stillness",
+                "detached serene face with complete inner calm and absence of tension"
+            ],
+
+            contemplacao: [
+                "distant unfocused gaze, subtle brow softness, introspective stillness",
+                "quiet reflective expression with internalized attention"
+            ],
+
+            tensaodramatica: [
+                "wide alert eyes, tight lips, visible emotional strain building",
+                "high-pressure expression with contained anxiety and intensity"
+            ],
+
+            frustracao: [
+                "slightly narrowed eyes, asymmetric mouth tension, controlled irritation",
+                "micro-expressions of resistance and internal dissatisfaction"
+            ],
+
+            irritacaoativa: [
+                "sharp gaze, tightened jaw, reactive facial tension",
+                "visible impatience with quick-trigger emotional response"
+            ],
+
+            raivaexplosiva: [
+                "furious eyes, flared nostrils, clenched teeth, explosive tension",
+                "aggressive forward expression with loss of emotional control"
+            ],
+
+            nostalgiaprofunda: [
+                "heavy eyes, fragile expression, faint downward gaze",
+                "emotionally weighted face with deep reflective sadness"
+            ],
+
+            desanimo: [
+                "low energy face, drooping eyelids, lack of muscular engagement",
+                "apathetic expression with emotional exhaustion and disengagement"
+            ],
+
+            vulnerabilidadeemocional: [
+                "glassy eyes, subtle lip tremble, exposed emotional softness",
+                "fragile expression with openness and emotional sensitivity"
+            ],
+
+            ambivalencia: [
+                "inconsistent micro-expressions, uncertain gaze, slight hesitation",
+                "mixed emotional signals with unstable facial coherence"
+            ],
+
+            estupor: [
+                "blank unfocused stare, minimal facial movement, emotional shutdown",
+                "detached expression with absence of visible affect"
+            ],
         };
 
         if (sentimentExpressions[key]) {
@@ -512,59 +574,7 @@ Final output check before generation:
                 "frozen neutral posture with minimal gesture and blank stare",
                 "still front-facing pose with detached expression and low muscle tension"
             ],
-            // Legacy aliases for compatibility
-            surtando: [
-                "explosive forward-leaning pose with intense eyes",
-                "chaotic angular stance with visible body tension"
-            ],
-            adrenalinapura: [
-                "running-like dynamic pose with raised chest and focused smile",
-                "athletic motion pose with strong diagonal body line"
-            ],
-            caoscontrolado: [
-                "composed but tense posture with active hands",
-                "confident stance with subtle asymmetry and controlled energy"
-            ],
-            pressentindo: [
-                "slightly turned alert pose with cautious side glance",
-                "defensive posture with raised shoulders and suspicious gaze"
-            ],
-            decara: [
-                "rigid posture with crossed arms and frustrated expression",
-                "angled stance with chin down and annoyed eye contact"
-            ],
-            pdavida: [
-                "hard confrontational stance with tense jaw",
-                "forward pressure pose with intense narrowed gaze"
-            ],
-            apaixonadx: [
-                "soft open posture with gentle smile and affectionate eyes",
-                "romantic close-up pose with slight head tilt and relaxed shoulders"
-            ],
-            saudadeboa: [
-                "quiet reflective pose with warm half-smile",
-                "window-side seated pose with nostalgic upward glance"
-            ],
-            chorandonobanheiro: [
-                "collapsed seated pose with fragile shoulders",
-                "emotionally exposed pose with face partially covered by hands"
-            ],
-            deboa: [
-                "easy relaxed standing pose with soft smile",
-                "casual seated pose with open chest and calm gaze"
-            ],
-            zerado: [
-                "still centered posture with meditative calm",
-                "neutral portrait pose with serene eyes and relaxed mouth"
-            ],
-            toconfuso: [
-                "uncertain asymmetric pose with hesitant head angle",
-                "conflicted stance with questioning expression and unstable balance"
-            ],
-            travado: [
-                "motionless frontal pose with fixed distant eyes",
-                "stiff posture with minimal gesture and emotional shutdown"
-            ],
+
         };
 
         if (sentimentPoses[key]) {
@@ -786,72 +796,7 @@ Final output check before generation:
                 "smoking mechanically with no visible reaction"
             ],
 
-            // Legacy aliases for compatibility
-            surtando: [
-                "smoking outside a convenience store at night",
-                "arguing with themselves in a dark alley",
-                "walking fast in the rain with a drink can in hand"
-            ],
-            adrenalinapura: [
-                "running on a rooftop at sunset",
-                "shouting with joy in an open avenue",
-                "skating through downtown with headphones"
-            ],
-            caoscontrolado: [
-                "smoking while writing notes in a small room",
-                "moving intensely in a basement corridor",
-                "drinking coffee while organizing tasks at night"
-            ],
-            pressentindo: [
-                "smoking near a neon-lit alley with a tense expression",
-                "waiting at a late-night bus stop holding a drink",
-                "walking alone through wet streets after midnight"
-            ],
-            decara: [
-                "smoking outside a bar with crossed arms",
-                "staring at the wall in a dim room",
-                "sitting silent at a counter with a half-full glass"
-            ],
-            pdavida: [
-                "kicking a pebble while walking through downtown",
-                "smoking with an intense stare under streetlights",
-                "walking with clenched fists through a busy block"
-            ],
-            apaixonadx: [
-                "sharing a drink in a cozy bar",
-                "walking hand in hand through evening streets",
-                "holding someone close on a balcony"
-            ],
-            saudadeboa: [
-                "holding an old photo with coffee on a kitchen table",
-                "revisiting old messages in the bedroom",
-                "watching city lights from the window with a warm drink"
-            ],
-            chorandonobanheiro: [
-                "sitting on the bathroom floor after a night out",
-                "smoking by the window while rain falls outside",
-                "holding a glass at a dim bar, lost in thought"
-            ],
-            deboa: [
-                "sipping coffee by a window in the morning",
-                "reading in a cafe during a quiet afternoon",
-                "resting on a bench while observing the street"
-            ],
-            zerado: [
-                "drinking tea in a minimalist room",
-                "journaling at a quiet cafe table",
-                "resting on the sofa in silence"
-            ],
-            toconfuso: [
-                "standing in front of convenience store lights at night",
-                "switching between two options in a messy room",
-                "staring at a half-finished drink in silence"
-            ],
-            travado: [
-                "sitting motionless on a late-night train",
-                "holding an unlit cigarette while staring ahead",
-                "standing still in a crowded street, detached"
-            ],
+        
         };
 
         if (sentimentActions[key]) {
@@ -929,21 +874,6 @@ Final output check before generation:
             vulnerabilidadeemocional: ["apartment bathroom", "quiet bedroom corner", "window seat during rain", "stair landing with soft lamp", "hospital-like waiting corridor (non-medical scene)"],
             ambivalencia: ["subway transfer tunnel", "night convenience store frontage", "empty parking lot at dusk", "forked urban pathway", "escalator landing between two exits"],
             estupor: ["office rooftop alone", "nearly empty street before dawn", "silent tram platform", "night bus interior with sparse passengers", "fluorescent hallway with distant perspective"],
-
-            // Legacy aliases for compatibility
-            surtando: ["night downtown district", "dark side street", "rainy city blocks"],
-            adrenalinapura: ["city rooftop at sunset", "busy urban avenue", "open downtown plaza"],
-            caoscontrolado: ["small apartment workspace", "industrial neighborhood at dusk", "building service corridor"],
-            pressentindo: ["neon-lit side street", "late-night subway platform", "quiet gas station at night"],
-            decara: ["street bar corner", "apartment stairwell", "night sidewalk under sodium lights"],
-            pdavida: ["downtown crosswalk", "boxing gym corridor", "garage corner"],
-            apaixonadx: ["cozy bar interior", "city promenade at night", "apartment balcony with warm lights"],
-            saudadeboa: ["old neighborhood cafe", "bedroom with posters and old photos", "sunset bus window view"],
-            chorandonobanheiro: ["apartment bathroom", "empty bar restroom", "small room with rainy window"],
-            deboa: ["quiet cafe", "urban park bench", "sunlit apartment living room"],
-            zerado: ["minimalist apartment", "bookstore cafe", "morning tram ride"],
-            toconfuso: ["night convenience store frontage", "subway transfer tunnel", "empty parking lot at dusk"],
-            travado: ["late-night train carriage", "office rooftop alone", "city overpass at dawn"],
         };
 
         if (sentimentUniverse[key]) {
@@ -982,7 +912,7 @@ Final output check before generation:
         ]);
     }
     private buildStyleReferences(studio: StudioStyle) {
-    return `
+        return `
 Visual style references (very important):
 
 ${studio.referenceAnimes.map(anime => `- ${anime}: use as inspiration for composition, color mood, and facial expression`).join("\n")}
@@ -990,7 +920,7 @@ ${studio.referenceAnimes.map(anime => `- ${anime}: use as inspiration for compos
 Blend these references into a cohesive ${studio.name} anime illustration.
 Do not copy characters or scenes directly — only use as stylistic guidance.
 `;
-}
+    }
 
     // ---------------- UTIL ----------------
     private random<T>(arr: T[]): T {
