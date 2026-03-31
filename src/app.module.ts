@@ -1,17 +1,26 @@
 import { Module } from '@nestjs/common';
-import {AuthModule} from './auth/auth.module';
 import { ConfigModuleAplication } from './config/config.module';
-import { UserModule } from './user/user.module';
-import { UserController } from './user/controllers/user.controller';
+
 import { JwtModule } from '@nestjs/jwt';
-import { TracksModule } from './tracks/tracks.module';
-import { LyricsModule } from './shared/providers/genius/genius.module';
-import { AiModule } from './shared/providers/IA/Ai.module';
+import { TracksModule } from './modules/tracks/tracks.module';
+import { AiModule } from './shared/infra/IA/Ai.module';
+import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { MusicProviderModule } from './shared/infra/music/music.provider.module';
+import { FriendshipModule } from './modules/friendship/friendship.module';
 
 @Module({
-  imports: [ConfigModuleAplication,JwtModule,AuthModule,UserModule,AiModule, TracksModule, LyricsModule],
-  controllers: [UserController],
+  imports: [MusicProviderModule,
+    ConfigModuleAplication,
+    JwtModule,
+    AuthModule,
+    UserModule,
+    AiModule,
+    TracksModule,
+    FriendshipModule,
+  ],
+  controllers: [],
   providers: [],
 })
 
-export class AppModule {}
+export class AppModule { }
