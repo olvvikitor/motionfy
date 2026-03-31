@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Track } from "@prisma/client";
 import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
@@ -9,6 +9,8 @@ import { MusicProviderFactory } from "src/shared/infra/music/music.provider.fact
 import { ImagePromptService, StudioStyleOption } from "src/shared/infra/IA/ImagePrompt.service";
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
+import path from "path";
+import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
 
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
@@ -24,6 +26,8 @@ export class UserService {
         private aiService: AiService,
         private prompt_imageService: ImagePromptService,
         private emotionAnalysis: EmotionAnalysisService,
+        @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
+
     ) { }
 
     private toEmotionalVector(value: unknown): EmotionalVector | null {
@@ -124,7 +128,7 @@ export class UserService {
 
         await this.lastTracks(id);
 
-        const historyMusic = await this.trackRepository.getLastListened(id, 25);
+        const historyMusic = await this.trackRepository.getLastListened(id, 10);
         const uniqueBySpotifyId = new Map<string, Track>();
         for (const item of historyMusic) {
             const spotifyId = item.track?.spotifyId;
@@ -163,17 +167,28 @@ export class UserService {
         const image_mood = this.prompt_imageService.build({
             ativacao: response.coreAxes.ativacao,
             moodScore: response.moodScore,
+            coreAxes:response.coreAxes,
             sentiment: response.dominantSentiment,
             emotions: response.emotionalVector,
             faceReferencePath: user.face_photo_path,
             studioId,
         });
         const image_charged = await this.aiService.genereateImage(image_mood, user.face_photo_path ?? undefined);
+        const cleanBase64 = image_charged.replace(/^data:image\/png;base64,/, '');
+
+        const buffer = Buffer.from(cleanBase64, 'base64');
+
+        const file: UploadFile = {
+            buffer,
+            originalname: 'mood.png',
+            mimetype: 'image/png',
+        };
+        const img_url = await this.fileStorage.uploadMoodPhoto(file, user.id)
 
         const mood = {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
-            image_mood: image_charged,
+            image_mood: img_url,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,

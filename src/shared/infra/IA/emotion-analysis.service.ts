@@ -38,26 +38,25 @@ export type EmotionClassification = {
 // ---------------------------------------------------------------------------
 // CLUSTER MAP  (polaridade × ativacao, ambos em [-1, +1])
 //
-// 18 clusters cobrindo todo o espaço emocional.
-// Novos clusters marcados com ← NOVO
+// 19 clusters cobrindo todo o espaço emocional.
 //
 //   POSITIVO/ATIVO (+p, +a)
 //     EuforiaAtiva       ( 0.85,  0.80)  Festa, EDM, pop eufórico
 //     ConfiancaDominante ( 0.55,  0.55)  Rock motivacional, empoderamento
-//     RockEletrizante    ( 0.35,  0.90)  ← NOVO  Alta energia, valência neutra-positiva
-//     TensaoCriativa     ( 0.10,  0.75)  ← NOVO  Rock enérgico sem alegria clara
+//     RockEletrizante    ( 0.35,  0.90)  Alta energia, valência neutra-positiva
+//     TensaoCriativa     ( 0.10,  0.75)  Rock enérgico sem alegria clara
 //
 //   POSITIVO/CALMO (+p, -a)
-//     AmorCalmo          ( 0.90, -0.20)  ← NOVO  Bossa nova, love songs suaves
+//     AmorCalmo          ( 0.90, -0.20)  Bossa nova, love songs suaves
 //     ConexaoAfetiva     ( 0.75,  0.10)  Amor, amizade, calor humano
-//     NostalgiaFeliz     ( 0.40, -0.35)  ← NOVO  Saudade boa, "aquela época"
+//     NostalgiaFeliz     ( 0.40, -0.35)  Saudade boa, "aquela época"
 //     Serenidade         ( 0.65, -0.60)  Relaxamento, natureza, ambient
-//     PazInterior        ( 0.50, -0.85)  ← NOVO  Meditação, folk minimalista
+//     PazInterior        ( 0.50, -0.85)  Meditação, folk minimalista
 //     Contemplacao       ( 0.20, -0.85)  Filosofia, psicodelia, existencialismo
 //
 //   NEGATIVO/ATIVO (-p, +a)
-//     TensaoDramatica    (-0.10,  0.90)  ← NOVO  Angústia intensa, post-rock tenso
-//     Frustracao         (-0.25,  0.30)  ← NOVO  Frustração contida, pós-punk
+//     TensaoDramatica    (-0.10,  0.90)  Angústia intensa, post-rock tenso
+//     Frustracao         (-0.25,  0.30)  Frustração contida, pós-punk
 //     IrritacaoAtiva     (-0.50,  0.60)  Ansiedade, tensão, nervosismo
 //     RaivaExplosiva     (-0.90,  0.90)  Metal pesado, hardcore
 //
@@ -67,51 +66,51 @@ export type EmotionClassification = {
 //
 //   CENTRO / TRANSIÇÃO
 //     VulnerabilidadeEmocional (-0.15, -0.20)  Fragilidade, introspecção crua
-//     Ambivalencia             ( 0.05,  0.10)  ← NOVO  Indie ambíguo, emoção difusa
-//     Estupor                  (-0.60,  0.15)  ← NOVO  Entorpecimento, blues lento
+//     Ambivalencia             ( 0.05,  0.10)  Indie ambíguo, emoção difusa
+//     Estupor                  (-0.60,  0.15)  Entorpecimento, blues lento
 // ---------------------------------------------------------------------------
 
 const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }> = {
 
-  // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
-  EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
-  ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.38 },
-  RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 }, // ← NOVO
-  TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.36 }, // ← NOVO
+    // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
+    EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
+    ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.38 },
+    RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 },
+    TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.36 },
 
-  // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
-  AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.35 }, // ← NOVO
-  ConexaoAfetiva:           { x:  0.75, y:  0.20, sigma: 0.25 },
-  NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.40 }, // ← NOVO
-  Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
-  PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 }, // ← NOVO
-  Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
+    // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
+    AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.35 },
+    ConexaoAfetiva:           { x:  0.75, y:  0.20, sigma: 0.25 },
+    NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.40 },
+    Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
+    PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 },
+    Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
 
-  // ── NEGATIVO / ATIVO ──────────────────────────────────────────────────────
-  TensaoDramatica:          { x: -0.10, y:  0.90, sigma: 0.30 }, // ← NOVO
-  Frustracao:               { x: -0.25, y:  0.30, sigma: 0.38 }, // ← NOVO
-  IrritacaoAtiva:           { x: -0.50, y:  0.60, sigma: 0.38 },
-  RaivaExplosiva:           { x: -0.90, y:  0.90, sigma: 0.28 },
+    // ── NEGATIVO / ATIVO ──────────────────────────────────────────────────────
+    TensaoDramatica:          { x: -0.10, y:  0.90, sigma: 0.30 },
+    Frustracao:               { x: -0.25, y:  0.30, sigma: 0.38 },
+    IrritacaoAtiva:           { x: -0.50, y:  0.60, sigma: 0.38 },
+    RaivaExplosiva:           { x: -0.90, y:  0.90, sigma: 0.28 },
 
-  // ── NEGATIVO / CALMO ──────────────────────────────────────────────────────
-  NostalgiaProfunda:        { x: -0.40, y: -0.50, sigma: 0.38 },
-  Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
+    // ── NEGATIVO / CALMO ──────────────────────────────────────────────────────
+    NostalgiaProfunda:        { x: -0.40, y: -0.50, sigma: 0.38 },
+    Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
 
-  // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
-  VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.45 },
-  Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.42 }, // ← NOVO
-  Estupor:                  { x: -0.60, y:  0.15, sigma: 0.38 }, // ← NOVO
+    // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
+    VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.45 },
+    Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.42 },
+    Estupor:                  { x: -0.60, y:  0.15, sigma: 0.38 },
 };
 
 @Injectable()
 export class EmotionAnalysisService {
 
-    private clamp(value: number): number {
-        return Math.max(0, Math.min(1, value));
+    private clamp(value: number, min = 0, max = 1): number {
+        return Math.max(min, Math.min(max, value));
     }
 
     private normalize(value: number): number {
-        return (value * 2) - 1;
+        return (value * 2) - 1; // [0,1] → [-1,+1]
     }
 
     private euclideanDistance(x1: number, y1: number, x2: number, y2: number): number {
@@ -119,13 +118,11 @@ export class EmotionAnalysisService {
     }
 
     // RBF kernel: k(d, σ) = exp(−d² / (2σ²))
-    // Saída em [0,1], gradiente suave — pequenas variações no vetor
-    // causam pequenas variações na classificação.
     private rbfSimilarity(distance: number, sigma: number): number {
         return Math.exp(-(distance * distance) / (2 * sigma * sigma));
     }
 
-    // Softmax com estabilidade numérica (subtrai o máximo antes)
+    // Softmax com estabilidade numérica
     private softmax(values: number[]): number[] {
         const max = Math.max(...values);
         const exp = values.map(v => Math.exp(v - max));
@@ -133,21 +130,64 @@ export class EmotionAnalysisService {
         return exp.map(v => v / sum);
     }
 
+    // -------------------------------------------------------------------------
+    // Sigmoid comprimida para mapear polaridade → moodScore em [0.10, 0.90]
+    //
+    // Por que sigmoid aqui?
+    //   O mapeamento linear (polaridade + 1) / 2 produz scores acima de 85%
+    //   para músicas normalmente positivas (Valencia ≥ 0.75), que é a maioria.
+    //   A sigmoid "encolhe" os extremos — músicas muito positivas chegam a ~82%
+    //   em vez de 92%, e músicas muito negativas caem a ~18% em vez de 5%.
+    //   Isso evita que qualquer análise pareça "perfeita" ou "catastrófica".
+    //
+    // Parâmetros:
+    //   k = 2.5  → inclinação moderada (3.0+ seria muito íngreme)
+    //   min/max  → comprime a saída para [0.10, 0.90] deliberadamente:
+    //              nenhum dia é 100% eufórico ou 0% funcional.
+    // -------------------------------------------------------------------------
+    private polaridadeToMoodScore(polaridade: number): number {
+        const k   = 2.5;
+        const raw = 1 / (1 + Math.exp(-k * polaridade)); // sigmoid em [0,1]
+        // Re-escala de [0,1] para [0.10, 0.90]
+        return 0.10 + raw * 0.80;
+    }
+
+    // -------------------------------------------------------------------------
+    // Cálculo do eixo de ativação — revisado
+    //
+    // Problema anterior:
+    //   rawAtivacao = Energia * 0.45 + Tensao * 0.30 + Euforia * 0.15 - Melancolia * 0.10
+    //   → Tensao pesava demais (0.30), elevando a ativação de músicas tensas mas lentas.
+    //   → Dominancia era ignorada (músicas dominantes são tipicamente ativas).
+    //   → Euforia pesava pouco (0.15) mesmo sendo amplificador primário de ativação.
+    //
+    // Revisão dos pesos:
+    //   Energia      0.50 → principal driver fisiológico (BPM, volume, drive)
+    //   Euforia      0.25 → amplificador emocional de ativação percebida
+    //   Dominancia   0.15 → músicas dominantes tendem a ter mais presença/energia
+    //   Tensao       0.10 → contribui mas não domina (tensão ≠ energia)
+    //   Melancolia  -0.15 → suprime ativamente (músicas melancólicas são passivas)
+    //   Vulnerab.   -0.10 → introspecção reduz ativação percebida
+    //
+    // Soma dos pesos positivos = 0.90, negativos = -0.25
+    // Antes de normalizar, o raw pode cair em ~[-0.25, 0.90] dependendo do vetor.
+    // Aplicamos clamp e depois normalize para mapear para [-1, +1].
+    // -------------------------------------------------------------------------
     calculateCoreAxes(vector: EmotionalVector): CoreAxes {
-        // polaridade: Valencia é o eixo hedônico direto
+
+        // Polaridade: Valencia é o eixo hedônico direto — sem mudança aqui,
+        // pois o problema relatado não é polaridade mas sim ativação + moodScore.
         const polaridade = this.normalize(vector.Valencia);
 
-        // ativacao: composição fisiológica
-        //   Energia    → arousal positivo (BPM, intensidade sonora)
-        //   Tensao     → arousal negativo (stress, dissonância)
-        //   Euforia    → amplifica ativação quando positiva
-        //   Melancolia → suprime ativação (estados passivos/contemplativos)
         const rawAtivacao =
-            vector.Energia    * 0.45 +
-            vector.Tensao     * 0.30 +
-            vector.Euforia    * 0.15 -
-            vector.Melancolia * 0.10;
+            vector.Energia       *  0.50 +
+            vector.Euforia       *  0.25 +
+            vector.Dominancia    *  0.15 +
+            vector.Tensao        *  0.10 -
+            vector.Melancolia    *  0.15 -
+            vector.Vulnerabilidade * 0.10;
 
+        // Clamp antes de normalizar para evitar overflow nos extremos teóricos
         const ativacao = this.normalize(this.clamp(rawAtivacao));
         const quadrante = this.classifyQuadrant(polaridade, ativacao);
 
@@ -175,7 +215,7 @@ export class EmotionAnalysisService {
 
         // 2. Softmax sobre afinidades → probabilidades comparáveis
         const affinityValues = affinities.map(a => a.affinity);
-        const probabilities = this.softmax(affinityValues);
+        const probabilities  = this.softmax(affinityValues);
 
         const emotionProbabilities = affinities
             .map((a, i) => ({ label: a.label, probability: probabilities[i] }))
@@ -183,9 +223,9 @@ export class EmotionAnalysisService {
 
         const dominant = emotionProbabilities[0];
 
-        // 3. moodScore = quão positivo é o humor em [0, 1]
-        //    Semântica direta: 0 = desespero, 0.5 = neutro, 1 = euforia pura
-        const moodScore = (polaridade + 1) / 2;
+        // 3. moodScore via sigmoid comprimida para [0.10, 0.90]
+        //    Evita extremos absolutos — nenhum dia é 100% perfeito ou 0% funcional.
+        const moodScore = this.polaridadeToMoodScore(polaridade);
 
         return {
             dominantSentiment: dominant.label,

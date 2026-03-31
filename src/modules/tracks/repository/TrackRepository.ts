@@ -159,7 +159,8 @@ export class TrackRepository {
             orderBy: {
                 playedAt: "desc", // mais recentes primeiro
             },
-            take: limit, // quantidade desejada
+            take: limit, // quantidade desejada,
+            
         });
 
         return records;

@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { CoreAxes } from "./emotion-analysis.service";
 
 
 type StudioStyle = {
@@ -9,6 +10,91 @@ type StudioStyle = {
     referenceAnimes: string[];
     visualLanguage: string;
     renderingNotes: string;
+};
+const EMOTION_METADATA: Record<string, {
+    en: string;
+    description: string;
+}> = {
+    EuforiaAtiva: {
+        en: "euphoric excitement",
+        description: "intense joy, freedom, high energy, explosive emotional expression"
+    },
+    ConfiancaDominante: {
+        en: "dominant confidence",
+        description: "strong presence, control, self-assurance, calm power"
+    },
+    RockEletrizante: {
+        en: "adrenaline rush",
+        description: "raw energy, chaos, speed, loud emotional intensity"
+    },
+    TensaoCriativa: {
+        en: "creative tension",
+        description: "inner pressure mixed with focus and artistic energy"
+    },
+
+    AmorCalmo: {
+        en: "calm love",
+        description: "soft affection, emotional safety, warmth and intimacy"
+    },
+    ConexaoAfetiva: {
+        en: "emotional connection",
+        description: "deep bonding, closeness, shared emotional presence"
+    },
+    NostalgiaFeliz: {
+        en: "happy nostalgia",
+        description: "warm memories with a subtle bittersweet tone"
+    },
+    Serenidade: {
+        en: "serenity",
+        description: "peaceful stillness, emotional balance, quiet calm"
+    },
+    PazInterior: {
+        en: "inner peace",
+        description: "deep tranquility, absence of conflict, grounded calm"
+    },
+    Contemplacao: {
+        en: "contemplation",
+        description: "reflective state, observing quietly, thoughtful stillness"
+    },
+
+    TensaoDramatica: {
+        en: "dramatic tension",
+        description: "intense emotional pressure, suspense, inner conflict"
+    },
+    Frustracao: {
+        en: "frustration",
+        description: "blocked intention, irritation, restrained emotional tension"
+    },
+    IrritacaoAtiva: {
+        en: "active irritation",
+        description: "agitated annoyance, restless discomfort"
+    },
+    RaivaExplosiva: {
+        en: "explosive anger",
+        description: "uncontrolled rage, aggressive emotional outburst"
+    },
+
+    NostalgiaProfunda: {
+        en: "deep nostalgia",
+        description: "heavy memories, longing, emotional weight"
+    },
+    Desanimo: {
+        en: "discouragement",
+        description: "low energy sadness, lack of motivation, emotional fatigue"
+    },
+
+    VulnerabilidadeEmocional: {
+        en: "emotional vulnerability",
+        description: "openness, fragility, exposed emotional state"
+    },
+    Ambivalencia: {
+        en: "emotional ambivalence",
+        description: "conflicting feelings, mixed emotions, uncertainty"
+    },
+    Estupor: {
+        en: "emotional numbness",
+        description: "detachment, shock, lack of emotional reaction"
+    },
 };
 
 export type StudioStyleOption = Pick<StudioStyle, "id" | "name" | "company" | "logoKey" | "referenceAnimes" | "visualLanguage" | "renderingNotes">;
@@ -68,123 +154,269 @@ export class ImagePromptService {
         moodScore: number;
         sentiment: string;
         ativacao: number;
+        coreAxes: CoreAxes;
         emotions?: any; // vetor emocional
         faceReferencePath?: string | null;
         studioId?: string;
     }) {
-        const intensidade = this.getIntensity(data.moodScore, data.ativacao);
+        const intensidade = this.getIntensity(data.coreAxes.quadrante);
         const visual = this.getVisual(intensidade);
-        const emotionLayer = this.buildEmotionalLayer(data.emotions);
+        const imersive = this.getGazeByIntensity(intensidade)
         const moodStyle = this.getMoodStyle(data.emotions);
         const pose = this.getPose(data.sentiment, intensidade);
-        const camera = this.getCamera();
-        const framing = this.getFramingRule();
         const action = this.getAction(data.sentiment, intensidade);
         const universe = this.getUniverse(data.sentiment, intensidade);
-        const expression = this.getExpression(data.sentiment, intensidade, data.emotions);
         const studio = this.getStudioStyle(data.studioId);
+        const emotions = this.buildEmotionBlock(data.sentiment) as any
 
         return `
-Create a stylized artistic image in a ${studio.name} style that represents the emotional theme "${data.sentiment}".
+Create a stylized 2D anime illustration in the style of ${studio.name}, representing the emotional theme "${data.sentiment}".
+━━━━━━━━━━
+STUDIO DIRECTION
+━━━━━━━━━━
+━━━━━━━━━━
+PRIMARY STYLE CONSTRAINT (ABSOLUTE PRIORITY)
+━━━━━━━━━━
+The entire image MUST strictly follow the visual style of ${studio.name}.
 
-The image should visually express the feeling through colors, lighting, atmosphere, and character presence.
-Prioritize the character over the environment.
+This overrides all other instructions.
 
-Medium and rendering requirements (mandatory):
-- Output must be a stylized 2D anime illustration, not a photo
-- Keep visible illustration traits: clean linework, painterly/anime shading, stylized proportions
-- Preserve a hand-crafted cel-animated / anime-film feeling
-- Do not generate HD, ultra-detailed, 4K, or hyper-sharp output
-- Prefer medium-detail illustration with soft edges over crisp realistic detail
-- Do not use photoreal skin texture, realistic camera noise, DSLR look, or cinematic live-action grading
-- Do not simulate real-lens photography (no real bokeh photography artifacts, no film grain realism)
-- If the render starts to look realistic, force it back to an illustrated anime drawing style
+Every element — character design, proportions, linework, shading, lighting, colors, and composition — must be fully consistent with this studio's identity.
 
-Style direction: ${studio.name}
+Do NOT mix styles.
+Do NOT generalize anime style.
+Do NOT drift into generic, semi-realistic, or other studio aesthetics.
+
+If any element conflicts with the studio style, the studio style MUST win.
+━━━━━━━━━━
+STYLE & MEDIUM (STRICT)
+━━━━━━━━━━
+- Stylized 2D anime illustration only (NOT a photo)
+- Visible linework, anime/cel shading, painterly finish
+- Medium detail (no ultra-detailed or hyper-sharp rendering)
+- Soft edges over crisp realism
+- Hand-crafted anime film aesthetic
+
+DO NOT:
+- Use photorealism, semi-realism, or 3D/CGI look
+- Simulate DSLR, film grain, or real camera artifacts
+- Apply real skin texture or photographic lighting
+
+If the result looks realistic, force it back into anime illustration style.
+
+
+Visual language: ${studio.visualLanguage}  
+Rendering notes: ${studio.renderingNotes}  
+Reference anime: ${studio.referenceAnimes.join(", ")}
+
 ${this.buildStyleReferences(studio)}
-Studio visual language: ${studio.visualLanguage}
-Studio rendering notes: ${studio.renderingNotes}
-Studio reference anime titles: ${studio.referenceAnimes.join(", ")}
-Use these titles only as style reference for composition rhythm, color mood, and illustration language.
-Mood style: ${moodStyle}
-Lighting: ${visual.lighting}
-Color palette: ${visual.colors}
-- Camera: ${camera}
+
+Use references only for:
+- color mood
+- composition rhythm
+- illustration language
+
+━━━━━━━━━━
+EMOTIONAL & VISUAL DIRECTION
+━━━━━━━━━━
+Emotion: ${emotions.en!}
+Emotional direction: ${emotions.description}
+Mood style: ${moodStyle}  
+Lighting: ${visual.lighting}  
+Color palette: ${visual.colors}  
+
+━━━━━━━━━━
+SCENE & COMPOSITION
+━━━━━━━━━━
+- Shot composition: ${this.getShotComposition(intensidade)}
+- Gaze behavior: ${imersive}
 - Pose: ${pose}
 - Action: ${action}
-- Framing: ${framing}
-- Universe: ${universe}
-- Expression direction: ${expression}
-
-Reference image:
-- User face reference path: ${data.faceReferencePath ?? "not provided"}
-- Use the provided face reference image as appearance baseline (face shape, hair line, eyes, eyebrows, nose, mouth proportions)
-- Preserve recognizability of the person while adapting to the selected anime studio style
-- Never copy photographic skin texture, camera lighting, or real-photo rendering from the face reference
-- Reference image must guide identity only; final render must remain fully illustrated anime
-
-Emotional direction:
-- ${emotionLayer}
-
-Expression & action priorities (highest priority):
-- The face expression must clearly communicate the mood at first glance
-- The selected action must be unambiguous and central in the frame
-- Hands, eyes, and body gesture should reinforce the emotion
-- Keep environment as context only, never as the main subject
-- Never depict the character playing instruments, singing, performing, DJing, or inside a concert stage setup
-- Optional audio props are allowed only as secondary elements: headphones or speakers
-- Real-world human actions are welcome when emotionally coherent: smoking, drinking, walking alone, waiting for transport, texting, journaling, cooking, resting, arguing, hugging, crying, laughing
-- Prefer grounded slice-of-life behavior over abstract symbolic poses
-
-Elements to consider:
 - Environment: ${visual.scene} (${universe})
 
-Character requirements:
-- The character should be portrayed as a young adult
-- Avoid gender ambiguity unless specified
-- Show clear facial details (eyes, eyebrows, mouth) with readable emotion
-- Avoid tiny, distant, or silhouette-only characters
-- Keep similarity to the user face reference image as high priority
+━━━━━━━━━━
+CHARACTER (HIGH PRIORITY)
+━━━━━━━━━━
+- Single young adult character
+- Maintain strong resemblance to face reference
+- Adapt identity into anime style (no realism carryover)
 
-Style enforcement (critical):
+Face reference:
+${data.faceReferencePath ?? "not provided"}
 
-- This MUST be a stylized 2D anime illustration
-- No photorealism under any circumstances
-- No semi-realistic rendering
-- No 3D or CGI look
-- No cinematic live-action appearance
+Rules:
+- Preserve face structure, eyes, hairline, and proportions
+- Do NOT copy photographic texture or lighting
+- Identity must remain recognizable in anime form
 
-If any part looks realistic, override it into anime illustration style with visible linework and stylized shading.
+━━━━━━━━━━
+EXPRESSION & ACTION (TOP PRIORITY)
+━━━━━━━━━━
+- Action must be clear and central
+- Emotion expressed through body, hands, and gaze
+- Environment supports, never dominates
 
-Avoid: realistic photography, photorealism, hyper-realism, CGI realism, 3D render look, live-action look, HD render, 4K detail, ultra-sharp texture detail, low quality, blurry, distorted faces, extra limbs, text, watermark
-Avoid music-performance elements: guitars, drums, microphones, pianos, violins, DJ decks, recording studio setups, stage performance poses
-Avoid fantasy clichés: castles, medieval armor, dragons, kings/queens, magical creatures, fantasy kingdoms
-Strict integrity constraints:
-- Single main character only (unless explicitly requested otherwise)
-- Exactly one face for the main character (no duplicated heads or ghost faces)
-- Correct human anatomy: two arms, two hands, five fingers per visible hand
-- No extra fingers, fused fingers, duplicated hands, or floating limbs
-- No duplicated body parts (arms, legs, ears, eyes, mouth)
-- No cloned or repeated objects (duplicate cups, cigarettes, phones, glasses, chairs) unless intentionally part of the scene logic
-- No mirrored duplicate props near hands
-- Keep object interaction physically coherent (hands correctly holding objects)
-- Keep perspective and occlusion consistent; no overlapping impossible geometry
-- If anatomy or object count is ambiguous, prefer a simpler composition with fewer visible limbs/props
+Allowed actions:
+- grounded slice-of-life behavior (walking, smoking, texting, resting, etc.)
 
-Make it emotionally immersive, soft, dreamy, and slightly surreal.
-Final output check before generation:
-- The final image must read immediately as an anime drawing/illustration, never as a real photo.
+Avoid:
+- performing music (no instruments, stage, DJ setup)
+- exaggerated symbolic poses
+
+━━━━━━━━━━
+FRAMING RULES (CRITICAL)
+━━━━━━━━━━
+- Character must NOT look at the camera
+- No direct eye contact
+- Scene must feel candid, not posed
+- Prefer:
+  - side view
+  - back view
+  - over-the-shoulder
+- Camera observes the moment, not interacts with subject
+
+━━━━━━━━━━
+STYLE ENFORCEMENT (HARD CONSTRAINTS)
+━━━━━━━━━━
+- Must read immediately as anime illustration
+- No photorealism under any circumstance
+- No live-action cinematic look
+- No 3D rendering
+
+━━━━━━━━━━
+INTEGRITY CONSTRAINTS
+━━━━━━━━━━
+- Exactly one character
+- One face only (no duplication)
+- Correct anatomy (2 arms, 2 hands, 5 fingers)
+- No extra limbs or distorted body parts
+- No duplicated objects or mirrored props
+- Physical interaction must be coherent
+
+If uncertain, simplify composition.
+
+━━━━━━━━━━
+AVOID
+━━━━━━━━━━
+- photorealism, CGI, hyper-detail, 4K sharpness
+- blurry faces, distortion, extra limbs
+- text, watermark
+- fantasy clichés (dragons, castles, armor, etc.)
+- duplicated props or broken geometry
+
+━━━━━━━━━━
+FINAL INTENT
+━━━━━━━━━━
+Create an emotionally immersive, soft, slightly dreamy anime scene.
+
+The image must feel like a real moment being observed — not a posed portrait.
+
+Final check:
+The result MUST look like an anime illustration, NEVER a real photo.
 `;
     }
 
+    
+
     // ---------------- INTENSIDADE ----------------
-    private getIntensity(score: number, ativacao: number) {
-        if (score > 0.8 && ativacao > 0.6) return "euphoric";
-        if (score > 0.6 && ativacao > 0.3) return "positive";
-        if (score < 0.3 && ativacao < -0.5) return "melancholic";
-        if (ativacao > 0.6) return "energetic";
-        if (ativacao < -0.6) return "calm";
-        return "balanced";
+    private getIntensity(quadrante: string) {
+        switch (quadrante) {
+            case "PositivoAtivo":
+                return "energetic";     // positivo + alta ativação
+            case "PositivoCalmo":
+                return "positive";      // positivo + baixa ativação
+            case "NegativoAtivo":
+                return "melancholic";  // negativo + alta ativação (tensão)
+            case "NegativoCalmo":
+                return "calm";         // negativo + baixa ativação
+            default:
+                return "balanced";
+        }
+    }
+    private buildEmotionBlock(sentiment: string) {
+    const meta = EMOTION_METADATA[sentiment];
+
+    if (!meta) {
+        return {
+            label: "neutral mood",
+            description: "emotionally neutral state"
+        };
+    }
+
+    return meta;
+}
+
+    private getGazeByIntensity(intensity: string) {
+        const map: Record<string, string[]> = {
+            euphoric: [
+                "looking at friends around, not the camera",
+                "gaze moving dynamically through the environment",
+                "focused on the moment, ignoring the camera"
+            ],
+            energetic: [
+                "eyes scanning surroundings quickly",
+                "focused forward with intensity",
+                "looking ahead with determination"
+            ],
+            positive: [
+                "soft gaze into the distance",
+                "looking at the environment with a light smile",
+                "casual side glance"
+            ],
+            calm: [
+                "eyes gently lowered",
+                "looking at small details nearby",
+                "soft unfocused gaze"
+            ],
+            melancholic: [
+                "looking down in introspection",
+                "gaze lost far away",
+                "avoiding eye contact completely"
+            ],
+            balanced: [
+                "natural gaze, not directed at camera",
+                "subtle side glance",
+                "looking around casually"
+            ]
+        };
+
+        return this.random(map[intensity] || map["balanced"]);
+    }
+    private getShotComposition(intensity: string) {
+        const map: Record<string, string[]> = {
+            euphoric: [
+                "wide dynamic shot with character interacting with environment, not facing camera",
+                "low-angle moving shot, character looking away while in motion",
+                "tracking perspective from behind, following the character"
+            ],
+            energetic: [
+                "side-angle action shot with motion blur, no eye contact with camera",
+                "over-the-shoulder shot focused on what the character sees",
+                "mid-action frame, character looking forward, not at viewer"
+            ],
+            positive: [
+                "natural eye-level shot, character slightly turned away",
+                "3/4 angle framing with soft gaze into the environment",
+                "casual candid shot, not posed"
+            ],
+            calm: [
+                "static wide shot with lots of negative space",
+                "back view of character observing environment",
+                "side profile with soft lighting, no camera awareness"
+            ],
+            melancholic: [
+                "back-facing character looking out a window",
+                "side profile with gaze downward, avoiding camera",
+                "framed through window or objects, indirect view"
+            ],
+            balanced: [
+                "cinematic medium shot, slightly off-center framing",
+                "natural composition, character not aware of camera",
+                "environment-first framing with character integrated"
+            ]
+        };
+
+        return this.random(map[intensity] || map["balanced"]);
     }
 
     // ---------------- VISUAL ----------------
@@ -382,97 +614,97 @@ Final output check before generation:
 
         const sentimentExpressions: Record<string, string[]> = {
 
-            euforiaativa: [
+            EuforiaAtiva: [
                 "wide radiant smile, eyes slightly squinted from joy, visible energetic overflow",
                 "open mouth excitement, lifted cheeks, expressive high-energy happiness"
             ],
 
-            confiancadominante: [
+            ConfiancaDominante: [
                 "steady direct gaze, chin slightly raised, relaxed but firm jaw",
                 "subtle confident smirk, controlled expression with inner authority"
             ],
 
-            rockeletrizante: [
+            RockEletrizante: [
                 "intense shining eyes, asymmetrical excited grin, high adrenaline presence",
                 "dynamic facial tension with expressive performance energy"
             ],
 
-            tensaocriativa: [
+            TensaoCriativa: [
                 "focused eyes with slight brow tension, lips pressed in concentration",
                 "restless micro-expressions suggesting creative pressure building"
             ],
 
-            amorcalmo: [
+            AmorCalmo: [
                 "soft affectionate smile, relaxed eyelids, slow peaceful warmth",
                 "gentle romantic expression with calm emotional presence"
             ],
 
-            conexaoafetiva: [
+            ConexaoAfetiva: [
                 "direct inviting eye contact, warm open smile, subtle head tilt",
                 "engaged facial expression signaling empathy and social connection"
             ],
 
-            nostalgiafeliz: [
+            NostalgiaFeliz: [
                 "soft smile with slightly glossy eyes, upward distant gaze",
                 "bittersweet expression mixing warmth with gentle longing"
             ],
 
-            serenidade: [
+            Serenidade: [
                 "neutral relaxed face, minimal muscle tension, steady calm gaze",
                 "balanced expression with emotional stability and quiet ease"
             ],
 
-            pazinterior: [
+            PazInterior: [
                 "eyes almost closed, slow breathing expression, deeply grounded stillness",
                 "detached serene face with complete inner calm and absence of tension"
             ],
 
-            contemplacao: [
+            Contemplacao: [
                 "distant unfocused gaze, subtle brow softness, introspective stillness",
                 "quiet reflective expression with internalized attention"
             ],
 
-            tensaodramatica: [
+            TensaoDramatica: [
                 "wide alert eyes, tight lips, visible emotional strain building",
                 "high-pressure expression with contained anxiety and intensity"
             ],
 
-            frustracao: [
+            Frustracao: [
                 "slightly narrowed eyes, asymmetric mouth tension, controlled irritation",
                 "micro-expressions of resistance and internal dissatisfaction"
             ],
 
-            irritacaoativa: [
+            IrritacaoAtiva: [
                 "sharp gaze, tightened jaw, reactive facial tension",
                 "visible impatience with quick-trigger emotional response"
             ],
 
-            raivaexplosiva: [
+            RaivaExplosiva: [
                 "furious eyes, flared nostrils, clenched teeth, explosive tension",
                 "aggressive forward expression with loss of emotional control"
             ],
 
-            nostalgiaprofunda: [
+            NostalgiaProfunda: [
                 "heavy eyes, fragile expression, faint downward gaze",
                 "emotionally weighted face with deep reflective sadness"
             ],
 
-            desanimo: [
+            Desanimo: [
                 "low energy face, drooping eyelids, lack of muscular engagement",
                 "apathetic expression with emotional exhaustion and disengagement"
             ],
 
-            vulnerabilidadeemocional: [
+            VulnerabilidadeEmocional: [
                 "glassy eyes, subtle lip tremble, exposed emotional softness",
                 "fragile expression with openness and emotional sensitivity"
             ],
 
-            ambivalencia: [
+            Ambivalencia: [
                 "inconsistent micro-expressions, uncertain gaze, slight hesitation",
                 "mixed emotional signals with unstable facial coherence"
             ],
 
-            estupor: [
+            Estupor: [
                 "blank unfocused stare, minimal facial movement, emotional shutdown",
                 "detached expression with absence of visible affect"
             ],
@@ -498,79 +730,79 @@ Final output check before generation:
         const key = this.normalizeSentiment(sentiment);
 
         const sentimentPoses: Record<string, string[]> = {
-            euforiaativa: [
+            EuforiaAtiva: [
                 "dynamic 3/4 body pose with lifted chin and open chest",
                 "forward-leaning stance with one foot stepping ahead, confident eye contact"
             ],
-            confiancadominante: [
+            ConfiancaDominante: [
                 "upright posture with squared shoulders and direct eye contact",
                 "calm dominant standing pose with one hand in pocket and steady gaze"
             ],
-            rockeletrizante: [
+            RockEletrizante: [
                 "low-angle energetic pose with body in motion and expressive hands",
                 "mid-shot dynamic stride with torso twist and intense focus"
             ],
-            tensaocriativa: [
+            TensaoCriativa: [
                 "slightly hunched thinking pose with active hands and focused eyes",
                 "seated forward-lean pose with elbows on knees and concentrated expression"
             ],
-            amorcalmo: [
+            AmorCalmo: [
                 "soft relaxed posture with gentle head tilt and warm eye contact",
                 "side-facing 3/4 pose with subtle smile and peaceful shoulders"
             ],
-            conexaoafetiva: [
+            ConexaoAfetiva: [
                 "open body language with inviting shoulders and kind expression",
                 "natural standing pose with relaxed arms and emotionally available gaze"
             ],
-            nostalgiafeliz: [
+            NostalgiaFeliz: [
                 "still reflective pose with slight smile and eyes looking into distance",
                 "seated window-side posture with soft shoulders and nostalgic gaze"
             ],
-            serenidade: [
+            Serenidade: [
                 "balanced neutral pose with relaxed spine and calm breathing",
                 "minimal movement portrait pose with gentle gaze and loose shoulders"
             ],
-            pazinterior: [
+            PazInterior: [
                 "meditative straight posture with soft hands and closed or half-closed eyes",
                 "centered seated pose with serene face and grounded shoulders"
             ],
-            contemplacao: [
+            Contemplacao: [
                 "side-profile contemplative pose looking at horizon",
                 "quiet standing pose with chin slightly raised and thoughtful eyes"
             ],
-            tensaodramatica: [
+            TensaoDramatica: [
                 "alert posture with tense neck and shoulders, eyes scanning scene",
                 "mid-step paused pose with guarded stance and compressed lips"
             ],
-            frustracao: [
+            Frustracao: [
                 "closed posture with crossed arms and tightened jaw",
                 "seated pose with elbows on thighs and visible irritation"
             ],
-            irritacaoativa: [
+            IrritacaoAtiva: [
                 "restless stance with uneven weight distribution and sharp gestures",
                 "half-turned reactive pose with tense jaw and narrowed eyes"
             ],
-            raivaexplosiva: [
+            RaivaExplosiva: [
                 "forward confrontational stance with clenched fists and intense stare",
                 "wide-leg aggressive pose with elevated shoulders and explosive energy"
             ],
-            nostalgiaprofunda: [
+            NostalgiaProfunda: [
                 "curled seated posture with lowered shoulders and distant gaze",
                 "static side pose with heavy expression and subtle inward body tension"
             ],
-            desanimo: [
+            Desanimo: [
                 "slouched posture with lowered head and drained body language",
                 "slow-standing pose with rounded shoulders and tired eyes"
             ],
-            vulnerabilidadeemocional: [
+            VulnerabilidadeEmocional: [
                 "fragile seated pose hugging knees or holding arms gently",
                 "soft defensive posture with slightly collapsed shoulders and watery eyes"
             ],
-            ambivalencia: [
+            Ambivalencia: [
                 "hesitant half-step pose with torso split between directions",
                 "conflicted posture with one shoulder forward and uncertain gaze"
             ],
-            estupor: [
+            Estupor: [
                 "frozen neutral posture with minimal gesture and blank stare",
                 "still front-facing pose with detached expression and low muscle tension"
             ],
@@ -796,7 +1028,7 @@ Final output check before generation:
                 "smoking mechanically with no visible reaction"
             ],
 
-        
+
         };
 
         if (sentimentActions[key]) {
@@ -852,28 +1084,29 @@ Final output check before generation:
     }
 
     private getUniverse(sentiment: string, intensity: string) {
+        console.log(sentiment)
         const key = this.normalizeSentiment(sentiment);
 
         const sentimentUniverse: Record<string, string[]> = {
-            euforiaativa: ["festival street at night", "city rooftop with bright skyline", "busy downtown district full of motion", "riverfront boardwalk with colorful lights", "open plaza with kinetic crowd movement"],
-            confiancadominante: ["downtown avenue at blue hour", "modern rooftop terrace", "stylish urban block", "architectural business district", "glass pedestrian bridge over city traffic"],
-            rockeletrizante: ["neon avenue", "industrial block", "city underpass with dynamic lighting", "graffiti tunnel with strong contrast lights", "multi-level parking ramp with dramatic perspective"],
-            tensaocriativa: ["small apartment workspace", "narrow corridor", "night alley with neon reflections", "shared studio desk with papers and sticky notes", "late-night copy shop corner"],
-            amorcalmo: ["cozy cafe interior", "warm apartment balcony", "riverside walk with soft lights", "bookstore cafe with amber lamps", "quiet tram stop at golden dusk"],
-            conexaoafetiva: ["friendly neighborhood cafe", "sunset promenade", "intimate living room", "small market street with warm storefront lights", "community courtyard with soft evening glow"],
-            nostalgiafeliz: ["old neighborhood street", "bedroom with old posters and photos", "sunset bus window view", "retro arcade corner", "family kitchen with vintage tiles"],
-            serenidade: ["quiet urban park", "sunlit apartment living room", "peaceful morning cafe", "library reading corner", "botanical greenhouse walkway"],
-            pazinterior: ["minimalist apartment", "silent early-morning tram", "calm room with diffuse light", "rooftop zen garden", "simple tatami-like calm room"],
-            contemplacao: ["window facing rainy skyline", "rooftop at dawn", "quiet riverside bench", "museum corridor with natural light", "empty pedestrian bridge in morning fog"],
-            tensaodramatica: ["late-night subway platform", "wet downtown crosswalk", "gas station at night", "narrow passage with flickering signage", "stormy avenue with headlights reflections"],
-            frustracao: ["street bar corner", "apartment stairwell", "narrow garage corridor", "laundromat at midnight", "office hallway after hours"],
-            irritacaoativa: ["boxing gym corridor", "night sidewalk under sodium lights", "crowded urban crossing", "traffic-clogged avenue edge", "underground station entrance in rush hour"],
-            raivaexplosiva: ["industrial block at midnight", "stormy city backstreet", "empty parking structure", "warehouse loading dock", "abandoned concrete lot under harsh lights"],
-            nostalgiaprofunda: ["empty bar interior", "small room with rainy window", "dim bedroom with old objects", "closed train station waiting room", "storage room with old cardboard boxes"],
-            desanimo: ["late-night train carriage", "empty apartment kitchen", "city overpass at dawn", "cold bus terminal bench", "office cubicle with low evening light"],
-            vulnerabilidadeemocional: ["apartment bathroom", "quiet bedroom corner", "window seat during rain", "stair landing with soft lamp", "hospital-like waiting corridor (non-medical scene)"],
-            ambivalencia: ["subway transfer tunnel", "night convenience store frontage", "empty parking lot at dusk", "forked urban pathway", "escalator landing between two exits"],
-            estupor: ["office rooftop alone", "nearly empty street before dawn", "silent tram platform", "night bus interior with sparse passengers", "fluorescent hallway with distant perspective"],
+            EuforiaAtiva: ["festival street at night", "city rooftop with bright skyline", "busy downtown district full of motion", "riverfront boardwalk with colorful lights", "open plaza with kinetic crowd movement"],
+            ConfiancaDominante: ["downtown avenue at blue hour", "modern rooftop terrace", "stylish urban block", "architectural business district", "glass pedestrian bridge over city traffic"],
+            RockEletrizante: ["neon avenue", "industrial block", "city underpass with dynamic lighting", "graffiti tunnel with strong contrast lights", "multi-level parking ramp with dramatic perspective"],
+            TensaoCriativa: ["small apartment workspace", "narrow corridor", "night alley with neon reflections", "shared studio desk with papers and sticky notes", "late-night copy shop corner"],
+            AmorCalmo: ["cozy cafe interior", "warm apartment balcony", "riverside walk with soft lights", "bookstore cafe with amber lamps", "quiet tram stop at golden dusk"],
+            ConexaoAfetiva: ["friendly neighborhood cafe", "sunset promenade", "intimate living room", "small market street with warm storefront lights", "community courtyard with soft evening glow"],
+            NostalgiaFeliz: ["old neighborhood street", "bedroom with old posters and photos", "sunset bus window view", "retro arcade corner", "family kitchen with vintage tiles"],
+            Serenidade: ["quiet urban park", "sunlit apartment living room", "peaceful morning cafe", "library reading corner", "botanical greenhouse walkway"],
+            PazInterior: ["minimalist apartment", "silent early-morning tram", "calm room with diffuse light", "rooftop zen garden", "simple tatami-like calm room"],
+            Contemplacao: ["window facing rainy skyline", "rooftop at dawn", "quiet riverside bench", "museum corridor with natural light", "empty pedestrian bridge in morning fog"],
+            TensaoDramatica: ["late-night subway platform", "wet downtown crosswalk", "gas station at night", "narrow passage with flickering signage", "stormy avenue with headlights reflections"],
+            Frustracao: ["street bar corner", "apartment stairwell", "narrow garage corridor", "laundromat at midnight", "office hallway after hours"],
+            IrritacaoAtiva: ["boxing gym corridor", "night sidewalk under sodium lights", "crowded urban crossing", "traffic-clogged avenue edge", "underground station entrance in rush hour"],
+            RaivaExplosiva: ["industrial block at midnight", "stormy city backstreet", "empty parking structure", "warehouse loading dock", "abandoned concrete lot under harsh lights"],
+            NostalgiaProfunda: ["empty bar interior", "small room with rainy window", "dim bedroom with old objects", "closed train station waiting room", "storage room with old cardboard boxes"],
+            Desanimo: ["late-night train carriage", "empty apartment kitchen", "city overpass at dawn", "cold bus terminal bench", "office cubicle with low evening light"],
+            vulnerabilidaVulnerabilidadeEmocionaldeemocional: ["apartment bathroom", "quiet bedroom corner", "window seat during rain", "stair landing with soft lamp", "hospital-like waiting corridor (non-medical scene)"],
+            Ambivalencia: ["subway transfer tunnel", "night convenience store frontage", "empty parking lot at dusk", "forked urban pathway", "escalator landing between two exits"],
+            Estupor: ["office rooftop alone", "nearly empty street before dawn", "silent tram platform", "night bus interior with sparse passengers", "fluorescent hallway with distant perspective"],
         };
 
         if (sentimentUniverse[key]) {
@@ -881,36 +1114,54 @@ Final output check before generation:
         }
 
         const intensityUniverse: Record<string, string[]> = {
-            euphoric: ["urban rooftop", "festival street", "crowded downtown district", "open riverfront plaza", "night market avenue"],
-            positive: ["cozy cafe", "city park", "sunlit neighborhood streets", "bookstore corner", "warm balcony view"],
-            energetic: ["downtown at night", "industrial corridor", "neon avenue", "underpass with motion trails", "busy train station entrance"],
-            melancholic: ["rainy apartment window", "late-night bar", "empty street after midnight", "dim station platform", "quiet room under overcast daylight"],
-            calm: ["minimalist room", "quiet cafe interior", "early morning city tram", "library alcove", "greenhouse path"],
-            balanced: ["contemporary city neighborhood", "apartment interior", "urban riverside promenade", "residential side street", "modern pedestrian walkway"],
+            euphoric: [
+                "urban rooftop",
+                "festival street",
+                "crowded downtown district",
+                "open riverfront plaza",
+                "night market avenue"
+            ],
+            positive: [
+                "cozy cafe",
+                "city park",
+                "sunlit neighborhood streets",
+                "bookstore corner",
+                "warm balcony view"
+            ],
+            energetic: [
+                "downtown at night",
+                "industrial corridor",
+                "neon avenue",
+                "underpass with motion trails",
+                "busy train station entrance"
+            ],
+            melancholic: [
+                "rainy apartment window",
+                "late-night bar",
+                "empty street after midnight",
+                "dim station platform",
+                "quiet room under overcast daylight"
+            ],
+            calm: [
+                "minimalist room",
+                "quiet cafe interior",
+                "early morning city tram",
+                "library alcove",
+                "greenhouse path"
+            ],
+            balanced: [
+                "contemporary city neighborhood",
+                "apartment interior",
+                "urban riverside promenade",
+                "residential side street",
+                "modern pedestrian walkway"
+            ],
         };
-
         return this.random(intensityUniverse[intensity] || intensityUniverse["balanced"]);
     }
 
-    private getCamera() {
-        return this.random([
-            "close-up shot",
-            "close-up shot focused on facial emotion",
-            "medium shot with clear action visibility",
-            "medium-close cinematic shot",
-            "eye-level shot",
-            "slightly tilted cinematic angle"
-        ]);
-    }
-    private getFramingRule() {
-        return this.random([
-            "the character's face must be clearly visible",
-            "focus on facial expression and emotion",
-            "the action must be readable in one glance",
-            "character should occupy most of the frame",
-            "avoid back-facing pose or distant full-body framing"
-        ]);
-    }
+
+
     private buildStyleReferences(studio: StudioStyle) {
         return `
 Visual style references (very important):

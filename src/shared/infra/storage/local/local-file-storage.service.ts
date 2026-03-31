@@ -9,6 +9,17 @@ export class LocalFileStorageService implements FileStorageService {
     private readonly uploadsDir = join(process.cwd(), "uploads", "faces");
     private readonly publicPrefix = "/api/uploads/faces/";
 
+    async uploadMoodPhoto(file: UploadFile, userId: any): Promise<string> {
+        await fs.mkdir(this.uploadsDir, { recursive: true });
+
+        const safeExt = extname(file.originalname || "").toLowerCase() || ".jpg";
+        const fileName = `${userId}-${randomUUID()}${safeExt}`;
+        const fullPath = join(this.uploadsDir, fileName);
+
+        await fs.writeFile(fullPath, file.buffer);
+
+        return `${this.publicPrefix}${fileName}`;
+    }
     async uploadFacePhoto(file: UploadFile, userId: string): Promise<string> {
         await fs.mkdir(this.uploadsDir, { recursive: true });
 
