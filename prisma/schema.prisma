@@ -17,17 +17,37 @@ model User {
   display_name    String
   img_profile     String
   face_photo_path String?
+  image_credits   Int     @default(1)
   notificateEmail Boolean @default(false)
   notificatePush  Boolean @default(false)
   notificateWeek  Boolean @default(false)
 
   histories    ListeningHistory[]
   moodAnalyses MoodAnalysis[]
+  creditLogs   CreditLog[]
 
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
 
   @@unique([email, provider])
+}
+
+model CreditLog {
+  id        String          @id @default(uuid())
+  userId    String
+  type      CreditLogType
+  amount    Int
+  note      String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum CreditLogType {
+  PURCHASE
+  CONSUME
+  BONUS
+  REFUND
 }
 
 model Friendship {
@@ -63,8 +83,8 @@ model Track {
 }
 
 model TracksAnalysis {
-  id                String @unique @default(uuid())
-  spotifyid         String @unique 
+  id                String   @unique @default(uuid())
+  spotifyid         String   @unique
   moodScore         Float
   dominantSentiment String
   coreAxes          Json
