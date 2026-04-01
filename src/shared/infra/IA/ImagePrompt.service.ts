@@ -494,7 +494,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
     }
 
 
-
     // ---------------- INTENSIDADE ----------------
     private getIntensity(quadrante: string) {
         switch (quadrante) {
@@ -510,19 +509,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 return "balanced";
         }
     }
-    private buildEmotionBlock(sentiment: string) {
-        const meta = this.findByNormalizedKey(EMOTION_METADATA, sentiment);
-
-        if (!meta) {
-            return {
-                en: "neutral mood",
-                description: "emotionally neutral state"
-            };
-        }
-
-        return meta;
-    }
-
     private getGazeByIntensity(intensity: string) {
         const map: Record<string, string[]> = {
             euphoric: [
@@ -690,192 +676,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
         return this.random(intensityCamera[intensity] || intensityCamera.balanced);
     }
 
-    private getCinematicTexture(intensity: string) {
-        const map: Record<string, string[]> = {
-            euphoric: [
-                "subtle bloom on highlights, wind-driven particles, layered depth haze",
-                "specular accents on wet surfaces with lively atmospheric perspective",
-                "floating debris and light streaks reinforcing motion"
-            ],
-            energetic: [
-                "controlled motion smear on fabric and hair, crisp silhouette readability",
-                "micro-contrast in mid-tones with dynamic practical light falloff",
-                "depth layering via signs, rails, and passing foreground silhouettes"
-            ],
-            positive: [
-                "soft rim lighting and warm practical glows",
-                "mild haze with clean tonal separation",
-                "gentle diffusion preserving linework clarity"
-            ],
-            calm: [
-                "low-contrast gradients, airy atmosphere, restrained highlights",
-                "quiet particulate drift and soft ambient occlusion",
-                "minimal texture noise with tranquil light roll-off"
-            ],
-            melancholic: [
-                "cool desaturated palette with moist reflective surfaces",
-                "rain or mist veil creating emotional distance",
-                "subdued highlights and deep soft shadows"
-            ],
-            balanced: [
-                "clean cinematic layering with practical depth cues",
-                "moderate bloom and nuanced color separation",
-                "observational atmosphere with natural light variation"
-            ]
-        };
-
-        return this.random(map[intensity] || map.balanced);
-    }
-
-    private getSceneBlocking(intensity: string) {
-        const map: Record<string, string[]> = {
-            euphoric: [
-                "foreground lanterns and railings partially crossing the frame",
-                "multi-plane crowd/architecture layering with character in motion lane",
-                "character enters frame mid-action rather than centered"
-            ],
-            energetic: [
-                "diagonal architecture lines driving toward the subject path",
-                "foreground obstructions briefly masking body parts naturally",
-                "subject placed on lower third while environment dominates"
-            ],
-            positive: [
-                "character offset from center with open negative space",
-                "supporting props creating lived-in narrative around movement",
-                "environmental elements framing but not posing the character"
-            ],
-            calm: [
-                "large negative space with tiny human scale",
-                "static environmental layers with subtle depth rhythm",
-                "subject near frame edge to reinforce contemplation"
-            ],
-            melancholic: [
-                "framing through windows, mesh, or translucent surfaces",
-                "character reduced by architecture mass",
-                "off-center placement with emotionally heavy background"
-            ],
-            balanced: [
-                "three-depth-plane composition (foreground, action plane, background)",
-                "candid subject placement avoiding poster-like centrality",
-                "scene-first arrangement with clear visual path"
-            ]
-        };
-
-        return this.random(map[intensity] || map.balanced);
-    }
-
-    // ---------------- VISUAL ----------------
-    private getVisual(intensity: string) {
-
-        const base = {
-            balanced: {
-                lighting: [
-                    "soft golden hour light with gentle haze",
-                    "diffused daylight with soft shadows"
-                ],
-                colors: [
-                    "pastel orange, soft green, light blue",
-                    "muted purple, beige, sky tones"
-                ],
-                scene: [
-                    "a calm city blending into nature",
-                    "a peaceful urban park at late afternoon"
-                ],
-                character: [
-                    "calm and introspective",
-                    "quietly observing the environment"
-                ]
-            },
-
-            euphoric: {
-                lighting: [
-                    "intense glowing light with magical bloom",
-                    "bright sunlight bursting through clouds"
-                ],
-                colors: [
-                    "vibrant pink, yellow, electric blue",
-                    "rainbow gradients and luminous tones"
-                ],
-                scene: [
-                    "a rooftop party overlooking the city skyline",
-                    "a vibrant downtown avenue full of movement"
-                ],
-                character: [
-                    "joyful, expressive, full of movement",
-                    "laughing or flying freely"
-                ]
-            },
-
-            melancholic: {
-                lighting: [
-                    "dim twilight with soft shadows",
-                    "rainy overcast lighting"
-                ],
-                colors: [
-                    "desaturated blue, gray, muted green",
-                    "cold tones with low saturation"
-                ],
-                scene: [
-                    "empty streets under rain",
-                    "a quiet room with window light"
-                ],
-                character: [
-                    "lost in thought",
-                    "emotionally distant and introspective"
-                ]
-            },
-
-            energetic: {
-                lighting: [
-                    "dynamic lighting with strong highlights",
-                    "sunlight with motion blur feeling"
-                ],
-                colors: [
-                    "vivid contrasting colors",
-                    "strong saturation with warm tones"
-                ],
-                scene: [
-                    "urban environment with motion",
-                    "windy open spaces with movement"
-                ],
-                character: [
-                    "in motion, walking fast or running",
-                    "focused and active"
-                ]
-            },
-
-            calm: {
-                lighting: [
-                    "soft low light, peaceful and quiet",
-                    "warm dim lighting"
-                ],
-                colors: [
-                    "soft beige, warm gray, pale tones",
-                    "low contrast pastel palette"
-                ],
-                scene: [
-                    "a minimalist apartment interior",
-                    "a quiet cafe corner in the morning"
-                ],
-                character: [
-                    "relaxed, almost meditative",
-                    "resting or sitting peacefully"
-                ]
-            }
-        };
-
-        const selected = base[intensity] || base["balanced"];
-
-        return {
-            lighting: this.random(selected.lighting),
-            colors: this.random(selected.colors),
-            scene: this.random(selected.scene),
-            character: this.random(selected.character)
-        };
-    }
-
-
-
     getAvailableStudios(): StudioStyleOption[] {
         return STUDIO_STYLES.map((studio) => ({
             id: studio.id,
@@ -891,62 +691,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
     }
 
 
-    // ---------------- EMOÇÃO ----------------
-    private buildEmotionalLayer(emotions?: any) {
-        if (!emotions) return "balanced emotional tone";
-
-        const parts: string[] = [];
-
-        if (emotions.Energia > 0.6)
-            parts.push("dynamic motion and sense of movement");
-
-        if (emotions.Valencia > 0.6)
-            parts.push("warm, uplifting atmosphere");
-
-        if (emotions.Dominancia > 0.6)
-            parts.push("confident character presence");
-
-        if (emotions.Melancolia > 0.5)
-            parts.push("melancholic and introspective undertone");
-
-        if (emotions.Euforia > 0.6)
-            parts.push("joyful and vibrant energy");
-
-        return parts.join(", ") || "subtle emotional balance";
-    }
-    private getMoodStyle(emotions?: any) {
-        if (!emotions) {
-            return "soft, dreamy, whimsical";
-        }
-
-        const { Valencia = 0.5, Energia = 0.5, Melancolia = 0, Tensao = 0 } = emotions;
-
-        // NEGATIVO
-        if (Valencia < 0.4) {
-            if (Melancolia > 0.5) {
-                return "melancholic, slow, atmospheric, introspective, cinematic sadness";
-            }
-
-            if (Tensao > 0.5) {
-                return "tense, uneasy, fragmented, slightly surreal, distorted atmosphere";
-            }
-
-            return "cold, distant, emotionally neutral, minimalistic";
-        }
-
-        // POSITIVO
-        if (Valencia > 0.6) {
-            if (Energia > 0.6) {
-                return "vibrant, dynamic, expressive, energetic, lively";
-            }
-
-            return "soft, warm, peaceful, emotionally rich";
-        }
-
-        // NEUTRO
-        return "subtle, balanced, slightly dreamy but grounded";
-    }
-
     private getStudioStyle(studioId?: string): StudioStyle {
         if (studioId) {
             const selected = STUDIO_STYLES.find((studio) => studio.id === studioId.trim().toLowerCase());
@@ -955,125 +699,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
         return this.random(STUDIO_STYLES);
     }
-
-    private getExpression(sentiment: string, intensity: string, emotions?: any) {
-        const key = this.normalizeSentiment(sentiment);
-
-        const sentimentExpressions: Record<string, string[]> = {
-
-            EuforiaAtiva: [
-                "wide radiant smile, eyes slightly squinted from joy, visible energetic overflow",
-                "open mouth excitement, lifted cheeks, expressive high-energy happiness"
-            ],
-
-            ConfiancaDominante: [
-                "steady direct gaze, chin slightly raised, relaxed but firm jaw",
-                "subtle confident smirk, controlled expression with inner authority"
-            ],
-
-            RockEletrizante: [
-                "intense shining eyes, asymmetrical excited grin, high adrenaline presence",
-                "dynamic facial tension with expressive performance energy"
-            ],
-
-            TensaoCriativa: [
-                "focused eyes with slight brow tension, lips pressed in concentration",
-                "restless micro-expressions suggesting creative pressure building"
-            ],
-
-            AmorCalmo: [
-                "soft affectionate smile, relaxed eyelids, slow peaceful warmth",
-                "gentle romantic expression with calm emotional presence"
-            ],
-
-            ConexaoAfetiva: [
-                "warm engaged expression toward someone nearby, subtle head tilt",
-                "engaged facial expression signaling empathy and social connection"
-            ],
-
-            NostalgiaFeliz: [
-                "soft smile with slightly glossy eyes, upward distant gaze",
-                "bittersweet expression mixing warmth with gentle longing"
-            ],
-
-            Serenidade: [
-                "neutral relaxed face, minimal muscle tension, steady calm gaze",
-                "balanced expression with emotional stability and quiet ease"
-            ],
-
-            PazInterior: [
-                "eyes almost closed, slow breathing expression, deeply grounded stillness",
-                "detached serene face with complete inner calm and absence of tension"
-            ],
-
-            Contemplacao: [
-                "distant unfocused gaze, subtle brow softness, introspective stillness",
-                "quiet reflective expression with internalized attention"
-            ],
-
-            TensaoDramatica: [
-                "wide alert eyes, tight lips, visible emotional strain building",
-                "high-pressure expression with contained anxiety and intensity"
-            ],
-
-            Frustracao: [
-                "slightly narrowed eyes, asymmetric mouth tension, controlled irritation",
-                "micro-expressions of resistance and internal dissatisfaction"
-            ],
-
-            IrritacaoAtiva: [
-                "sharp gaze, tightened jaw, reactive facial tension",
-                "visible impatience with quick-trigger emotional response"
-            ],
-
-            RaivaExplosiva: [
-                "furious eyes, flared nostrils, clenched teeth, explosive tension",
-                "aggressive forward expression with loss of emotional control"
-            ],
-
-            NostalgiaProfunda: [
-                "heavy eyes, fragile expression, faint downward gaze",
-                "emotionally weighted face with deep reflective sadness"
-            ],
-
-            Desanimo: [
-                "low energy face, drooping eyelids, lack of muscular engagement",
-                "apathetic expression with emotional exhaustion and disengagement"
-            ],
-
-            VulnerabilidadeEmocional: [
-                "glassy eyes, subtle lip tremble, exposed emotional softness",
-                "fragile expression with openness and emotional sensitivity"
-            ],
-
-            Ambivalencia: [
-                "inconsistent micro-expressions, uncertain gaze, slight hesitation",
-                "mixed emotional signals with unstable facial coherence"
-            ],
-
-            Estupor: [
-                "blank unfocused stare, minimal facial movement, emotional shutdown",
-                "detached expression with absence of visible affect"
-            ],
-        };
-
-        const matchedExpressions = this.findByNormalizedKey(sentimentExpressions, key);
-        if (matchedExpressions) {
-            return this.random(matchedExpressions);
-        }
-
-        const valencia = emotions?.Valencia ?? 0.5;
-        const tensao = emotions?.Tensao ?? 0.5;
-
-        if (intensity === "euphoric") return "big expressive smile, bright eyes, high emotional energy";
-        if (intensity === "energetic") return "focused eyes, active face muscles, strong intensity";
-        if (intensity === "melancholic") return "sad or reflective eyes, subtle pain in expression";
-        if (intensity === "calm") return "soft relaxed face, peaceful eyes, minimal tension";
-        if (valencia < 0.4 && tensao > 0.6) return "uneasy expression with tension around eyes and mouth";
-
-        return "natural expressive face with clear readable emotion";
-    }
-
     private getPose(sentiment: string, intensity: string) {
         const key = this.normalizeSentiment(sentiment);
 
@@ -1206,7 +831,6 @@ The result MUST look like an anime illustration, NEVER a real photo.
             .replace(/[\u0300-\u036f]/g, "")
             .replace(/[\s_-]+/g, "") ?? "";
     }
-
     private getAction(sentiment: string, intensity: string) {
         const key = this.normalizeSentiment(sentiment);
 

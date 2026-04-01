@@ -102,7 +102,7 @@ export class AiService {
     this.image_model = this.genAI.getGenerativeModel({
       model: 'gemini-2.5-flash-image',
       generationConfig:{
-        temperature:1.5,
+        temperature:0.9,
         topP:0.8,
         topK:55
       }
