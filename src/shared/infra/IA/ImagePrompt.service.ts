@@ -194,6 +194,29 @@ volumetric lighting, strong atmosphere and depth layering
     `.trim(),
     },
     {
+        id: "mappa",
+        name: "Studio MAPPA inspired",
+        company: "MAPPA",
+        logoKey: "mappa",
+        referenceAnimes: ["Jujutsu Kaisen", "Chainsaw Man", "Attack on Titan Final Season"],
+        visualLanguage: `
+cinematic contrast, gritty urban texture, expressive linework,
+intense facial emotion, grounded anatomy with dramatic impact
+    `.trim(),
+        cinematography: `
+dynamic but controlled camera language, strong silhouettes,
+action-first staging with moody atmospheric depth
+    `.trim(),
+        motionStyle: `
+weighty impactful movement, sharp key poses,
+high-tension action rhythm with readable choreography
+    `.trim(),
+        renderingNotes: `
+rich shadow design, textured backgrounds, dramatic color separation,
+grounded realism in anime form without photorealism
+    `.trim(),
+    },
+    {
         id: "shaft",
         name: "Studio Shaft inspired",
         company: "Shaft",
@@ -244,9 +267,78 @@ expressive deformation over realism
 @Injectable()
 export class ImagePromptService {
 
+    private shouldAllowFuturisticElements(studio: StudioStyle, referenceAnime: string): boolean {
+        const source = [
+            studio.name,
+            referenceAnime,
+            studio.referenceAnimes.join(" "),
+            studio.visualLanguage,
+            studio.cinematography,
+            studio.motionStyle,
+            studio.renderingNotes,
+        ].join(" ").toLowerCase();
+
+        const futuristicKeywords = [
+            "cyberpunk",
+            "sci-fi",
+            "scifi",
+            "futur",
+            "neon",
+            "hologram",
+            "android",
+            "robot",
+            "mecha",
+            "dystopian",
+            "high-tech",
+            "megacity",
+            "space",
+        ];
+
+        return futuristicKeywords.some((keyword) => source.includes(keyword));
+    }
+
+    private stripFuturisticTerms(value: string): string {
+        return value
+            .replace(/\b(cyberpunk|futuristic|futurist|sci[- ]?fi|mecha|hologram|android|robot(?:ic)?|dystopian|high-tech|spaceport|spaceship|megacity|neon)\b/gi, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+    }
+
+    private removeFuturisticHints(blocks: CreativePromptBlocks): CreativePromptBlocks {
+        const fallback: CreativePromptBlocks = {
+            shotComposition: "wide candid composition with clear environment depth",
+            cameraLanguage: "observational cinematic framing with natural movement",
+            gazeBehavior: "gaze directed to surroundings, never to camera",
+            pose: "natural dynamic pose with grounded body language",
+            action: "everyday grounded action coherent with emotional tone",
+            worldFlavor: "grounded anime world inspired by real urban and natural spaces",
+            environment: "non-futuristic setting with believable architecture and atmosphere",
+        };
+
+        const cleaned = {
+            shotComposition: this.stripFuturisticTerms(blocks.shotComposition),
+            cameraLanguage: this.stripFuturisticTerms(blocks.cameraLanguage),
+            gazeBehavior: this.stripFuturisticTerms(blocks.gazeBehavior),
+            pose: this.stripFuturisticTerms(blocks.pose),
+            action: this.stripFuturisticTerms(blocks.action),
+            worldFlavor: this.stripFuturisticTerms(blocks.worldFlavor),
+            environment: this.stripFuturisticTerms(blocks.environment),
+        };
+
+        return {
+            shotComposition: cleaned.shotComposition || fallback.shotComposition,
+            cameraLanguage: cleaned.cameraLanguage || fallback.cameraLanguage,
+            gazeBehavior: cleaned.gazeBehavior || fallback.gazeBehavior,
+            pose: cleaned.pose || fallback.pose,
+            action: cleaned.action || fallback.action,
+            worldFlavor: cleaned.worldFlavor || fallback.worldFlavor,
+            environment: cleaned.environment || fallback.environment,
+        };
+    }
+
     build(data: HybridPromptInput, creativeBlocks?: Partial<CreativePromptBlocks>) {
         const seed = this.getCreativeSeed(data);
-        const blocks: CreativePromptBlocks = {
+        const rawBlocks: CreativePromptBlocks = {
             shotComposition: creativeBlocks?.shotComposition?.trim() || seed.shotComposition,
             cameraLanguage: creativeBlocks?.cameraLanguage?.trim() || seed.cameraLanguage,
             gazeBehavior: creativeBlocks?.gazeBehavior?.trim() || seed.gazeBehavior,
@@ -257,6 +349,8 @@ export class ImagePromptService {
         };
         const studio = this.getStudioStyle(data.studioId);
         const referenceAnime = this.getRandomReferenceAnime(studio);
+        const allowFuturisticElements = this.shouldAllowFuturisticElements(studio, referenceAnime);
+        const blocks = allowFuturisticElements ? rawBlocks : this.removeFuturisticHints(rawBlocks);
 
         return `
 Create a stylized 2D anime illustration in the style of ${studio.name}, representing the emotional theme "${data.sentiment}".
@@ -293,6 +387,17 @@ DO NOT:
 If the result looks realistic, force it back into anime illustration style.
 
 ${this.buildStyleReferences(studio, referenceAnime)}
+
+━━━━━━━━━━
+FUTURISTIC ELEMENT POLICY
+━━━━━━━━━━
+${allowFuturisticElements
+                ? `- Futuristic elements are allowed only when coherent with ${referenceAnime} and ${studio.name}.
+- Keep them secondary to character emotion and studio identity.
+- Avoid generic cyberpunk cliches unless explicitly justified by scene context.`
+                : `- Do NOT add futuristic elements.
+- Forbidden: neon-cyberpunk motifs, holograms, mecha, androids, sci-fi interfaces, dystopian megacity tropes.
+- Keep environment grounded (real-world inspired urban, nature, shrine, school, home, street, cafe, rooftop).`}
 
 ━━━━━━━━━━
 SCENE & COMPOSITION
@@ -362,6 +467,7 @@ AVOID
 - text, watermark
 - fantasy clichés (dragons, castles, armor, etc.)
 - duplicated props or broken geometry
+${allowFuturisticElements ? "- avoid generic neon/cyber clutter disconnected from selected reference" : "- any futuristic visual element"}
 
 ━━━━━━━━━━
 FINAL INTENT

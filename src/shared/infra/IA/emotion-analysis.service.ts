@@ -69,37 +69,38 @@ export type EmotionClassification = {
 //     Ambivalencia             ( 0.05,  0.10)  Indie ambíguo, emoção difusa
 //     Estupor                  (-0.60,  0.15)  Entorpecimento, blues lento
 // ---------------------------------------------------------------------------
+const CLUSTER_POSITIONS = {
 
-const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }> = {
+    // ── POSITIVO / ATIVO ─────────────────────────────────────
+    EuforiaAtiva: { x: 0.85, y: 0.85, sigma: 0.30 },
+    ConfiancaAlta: { x: 0.55, y: 0.55, sigma: 0.28 },
+    EnergiaBruta: { x: 0.30, y: 0.90, sigma: 0.28 },
+    IntensidadeCriativa: { x: 0.00, y: 0.65, sigma: 0.30 },
 
-    // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
-    EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
-    ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.32 },
-    RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 },
-    TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.34 },
+    // ── POSITIVO / CALMO ─────────────────────────────────────
+    AmorLeve: { x: 0.85, y: -0.20, sigma: 0.28 },
+    ConexaoQuente: { x: 0.65, y: 0.05, sigma: 0.26 },
+    NostalgiaBoa: { x: 0.35, y: -0.35, sigma: 0.30 },
+    Sereno: { x: 0.60, y: -0.60, sigma: 0.30 },
+    PazTotal: { x: 0.45, y: -0.85, sigma: 0.28 },
+    ReflexivoPositivo: { x: 0.15, y: -0.70, sigma: 0.28 },
 
-    // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
-    AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.33 },
-    ConexaoAfetiva:           { x:  0.75, y:  0.10, sigma: 0.25 },
-    NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.33 },
-    Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
-    PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 },
-    Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
+    // ── NEGATIVO / ATIVO ─────────────────────────────────────
+    CaosInterno: { x: -0.10, y: 0.85, sigma: 0.28 },
+    FrustracaoAtiva: { x: -0.30, y: 0.40, sigma: 0.30 },
+    AnsiedadeAlta: { x: -0.55, y: 0.65, sigma: 0.30 },
+    RaivaExplosiva: { x: -0.90, y: 0.90, sigma: 0.26 },
 
-    // ── NEGATIVO / ATIVO ──────────────────────────────────────────────────────
-    TensaoDramatica:          { x: -0.10, y:  0.90, sigma: 0.30 },
-    Frustracao:               { x: -0.25, y:  0.30, sigma: 0.38 },
-    IrritacaoAtiva:           { x: -0.50, y:  0.60, sigma: 0.38 },
-    RaivaExplosiva:           { x: -0.90, y:  0.90, sigma: 0.28 },
+    // ── NEGATIVO / CALMO ─────────────────────────────────────
+    Melancolia: { x: -0.35, y: -0.45, sigma: 0.30 },
+    TristezaProfunda: { x: -0.75, y: -0.70, sigma: 0.30 },
+    Apatia: { x: -0.90, y: -0.30, sigma: 0.28 },
+    Vazio: { x: -0.55, y: -0.10, sigma: 0.26 },
 
-    // ── NEGATIVO / CALMO ──────────────────────────────────────────────────────
-    NostalgiaProfunda:        { x: -0.40, y: -0.50, sigma: 0.38 },
-    Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
-
-    // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
-    VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.25 },
-    Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.20 },
-    Estupor:                  { x: -0.60, y:  0.15, sigma: 0.30 },
+    // ── CENTRO / TRANSIÇÃO ───────────────────────────────────
+    Vulneravel: { x: -0.10, y: -0.20, sigma: 0.24 },
+    Ambivalente: { x: 0.00, y: 0.00, sigma: 0.18 },
+    Desligado: { x: -0.40, y: -0.20, sigma: 0.24 },
 };
 
 @Injectable()
@@ -142,10 +143,9 @@ export class EmotionAnalysisService {
     private calibrateAmbivalenciaAffinity(polaridade: number, ativacao: number, affinity: number): number {
         const radialDistance = Math.sqrt((polaridade * polaridade) + (ativacao * ativacao));
 
-        if (radialDistance > 0.45) return affinity * 0.45;
-        if (radialDistance > 0.30) return affinity * 0.65;
-        if (radialDistance < 0.10) return affinity * 1.20;
-        if (radialDistance < 0.16) return affinity * 1.10;
+        if (radialDistance > 0.35) return affinity * 0.25;
+        if (radialDistance > 0.25) return affinity * 0.50;
+        if (radialDistance < 0.12) return affinity * 1.25;
 
         return affinity;
     }
@@ -174,7 +174,7 @@ export class EmotionAnalysisService {
     //              nenhum dia é 100% eufórico ou 0% funcional.
     // -------------------------------------------------------------------------
     private polaridadeToMoodScore(polaridade: number): number {
-        const k   = 2.5;
+        const k = 2.5;
         const raw = 1 / (1 + Math.exp(-k * polaridade)); // sigmoid em [0,1]
         // Re-escala de [0,1] para [0.10, 0.90]
         return 0.10 + raw * 0.80;
@@ -206,14 +206,19 @@ export class EmotionAnalysisService {
 
         // Polaridade: Valencia é o eixo hedônico direto — sem mudança aqui,
         // pois o problema relatado não é polaridade mas sim ativação + moodScore.
-        const polaridade = this.normalize(safeVector.Valencia);
-
+        const polaridade = this.normalize(
+            safeVector.Valencia * 0.65 +
+            safeVector.ConexaoSocial * 0.15 +
+            safeVector.Empoderamento * 0.10 -
+            safeVector.Melancolia * 0.15 -
+            safeVector.Vulnerabilidade * 0.10
+        );
         const rawAtivacao =
-            safeVector.Energia         * 0.50 +
-            safeVector.Euforia         * 0.25 +
-            safeVector.Dominancia      * 0.15 +
-            safeVector.Tensao          * 0.10 -
-            safeVector.Melancolia      * 0.15 -
+            safeVector.Energia * 0.48 +
+            safeVector.Euforia * 0.22 +
+            safeVector.Dominancia * 0.15 +
+            safeVector.Tensao * 0.10 -
+            safeVector.Melancolia * 0.15 -
             safeVector.Vulnerabilidade * 0.10;
 
         // Reescala pela faixa teórica do modelo para evitar saturação no lado negativo.
@@ -229,8 +234,8 @@ export class EmotionAnalysisService {
 
     classifyQuadrant(p: number, a: number): string {
         if (p >= 0 && a >= 0) return "PositivoAtivo";
-        if (p >= 0 && a <  0) return "PositivoCalmo";
-        if (p <  0 && a >= 0) return "NegativoAtivo";
+        if (p >= 0 && a < 0) return "PositivoCalmo";
+        if (p < 0 && a >= 0) return "NegativoAtivo";
         return "NegativoCalmo";
     }
 
@@ -253,7 +258,7 @@ export class EmotionAnalysisService {
 
         // 2. Softmax sobre afinidades → probabilidades comparáveis
         const affinityValues = affinities.map(a => a.affinity);
-        const probabilities  = this.softmax(affinityValues);
+        const probabilities = this.softmax(affinityValues);
 
         const emotionProbabilities = affinities
             .map((a, i) => ({ label: a.label, probability: probabilities[i] }))

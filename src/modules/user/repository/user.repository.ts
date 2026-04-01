@@ -67,6 +67,16 @@ export class UserRepository {
         return this.prisma.moodAnalysis.findFirst({
             where: { userId },
             orderBy: { analyzedAt: "desc" },
+            select: {
+                id: true,
+                moodScore: true,
+                sentiment: true,
+                image_mood: true,
+                emotions: true,
+                coreAxes: true,
+                analyzedAt: true,
+                tracksAnalyzeds: true,
+            },
         });
     }
 
