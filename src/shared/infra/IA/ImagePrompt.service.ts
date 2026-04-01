@@ -9,6 +9,8 @@ type StudioStyle = {
     logoKey: string;
     referenceAnimes: string[];
     visualLanguage: string;
+    cinematography: string;
+    motionStyle: string;
     renderingNotes: string;
 };
 const EMOTION_METADATA: Record<string, {
@@ -97,7 +99,27 @@ const EMOTION_METADATA: Record<string, {
     },
 };
 
-export type StudioStyleOption = Pick<StudioStyle, "id" | "name" | "company" | "logoKey" | "referenceAnimes" | "visualLanguage" | "renderingNotes">;
+export type StudioStyleOption = Pick<StudioStyle, "id" | "name" | "company" | "logoKey" | "referenceAnimes" | "visualLanguage" | "cinematography" | "motionStyle" | "renderingNotes">;
+
+export type HybridPromptInput = {
+    moodScore: number;
+    sentiment: string;
+    ativacao: number;
+    coreAxes: CoreAxes;
+    emotions?: any;
+    faceReferencePath?: string | null;
+    studioId?: string;
+};
+
+export type CreativePromptBlocks = {
+    shotComposition: string;
+    cameraLanguage: string;
+    gazeBehavior: string;
+    pose: string;
+    action: string;
+    worldFlavor: string;
+    environment: string;
+};
 
 const STUDIO_STYLES: StudioStyle[] = [
     {
@@ -106,8 +128,23 @@ const STUDIO_STYLES: StudioStyle[] = [
         company: "Kyoto Animation",
         logoKey: "kyoani",
         referenceAnimes: ["Violet Evergarden", "K-On!", "Hyouka"],
-        visualLanguage: "delicate beauty, warm coziness, expressive and glossy eyes, soft clean lighting",
-        renderingNotes: "high consistency in anatomy, subtle emotional acting, richly detailed everyday backgrounds"
+        visualLanguage: `
+soft diffused lighting, pastel color palette, glossy expressive eyes,
+highly detailed facial micro-expressions, clean and polished character rendering,
+slice-of-life realism with emotional subtlety
+    `.trim(),
+        cinematography: `
+stable framing, natural camera behavior, intimate close-ups,
+focus on character acting rather than spectacle
+    `.trim(),
+        motionStyle: `
+extremely fluid animation, subtle gestures (eye movement, breathing, hair sway),
+high frame consistency and realism
+    `.trim(),
+        renderingNotes: `
+meticulous detail in anatomy and fabric, realistic lighting interaction,
+rich everyday environments with depth and softness
+    `.trim(),
     },
     {
         id: "ghibli",
@@ -115,8 +152,22 @@ const STUDIO_STYLES: StudioStyle[] = [
         company: "Studio Ghibli",
         logoKey: "ghibli",
         referenceAnimes: ["Spirited Away", "Howl's Moving Castle", "My Neighbor Totoro"],
-        visualLanguage: "nostalgic hand-crafted feeling, watercolor-like backgrounds, simple but expressive character design",
-        renderingNotes: "organic brush textures, nature-connected atmosphere, gentle cinematic warmth"
+        visualLanguage: `
+hand-painted watercolor backgrounds, organic textures, natural color harmony,
+simple but deeply expressive character designs, nostalgic and dreamlike tone
+    `.trim(),
+        cinematography: `
+wide scenic shots, environmental storytelling, slow contemplative pacing,
+focus on atmosphere and world immersion
+    `.trim(),
+        motionStyle: `
+weighty and natural movement, grounded physics even in fantasy,
+calm and deliberate animation timing
+    `.trim(),
+        renderingNotes: `
+visible brush strokes, traditional cel animation feel,
+strong connection between characters and nature
+    `.trim(),
     },
     {
         id: "ufotable",
@@ -124,8 +175,23 @@ const STUDIO_STYLES: StudioStyle[] = [
         company: "ufotable",
         logoKey: "ufotable",
         referenceAnimes: ["Fate/stay night UBW", "Demon Slayer", "Kara no Kyoukai"],
-        visualLanguage: "polished cinematic look, dynamic light interactions, vivid particles and post-processing depth",
-        renderingNotes: "strong contrast, dramatic highlights, clean compositing between character and effects"
+        visualLanguage: `
+cinematic lighting, high contrast visuals, glowing highlights,
+heavy use of particle effects (embers, smoke, sparks),
+digital compositing with depth-of-field
+    `.trim(),
+        cinematography: `
+dynamic camera movement, sweeping angles, 3D-assisted tracking shots,
+cinematic framing similar to live-action films
+    `.trim(),
+        motionStyle: `
+smooth but impactful animation, dramatic anticipation and release,
+action sequences with layered effects and timing precision
+    `.trim(),
+        renderingNotes: `
+polished compositing between character and VFX,
+volumetric lighting, strong atmosphere and depth layering
+    `.trim(),
     },
     {
         id: "shaft",
@@ -133,8 +199,22 @@ const STUDIO_STYLES: StudioStyle[] = [
         company: "Shaft",
         logoKey: "shaft",
         referenceAnimes: ["Bakemonogatari", "Puella Magi Madoka Magica", "March Comes in Like a Lion"],
-        visualLanguage: "avant-garde framing, unusual camera composition, abstract color accents and graphic staging",
-        renderingNotes: "bold negative space, stylized perspective, symbolic visual rhythm without readable on-screen text"
+        visualLanguage: `
+avant-garde composition, bold color blocking, abstract backgrounds,
+minimalist or symbolic environments, strong graphic identity
+    `.trim(),
+        cinematography: `
+extreme camera angles, head tilts, rapid cuts,
+unusual framing with heavy negative space and visual rhythm
+    `.trim(),
+        motionStyle: `
+limited animation used stylistically,
+focus on composition and editing over fluid motion
+    `.trim(),
+        renderingNotes: `
+surreal staging, symbolic imagery, typography-like visual pacing (without readable text),
+experimental visual storytelling
+    `.trim(),
     },
     {
         id: "trigger",
@@ -142,52 +222,60 @@ const STUDIO_STYLES: StudioStyle[] = [
         company: "Studio Trigger",
         logoKey: "trigger",
         referenceAnimes: ["Kill la Kill", "Little Witch Academia", "Cyberpunk Edgerunners"],
-        visualLanguage: "explosive cartoony energy, punchy neon palette, exaggerated dynamic posing",
-        renderingNotes: "high-impact silhouettes, kinetic motion feeling, expressive deformation while keeping readability"
+        visualLanguage: `
+bold linework, saturated vibrant colors, exaggerated proportions,
+cartoony and expressive character design
+    `.trim(),
+        cinematography: `
+fast cuts, extreme zooms, dynamic framing,
+high-energy visual storytelling
+    `.trim(),
+        motionStyle: `
+hyper-kinetic animation, smear frames, exaggerated movement,
+intentionally chaotic but readable action
+    `.trim(),
+        renderingNotes: `
+strong silhouettes, high contrast shapes,
+expressive deformation over realism
+    `.trim(),
     }
 ];
 
 @Injectable()
 export class ImagePromptService {
 
-    build(data: {
-        moodScore: number;
-        sentiment: string;
-        ativacao: number;
-        coreAxes: CoreAxes;
-        emotions?: any; // vetor emocional
-        faceReferencePath?: string | null;
-        studioId?: string;
-    }) {
-        const intensidade = this.getIntensity(data.coreAxes.quadrante);
-        const visual = this.getVisual(intensidade);
-        const imersive = this.getGazeByIntensity(intensidade)
-        const moodStyle = this.getMoodStyle(data.emotions);
-        const pose = this.getPose(data.sentiment, intensidade);
-        const action = this.getAction(data.sentiment, intensidade);
-        const universe = this.getUniverse(data.sentiment, intensidade);
+    build(data: HybridPromptInput, creativeBlocks?: Partial<CreativePromptBlocks>) {
+        const seed = this.getCreativeSeed(data);
+        const blocks: CreativePromptBlocks = {
+            shotComposition: creativeBlocks?.shotComposition?.trim() || seed.shotComposition,
+            cameraLanguage: creativeBlocks?.cameraLanguage?.trim() || seed.cameraLanguage,
+            gazeBehavior: creativeBlocks?.gazeBehavior?.trim() || seed.gazeBehavior,
+            pose: creativeBlocks?.pose?.trim() || seed.pose,
+            action: creativeBlocks?.action?.trim() || seed.action,
+            worldFlavor: creativeBlocks?.worldFlavor?.trim() || seed.worldFlavor,
+            environment: creativeBlocks?.environment?.trim() || seed.environment,
+        };
         const studio = this.getStudioStyle(data.studioId);
-        const emotions = this.buildEmotionBlock(data.sentiment) as any
+        const referenceAnime = this.getRandomReferenceAnime(studio);
 
         return `
 Create a stylized 2D anime illustration in the style of ${studio.name}, representing the emotional theme "${data.sentiment}".
 ━━━━━━━━━━
 STUDIO DIRECTION
 ━━━━━━━━━━
-━━━━━━━━━━
-PRIMARY STYLE CONSTRAINT (ABSOLUTE PRIORITY)
-━━━━━━━━━━
-The entire image MUST strictly follow the visual style of ${studio.name}.
+PRIMARY STYLE CONSTRAINT (ABSOLUTE PRIORITY):
+The entire image MUST strictly follow ${studio.name} identity. If any instruction conflicts, studio identity wins.
 
-This overrides all other instructions.
-
-Every element — character design, proportions, linework, shading, lighting, colors, and composition — must be fully consistent with this studio's identity.
+Studio DNA:
+- Visual language: ${studio.visualLanguage}
+- Cinematography: ${studio.cinematography}
+- Motion style: ${studio.motionStyle}
+- Rendering notes: ${studio.renderingNotes}
+- Reference anime: ${referenceAnime}
 
 Do NOT mix styles.
-Do NOT generalize anime style.
-Do NOT drift into generic, semi-realistic, or other studio aesthetics.
+Do NOT drift into generic anime or semi-realistic look.
 
-If any element conflicts with the studio style, the studio style MUST win.
 ━━━━━━━━━━
 STYLE & MEDIUM (STRICT)
 ━━━━━━━━━━
@@ -204,35 +292,18 @@ DO NOT:
 
 If the result looks realistic, force it back into anime illustration style.
 
-
-Visual language: ${studio.visualLanguage}  
-Rendering notes: ${studio.renderingNotes}  
-Reference anime: ${studio.referenceAnimes.join(", ")}
-
-${this.buildStyleReferences(studio)}
-
-Use references only for:
-- color mood
-- composition rhythm
-- illustration language
-
-━━━━━━━━━━
-EMOTIONAL & VISUAL DIRECTION
-━━━━━━━━━━
-Emotion: ${emotions.en!}
-Emotional direction: ${emotions.description}
-Mood style: ${moodStyle}  
-Lighting: ${visual.lighting}  
-Color palette: ${visual.colors}  
+${this.buildStyleReferences(studio, referenceAnime)}
 
 ━━━━━━━━━━
 SCENE & COMPOSITION
 ━━━━━━━━━━
-- Shot composition: ${this.getShotComposition(intensidade)}
-- Gaze behavior: ${imersive}
-- Pose: ${pose}
-- Action: ${action}
-- Environment: ${visual.scene} (${universe})
+- Shot composition: ${blocks.shotComposition}
+- Camera language: ${blocks.cameraLanguage}
+- Gaze behavior: ${blocks.gazeBehavior}
+- Pose: ${blocks.pose}
+- Action: ${blocks.action}
+- World flavor: ${blocks.worldFlavor}
+- Environment: ${blocks.environment}
 
 ━━━━━━━━━━
 CHARACTER (HIGH PRIORITY)
@@ -248,20 +319,7 @@ Rules:
 - Preserve face structure, eyes, hairline, and proportions
 - Do NOT copy photographic texture or lighting
 - Identity must remain recognizable in anime form
-
-━━━━━━━━━━
-EXPRESSION & ACTION (TOP PRIORITY)
-━━━━━━━━━━
-- Action must be clear and central
-- Emotion expressed through body, hands, and gaze
-- Environment supports, never dominates
-
-Allowed actions:
-- grounded slice-of-life behavior (walking, smoking, texting, resting, etc.)
-
-Avoid:
-- performing music (no instruments, stage, DJ setup)
-- exaggerated symbolic poses
+- Outfit must read like a story protagonist: iconic silhouette, distinctive layers, and memorable hero-style design
 
 ━━━━━━━━━━
 FRAMING RULES (CRITICAL)
@@ -274,6 +332,7 @@ FRAMING RULES (CRITICAL)
   - back view
   - over-the-shoulder
 - Camera observes the moment, not interacts with subject
+- Keep scene candid and natural, never editorial or fashion-like.
 
 ━━━━━━━━━━
 STYLE ENFORCEMENT (HARD CONSTRAINTS)
@@ -307,16 +366,28 @@ AVOID
 ━━━━━━━━━━
 FINAL INTENT
 ━━━━━━━━━━
-Create an emotionally immersive, soft, slightly dreamy anime scene.
-
-The image must feel like a real moment being observed — not a posed portrait.
+Create a cinematic anime scene where studio identity is unmistakable and dominant.
 
 Final check:
 The result MUST look like an anime illustration, NEVER a real photo.
 `;
     }
 
-    
+    getCreativeSeed(data: HybridPromptInput): CreativePromptBlocks {
+        const intensidade = this.getIntensity(data.coreAxes.quadrante);
+
+        return {
+            shotComposition: this.getShotComposition(intensidade),
+            cameraLanguage: this.getCameraLanguage(data.sentiment, intensidade),
+            gazeBehavior: this.getGazeByIntensity(intensidade),
+            pose: this.getPose(data.sentiment, intensidade),
+            action: this.getAction(data.sentiment, intensidade),
+            worldFlavor: this.getWorldFlavor(data.sentiment, intensidade),
+            environment: this.getUniverse(data.sentiment, intensidade),
+        };
+    }
+
+
 
     // ---------------- INTENSIDADE ----------------
     private getIntensity(quadrante: string) {
@@ -334,17 +405,17 @@ The result MUST look like an anime illustration, NEVER a real photo.
         }
     }
     private buildEmotionBlock(sentiment: string) {
-    const meta = EMOTION_METADATA[sentiment];
+        const meta = this.findByNormalizedKey(EMOTION_METADATA, sentiment);
 
-    if (!meta) {
-        return {
-            label: "neutral mood",
-            description: "emotionally neutral state"
-        };
+        if (!meta) {
+            return {
+                en: "neutral mood",
+                description: "emotionally neutral state"
+            };
+        }
+
+        return meta;
     }
-
-    return meta;
-}
 
     private getGazeByIntensity(intensity: string) {
         const map: Record<string, string[]> = {
@@ -387,36 +458,204 @@ The result MUST look like an anime illustration, NEVER a real photo.
             euphoric: [
                 "wide dynamic shot with character interacting with environment, not facing camera",
                 "low-angle moving shot, character looking away while in motion",
-                "tracking perspective from behind, following the character"
+                "tracking perspective from behind, following the character",
+                "very wide rooftop long shot with the character seen from far distance above the city",
+                "bird-eye diagonal shot with tiny character crossing a luminous sky bridge",
+                "lateral tracking shot through foreground lanterns and cables",
+                "deep wide frame with layered crowds and the character crossing mid-ground"
             ],
             energetic: [
                 "side-angle action shot with motion blur, no eye contact with camera",
                 "over-the-shoulder shot focused on what the character sees",
-                "mid-action frame, character looking forward, not at viewer"
+                "mid-action frame, character looking forward, not at viewer",
+                "long shot from a nearby building, character moving on a rooftop walkway",
+                "compressed telephoto shot with crowd parallax and kinetic depth",
+                "low tracking shot with foreground obstacles passing quickly",
+                "high catwalk angle framing character between steel and glowing structures"
             ],
             positive: [
                 "natural eye-level shot, character slightly turned away",
                 "3/4 angle framing with soft gaze into the environment",
-                "casual candid shot, not posed"
+                "casual candid shot, not posed",
+                "wide balcony framing with city depth and character occupying a small portion of frame",
+                "quiet long lens shot through branches and shrine ribbons",
+                "gentle dolly-like perspective with character crossing a moonlit walkway",
+                "soft wide frame with generous negative space and lived-in details"
             ],
             calm: [
                 "static wide shot with lots of negative space",
                 "back view of character observing environment",
-                "side profile with soft lighting, no camera awareness"
+                "side profile with soft lighting, no camera awareness",
+                "distant rooftop silhouette at dawn with quiet skyline depth",
+                "locked-off corridor frame with layered foreground curtains",
+                "very wide contemplative frame with tiny character near reflective water",
+                "elevated still shot over temple stairs with drifting particles"
             ],
             melancholic: [
                 "back-facing character looking out a window",
                 "side profile with gaze downward, avoiding camera",
-                "framed through window or objects, indirect view"
+                "framed through window or objects, indirect view",
+                "long telephoto shot from street level toward a lonely rooftop figure",
+                "obstructed frame through rain-soaked glass and signage",
+                "distant static shot where character is reduced by architecture scale",
+                "off-axis frame with horizon slightly tilted for emotional instability"
             ],
             balanced: [
                 "cinematic medium shot, slightly off-center framing",
                 "natural composition, character not aware of camera",
-                "environment-first framing with character integrated"
+                "environment-first framing with character integrated",
+                "wide establishing shot with character seen from afar on a high building",
+                "mixed-depth shot with foreground texture, mid-ground action, background atmosphere",
+                "observational side-angle frame with candid street-like rhythm",
+                "bridge-level wide frame connecting two realms with character in transition"
             ]
         };
 
         return this.random(map[intensity] || map["balanced"]);
+    }
+
+    private getCameraLanguage(sentiment: string, intensity: string) {
+        const key = this.normalizeSentiment(sentiment);
+
+        const sentimentCamera: Record<string, string[]> = {
+            EuforiaAtiva: [
+                "handheld-like energy with slight intentional instability",
+                "fast observational tracking from behind",
+                "wide lens with kinetic foreground passes"
+            ],
+            TensaoCriativa: [
+                "long lens compression to increase inner pressure",
+                "partial occlusion by frames, cables, and architectural edges",
+                "slow creeping perspective that feels investigative"
+            ],
+            TensaoDramatica: [
+                "angled framing with constrained headroom",
+                "distance-first composition to stress isolation",
+                "telephoto framing with heavy background pressure"
+            ],
+            Ambivalencia: [
+                "split framing through mirrors, columns, or doorways",
+                "uncertain axis with subtle perspective drift",
+                "two-path composition emphasizing indecision"
+            ],
+            Estupor: [
+                "static distant framing with minimal camera energy",
+                "flattened depth to suggest emotional numbness",
+                "cold objective viewpoint with no heroic emphasis"
+            ]
+        };
+
+        const matched = this.findByNormalizedKey(sentimentCamera, key);
+        if (matched) return this.random(matched);
+
+        const intensityCamera: Record<string, string[]> = {
+            euphoric: [
+                "dynamic wide-lens movement with observational urgency",
+                "energetic tracking from side and behind",
+                "kinetic framing with layered foreground occlusion"
+            ],
+            energetic: [
+                "semi-handheld cinematic movement",
+                "compressed action framing with strong depth cues",
+                "diagonal motion lines guiding the eye"
+            ],
+            positive: [
+                "gentle stabilized movement with candid framing",
+                "eye-level observational lensing",
+                "soft off-center composition with breathable space"
+            ],
+            calm: [
+                "locked-off long take feeling",
+                "minimal camera intervention",
+                "quiet framing with broad negative space"
+            ],
+            melancholic: [
+                "distant telephoto isolation",
+                "obstructed view through environmental layers",
+                "slow restrained camera rhythm"
+            ],
+            balanced: [
+                "naturalistic cinematic framing",
+                "hybrid wide-to-medium observational lens language",
+                "environment-led composition with candid subject placement"
+            ]
+        };
+
+        return this.random(intensityCamera[intensity] || intensityCamera.balanced);
+    }
+
+    private getCinematicTexture(intensity: string) {
+        const map: Record<string, string[]> = {
+            euphoric: [
+                "subtle bloom on highlights, wind-driven particles, layered depth haze",
+                "specular accents on wet surfaces with lively atmospheric perspective",
+                "floating debris and light streaks reinforcing motion"
+            ],
+            energetic: [
+                "controlled motion smear on fabric and hair, crisp silhouette readability",
+                "micro-contrast in mid-tones with dynamic practical light falloff",
+                "depth layering via signs, rails, and passing foreground silhouettes"
+            ],
+            positive: [
+                "soft rim lighting and warm practical glows",
+                "mild haze with clean tonal separation",
+                "gentle diffusion preserving linework clarity"
+            ],
+            calm: [
+                "low-contrast gradients, airy atmosphere, restrained highlights",
+                "quiet particulate drift and soft ambient occlusion",
+                "minimal texture noise with tranquil light roll-off"
+            ],
+            melancholic: [
+                "cool desaturated palette with moist reflective surfaces",
+                "rain or mist veil creating emotional distance",
+                "subdued highlights and deep soft shadows"
+            ],
+            balanced: [
+                "clean cinematic layering with practical depth cues",
+                "moderate bloom and nuanced color separation",
+                "observational atmosphere with natural light variation"
+            ]
+        };
+
+        return this.random(map[intensity] || map.balanced);
+    }
+
+    private getSceneBlocking(intensity: string) {
+        const map: Record<string, string[]> = {
+            euphoric: [
+                "foreground lanterns and railings partially crossing the frame",
+                "multi-plane crowd/architecture layering with character in motion lane",
+                "character enters frame mid-action rather than centered"
+            ],
+            energetic: [
+                "diagonal architecture lines driving toward the subject path",
+                "foreground obstructions briefly masking body parts naturally",
+                "subject placed on lower third while environment dominates"
+            ],
+            positive: [
+                "character offset from center with open negative space",
+                "supporting props creating lived-in narrative around movement",
+                "environmental elements framing but not posing the character"
+            ],
+            calm: [
+                "large negative space with tiny human scale",
+                "static environmental layers with subtle depth rhythm",
+                "subject near frame edge to reinforce contemplation"
+            ],
+            melancholic: [
+                "framing through windows, mesh, or translucent surfaces",
+                "character reduced by architecture mass",
+                "off-center placement with emotionally heavy background"
+            ],
+            balanced: [
+                "three-depth-plane composition (foreground, action plane, background)",
+                "candid subject placement avoiding poster-like centrality",
+                "scene-first arrangement with clear visual path"
+            ]
+        };
+
+        return this.random(map[intensity] || map.balanced);
     }
 
     // ---------------- VISUAL ----------------
@@ -539,6 +778,8 @@ The result MUST look like an anime illustration, NEVER a real photo.
             logoKey: studio.logoKey,
             referenceAnimes: studio.referenceAnimes,
             visualLanguage: studio.visualLanguage,
+            cinematography: studio.cinematography,
+            motionStyle: studio.motionStyle,
             renderingNotes: studio.renderingNotes,
         }));
     }
@@ -640,7 +881,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
             ],
 
             ConexaoAfetiva: [
-                "direct inviting eye contact, warm open smile, subtle head tilt",
+                "warm engaged expression toward someone nearby, subtle head tilt",
                 "engaged facial expression signaling empathy and social connection"
             ],
 
@@ -710,8 +951,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
             ],
         };
 
-        if (sentimentExpressions[key]) {
-            return this.random(sentimentExpressions[key]);
+        const matchedExpressions = this.findByNormalizedKey(sentimentExpressions, key);
+        if (matchedExpressions) {
+            return this.random(matchedExpressions);
         }
 
         const valencia = emotions?.Valencia ?? 0.5;
@@ -731,23 +973,26 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
         const sentimentPoses: Record<string, string[]> = {
             EuforiaAtiva: [
-                "dynamic 3/4 body pose with lifted chin and open chest",
-                "forward-leaning stance with one foot stepping ahead, confident eye contact"
+                "mid-step running transition with lifted shoulder and uneven balance",
+                "half-turn candid posture caught between laugh and movement",
+                "dynamic 3/4 body posture with natural arm swing"
             ],
             ConfiancaDominante: [
-                "upright posture with squared shoulders and direct eye contact",
-                "calm dominant standing pose with one hand in pocket and steady gaze"
+                "upright grounded stance with subtle weight on one leg, gaze past viewer",
+                "calm dominant walk cycle captured in-between steps",
+                "resting posture against architecture with composed body control"
             ],
             RockEletrizante: [
-                "low-angle energetic pose with body in motion and expressive hands",
-                "mid-shot dynamic stride with torso twist and intense focus"
+                "torso twist during acceleration with expressive hand tension",
+                "low-angle motion posture with fabric reacting to speed",
+                "candid stride interruption with kinetic body momentum"
             ],
             TensaoCriativa: [
                 "slightly hunched thinking pose with active hands and focused eyes",
                 "seated forward-lean pose with elbows on knees and concentrated expression"
             ],
             AmorCalmo: [
-                "soft relaxed posture with gentle head tilt and warm eye contact",
+                "soft relaxed posture with gentle head tilt and warm off-camera gaze",
                 "side-facing 3/4 pose with subtle smile and peaceful shoulders"
             ],
             ConexaoAfetiva: [
@@ -771,8 +1016,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "quiet standing pose with chin slightly raised and thoughtful eyes"
             ],
             TensaoDramatica: [
-                "alert posture with tense neck and shoulders, eyes scanning scene",
-                "mid-step paused pose with guarded stance and compressed lips"
+                "alert posture with tense neck and guarded shoulders",
+                "mid-step pause with defensive body compression",
+                "abrupt stop posture as if reacting to off-frame event"
             ],
             Frustracao: [
                 "closed posture with crossed arms and tightened jaw",
@@ -799,8 +1045,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "soft defensive posture with slightly collapsed shoulders and watery eyes"
             ],
             Ambivalencia: [
-                "hesitant half-step pose with torso split between directions",
-                "conflicted posture with one shoulder forward and uncertain gaze"
+                "hesitant half-step with torso pulled in opposite directions",
+                "conflicted posture with interrupted gesture and uncertain weight shift",
+                "paused transition stance between leaving and staying"
             ],
             Estupor: [
                 "frozen neutral posture with minimal gesture and blank stare",
@@ -809,8 +1056,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
         };
 
-        if (sentimentPoses[key]) {
-            return this.random(sentimentPoses[key]);
+        const matchedPoses = this.findByNormalizedKey(sentimentPoses, key);
+        if (matchedPoses) {
+            return this.random(matchedPoses);
         }
 
         const intensityPoses: Record<string, string[]> = {
@@ -819,7 +1067,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "high-energy body angle with visible momentum"
             ],
             positive: [
-                "confident relaxed posture with clear eye contact",
+                "confident relaxed posture with gaze drifting through the environment",
                 "gentle 3/4 pose with subtle smile and open shoulders"
             ],
             energetic: [
@@ -835,8 +1083,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "soft portrait posture with minimal tension"
             ],
             balanced: [
-                "natural medium-shot pose with readable face and hands",
-                "slightly angled neutral stance with composed expression"
+                "natural in-between movement pose with readable hands",
+                "slightly angled neutral stance captured candidly",
+                "transitional posture during everyday action"
             ],
         };
 
@@ -863,7 +1112,10 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "spinning under confetti-like street lights with open arms",
                 "running up metro stairs with unstoppable excitement",
                 "toasting with friends at a street bar table",
-                "waving from a moving night bus window with pure joy"
+                "waving from a moving night bus window with pure joy",
+                "walking across a rooftop helipad while the camera observes from far away",
+                "jumping across narrow bridge segments in a floating district",
+                "threading through lantern crowds while laughing mid-motion"
             ],
             confiancadominante: [
                 "walking with steady posture through downtown",
@@ -871,17 +1123,20 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "standing on a balcony with assertive calm",
                 "crossing a busy intersection with focused determination",
                 "reviewing plans on a phone with calm authority",
-                "ordering a drink with composed eye contact",
-                "lighting a cigarette calmly while watching the street"
+                "ordering a drink with composed side gaze",
+                "lighting a cigarette calmly while watching the street",
+                "standing still on top of a high-rise while wind moves clothing"
             ],
             rockeletrizante: [
                 "jumping with explosive body rhythm in the street",
-                "skating fast through neon streets",
+                "skating fast through vibrant streets",
                 "running through a crowded avenue with dynamic energy",
                 "sprinting down an urban staircase with fierce momentum",
                 "moving through a windy overpass with high kinetic force",
                 "drinking water quickly then rushing back into the night",
-                "laughing breathlessly after a fast sprint"
+                "laughing breathlessly after a fast sprint",
+                "sliding down a steel ramp in a cursed transit zone",
+                "dodging through market stalls in a thunder-lit district"
             ],
             tensaocriativa: [
                 "writing intense notes in a small room",
@@ -890,7 +1145,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "rewriting pages on a desk with sleepless focus",
                 "pinning ideas on a wall in a restless flow",
                 "chain-smoking while revising a notebook",
-                "drinking cold coffee while obsessively editing details"
+                "drinking cold coffee while obsessively editing details",
+                "tracing runes on walls while revising plans repeatedly",
+                "sorting talismans on a desk then abruptly rearranging everything"
             ],
             amorcalmo: [
                 "sharing a quiet drink in a cozy place",
@@ -904,7 +1161,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
             conexaoafetiva: [
                 "chatting closely with a friend in a cafe",
                 "smiling while exchanging headphones with someone",
-                "toasting gently with warm eye contact",
+                "toasting gently while exchanging natural side glances",
                 "sharing an umbrella while laughing softly",
                 "welcoming a friend with a heartfelt hug",
                 "passing a lighter to a friend at a sidewalk table",
@@ -917,7 +1174,8 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "revisiting a childhood street with gentle joy",
                 "opening a memory box and smiling through tears",
                 "drinking at an old neighborhood bar with a nostalgic grin",
-                "smoking slowly while rereading old messages"
+                "smoking slowly while rereading old messages",
+                "watching an old soccer field from a distant rooftop viewpoint"
             ],
             serenidade: [
                 "sipping tea by a calm window",
@@ -944,16 +1202,19 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "standing on a bridge studying river reflections",
                 "watching early fog drift across rooftops",
                 "smoking alone at dawn with distant gaze",
-                "turning a glass slowly while thinking deeply"
+                "turning a glass slowly while thinking deeply",
+                "leaning on a rooftop rail from far distance in a quiet dawn city"
             ],
             tensaodramatica: [
                 "walking quickly through wet streets at night",
                 "waiting at a station with visible anxiety",
-                "standing under neon lights with restless posture",
+                "standing under glowing lights with restless posture",
                 "checking the clock repeatedly at a bus terminal",
                 "pausing mid-step with alert eyes in a crosswalk",
                 "smoking nervously outside a hospital-like hallway",
-                "drinking water with shaky hands before a call"
+                "drinking water with shaky hands before a call",
+                "walking a collapsing corridor while checking broken seals",
+                "stopping under alarm lights while scanning shadows"
             ],
             frustracao: [
                 "crossing arms outside a bar with a tense face",
@@ -998,7 +1259,8 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "resting against a wall with drained posture",
                 "standing under gray sky with motionless expression",
                 "sitting in a kitchen at night with untouched food",
-                "smoking absentmindedly while staring at nothing"
+                "smoking absentmindedly while staring at nothing",
+                "remaining still on an empty rooftop seen from very far away"
             ],
             vulnerabilidadeemocional: [
                 "sitting on the floor in quiet emotional release",
@@ -1016,7 +1278,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "holding two objects and pausing without deciding",
                 "taking one step forward and one back in uncertainty",
                 "ordering a drink then changing the order mid-sentence",
-                "lighting a cigarette then putting it out immediately"
+                "lighting a cigarette then putting it out immediately",
+                "approaching a portal threshold then stepping back",
+                "holding two route talismans and switching hands repeatedly"
             ],
             estupor: [
                 "sitting motionless on a late-night train",
@@ -1025,7 +1289,9 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "watching traffic pass with blank expression",
                 "sitting in a station seat with frozen posture",
                 "holding a drink without taking a sip for long minutes",
-                "smoking mechanically with no visible reaction"
+                "smoking mechanically with no visible reaction",
+                "standing still while floating debris passes around",
+                "sitting on a platform as dimension doors open and close"
             ],
 
 
@@ -1040,7 +1306,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "running on a rooftop with joyful expression",
                 "jumping with spontaneous joy while wearing headphones",
                 "laughing while holding a drink can",
-                "dancing in the street under neon lights",
+                "dancing in the street under vibrant lights",
                 "spinning beneath bright billboards with open smile"
             ],
             positive: [
@@ -1051,7 +1317,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "watching sunset from a riverside railing"
             ],
             energetic: [
-                "smoking near a neon-lit alley with intense expression",
+                "smoking near a vibrant-lit alley with intense expression",
                 "walking quickly through a crowded avenue",
                 "drinking at a street bar with cinematic lighting",
                 "walking fast through rainy streets with headphones",
@@ -1076,7 +1342,10 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "sitting in a cafe with a drink and headphones",
                 "sitting in a park during sunset",
                 "leaning on a balcony, observing the skyline",
-                "crossing a quiet street with reflective expression"
+                "crossing a quiet street with reflective expression",
+                "slowly pacing along a rooftop edge in a distant establishing shot",
+                "crossing a realm bridge while checking surroundings",
+                "pausing near a shrine rail then resuming a quiet walk"
             ]
         };
 
@@ -1084,93 +1353,154 @@ The result MUST look like an anime illustration, NEVER a real photo.
     }
 
     private getUniverse(sentiment: string, intensity: string) {
-        console.log(sentiment)
         const key = this.normalizeSentiment(sentiment);
 
         const sentimentUniverse: Record<string, string[]> = {
-            EuforiaAtiva: ["festival street at night", "city rooftop with bright skyline", "busy downtown district full of motion", "riverfront boardwalk with colorful lights", "open plaza with kinetic crowd movement"],
-            ConfiancaDominante: ["downtown avenue at blue hour", "modern rooftop terrace", "stylish urban block", "architectural business district", "glass pedestrian bridge over city traffic"],
-            RockEletrizante: ["neon avenue", "industrial block", "city underpass with dynamic lighting", "graffiti tunnel with strong contrast lights", "multi-level parking ramp with dramatic perspective"],
-            TensaoCriativa: ["small apartment workspace", "narrow corridor", "night alley with neon reflections", "shared studio desk with papers and sticky notes", "late-night copy shop corner"],
-            AmorCalmo: ["cozy cafe interior", "warm apartment balcony", "riverside walk with soft lights", "bookstore cafe with amber lamps", "quiet tram stop at golden dusk"],
-            ConexaoAfetiva: ["friendly neighborhood cafe", "sunset promenade", "intimate living room", "small market street with warm storefront lights", "community courtyard with soft evening glow"],
-            NostalgiaFeliz: ["old neighborhood street", "bedroom with old posters and photos", "sunset bus window view", "retro arcade corner", "family kitchen with vintage tiles"],
-            Serenidade: ["quiet urban park", "sunlit apartment living room", "peaceful morning cafe", "library reading corner", "botanical greenhouse walkway"],
-            PazInterior: ["minimalist apartment", "silent early-morning tram", "calm room with diffuse light", "rooftop zen garden", "simple tatami-like calm room"],
-            Contemplacao: ["window facing rainy skyline", "rooftop at dawn", "quiet riverside bench", "museum corridor with natural light", "empty pedestrian bridge in morning fog"],
-            TensaoDramatica: ["late-night subway platform", "wet downtown crosswalk", "gas station at night", "narrow passage with flickering signage", "stormy avenue with headlights reflections"],
-            Frustracao: ["street bar corner", "apartment stairwell", "narrow garage corridor", "laundromat at midnight", "office hallway after hours"],
-            IrritacaoAtiva: ["boxing gym corridor", "night sidewalk under sodium lights", "crowded urban crossing", "traffic-clogged avenue edge", "underground station entrance in rush hour"],
-            RaivaExplosiva: ["industrial block at midnight", "stormy city backstreet", "empty parking structure", "warehouse loading dock", "abandoned concrete lot under harsh lights"],
-            NostalgiaProfunda: ["empty bar interior", "small room with rainy window", "dim bedroom with old objects", "closed train station waiting room", "storage room with old cardboard boxes"],
-            Desanimo: ["late-night train carriage", "empty apartment kitchen", "city overpass at dawn", "cold bus terminal bench", "office cubicle with low evening light"],
-            vulnerabilidaVulnerabilidadeEmocionaldeemocional: ["apartment bathroom", "quiet bedroom corner", "window seat during rain", "stair landing with soft lamp", "hospital-like waiting corridor (non-medical scene)"],
-            Ambivalencia: ["subway transfer tunnel", "night convenience store frontage", "empty parking lot at dusk", "forked urban pathway", "escalator landing between two exits"],
-            Estupor: ["office rooftop alone", "nearly empty street before dawn", "silent tram platform", "night bus interior with sparse passengers", "fluorescent hallway with distant perspective"],
+            EuforiaAtiva: ["floating lantern district above cloud seas", "hidden shinobi village during celestial festival", "sky-bridge metropolis with spirit gateways", "aurora canyon where thunder spirits dance", "sunforge citadel with airborne plazas"],
+            ConfiancaDominante: ["fortress capital ruled by elite clans", "cursed academy megacity core", "imperial sky bastion with giant guardian statues", "obsidian command tower over rune valleys", "warrior senate district inside a flying continent"],
+            RockEletrizante: ["demon-hunter entertainment district", "volcanic canyon village with fire shrines", "thunder rail city under storm crown", "vibrant abyss quarter powered by cursed cores", "forge-realm colosseum with energy torrents"],
+            TensaoCriativa: ["forbidden archive tower with moving staircases", "underground talisman market in a sealed ward", "ink-painted labyrinth city that redraws itself", "clockwork library floating in void", "alchemical atelier district under red moon"],
+            AmorCalmo: ["bamboo village beneath twin moons", "wisteria valley with spirit fireflies", "cloud-garden terrace above shrine lakes", "crystal brook hamlet guarded by gentle yokai", "moonbridge town with floating tea houses"],
+            ConexaoAfetiva: ["festival bridge linking two spirit realms", "academy courtyard where rival houses unite", "harbor of floating food shrines", "lantern bazaar shared by humans and spirits", "cross-clan village square under comet trails"],
+            NostalgiaFeliz: ["old dojo district with living paper charms", "retro sky-train village above golden clouds", "memory shrine alley with echo chimes", "abandoned festival grounds that replay happy illusions", "ancestral courtyard where constellations mirror the past"],
+            Serenidade: ["mist temple gardens at first light", "floating island village with slow cloud currents", "moonlit koi sanctum under silent bells", "wind monastery meadow with spirit deer", "starwell cloister with endless calm water"],
+            PazInterior: ["snow monastery terrace above sealed valleys", "hidden waterfall sanctuary in crystal cliffs", "spirit-lake pier with mirror stillness", "cloud monastery where time slows down", "inner-realm shrine inside a giant lotus cavern"],
+            Contemplacao: ["abandoned observatory above cloud ocean", "giant world-tree branch village at twilight", "torii ridge path under drifting embers", "echo canyon with suspended stone orbs", "astral rooftop between two eclipsed suns"],
+            TensaoDramatica: ["collapsed district patrolled by shadow entities", "cursed school ruins with broken seals", "battle-scarred castle street under crimson lightning", "rift corridor where barriers flicker", "warfront bridge over abyssal mist"],
+            Frustracao: ["trial grounds filled with failed sigils", "mission bureau maze with endless scroll vaults", "sealed station with constantly locked rune gates", "training arena where gravity shifts unpredictably", "iron monastery corridor of impossible tasks"],
+            IrritacaoAtiva: ["combat tournament warmup ring", "ninja exam arena under roaring stands", "storm tunnel with unstable cursed currents", "fractured relay zone with blinking barrier walls", "obsidian street circuit during duel alarms"],
+            RaivaExplosiva: ["demon siege frontline in burning ward", "fractured canyon battlefield with colossal blades", "forbidden crater with rupturing seals", "molten citadel outskirts under black thunder", "ruin plain where rage spirits ignite the air"],
+            NostalgiaProfunda: ["abandoned clan house covered in spirit moss", "silent memorial path lit by fading soul lanterns", "old swordsmith alley frozen in time", "collapsed shrine quarter echoing old voices", "forgotten moon theater with ghostly rehearsals"],
+            Desanimo: ["ruined watchtower beneath pale aurora", "evacuated realm district under ash snowfall", "ashen valley village without voices", "broken gate outpost in endless dusk", "drifting ruin archipelago in gray skies"],
+            VulnerabilidadeEmocional: ["safehouse room wrapped in protective talismans", "forest hut hidden by prayer ribbons", "quiet shrine annex after a spirit storm", "healing ward inside crystal caves", "sealed garden where wounded familiars rest"],
+            Ambivalencia: ["crossroads between vibrant realm and ancient gate world", "dual-moon district switching day and night", "mirror corridor where both paths feel true", "split-reality bridge with conflicting skies", "twilight plaza that shifts allegiance every minute"],
+            Estupor: ["frozen battlefield after a spiritual shockwave", "silent exorcist ward with suspended debris", "void station between converging dimensions", "time-locked avenue where shadows stand still", "hollow observatory in a colorless sky"],
         };
 
-        if (sentimentUniverse[key]) {
-            return this.random(sentimentUniverse[key]);
+        const matchedUniverse = this.findByNormalizedKey(sentimentUniverse, key);
+        if (matchedUniverse) {
+            return this.random(matchedUniverse);
         }
 
         const intensityUniverse: Record<string, string[]> = {
             euphoric: [
-                "urban rooftop",
-                "festival street",
-                "crowded downtown district",
-                "open riverfront plaza",
-                "night market avenue"
+                "ninja village festival under comet rain",
+                "celestial city above cloud oceans",
+                "sky-plaza with dancing spirit lanterns",
+                "sunforge terrace in a floating capital",
+                "radiant realm avenue with living constellations"
             ],
             positive: [
-                "cozy cafe",
-                "city park",
-                "sunlit neighborhood streets",
-                "bookstore corner",
-                "warm balcony view"
+                "traditional shrine town in a spirit valley",
+                "floating tea district with paper lantern skies",
+                "moonlit garden city with koi canals",
+                "cloud village with warm wooden sanctuaries",
+                "gentle realm promenade under twin moons"
             ],
             energetic: [
-                "downtown at night",
-                "industrial corridor",
-                "neon avenue",
-                "underpass with motion trails",
-                "busy train station entrance"
+                "cursed battleground district",
+                "combat academy ward with shifting barriers",
+                "thunder-realm transit corridor",
+                "obsidian arena streets under battle sirens",
+                "vibrant spirit quarter with unstable portals"
             ],
             melancholic: [
-                "rainy apartment window",
-                "late-night bar",
-                "empty street after midnight",
-                "dim station platform",
-                "quiet room under overcast daylight"
+                "forgotten demon-era town under eternal mist",
+                "abandoned hill shrine with broken soul lanterns",
+                "silent ruin district beneath cold moonlight",
+                "withered spirit garden in gray drizzle",
+                "echoing gate path at midnight eclipse"
             ],
             calm: [
-                "minimalist room",
-                "quiet cafe interior",
-                "early morning city tram",
-                "library alcove",
-                "greenhouse path"
+                "mountain temple village at dawn mist",
+                "floating garden island in soft aurora",
+                "crystal cloister with slow drifting petals",
+                "quiet lotus cavern sanctuary",
+                "spirit-lake monastery pier at first light"
             ],
             balanced: [
-                "contemporary city neighborhood",
-                "apartment interior",
-                "urban riverside promenade",
-                "residential side street",
-                "modern pedestrian walkway"
+                "hybrid realm where vibrant avenue meets ancient torii gate",
+                "alternate district blending clan capitals and spirit streets",
+                "distant sky-rooftop on a floating megacity",
+                "gate-lined promenade between two dimensions",
+                "mixed fantasy metropolis with shrine towers and arcane rails"
             ],
         };
         return this.random(intensityUniverse[intensity] || intensityUniverse["balanced"]);
     }
 
+    private getWorldFlavor(sentiment: string, intensity: string) {
+        const key = this.normalizeSentiment(sentiment);
+
+        const sentimentWorlds: Record<string, string[]> = {
+            EuforiaAtiva: ["festival-realm of flying lanterns", "high-energy shinobi celebration world", "radiant sky-city of spirit music"],
+            ConfiancaDominante: ["clan-governed fortress realm", "cursed imperial megacity world", "high-command sky bastion civilization"],
+            RockEletrizante: ["storm-forged demon-hunter realm", "volcanic combat district world", "vibrant-curse undercity civilization"],
+            TensaoCriativa: ["arcane archive labyrinth world", "sigil-market underground realm", "shape-shifting ink metropolis"],
+            AmorCalmo: ["moonlit shrine-valley world", "wisteria spirit hamlet civilization", "cloud-tea village realm"],
+            ConexaoAfetiva: ["shared spirit-human township world", "festival bridge realm of allied houses", "harbor civilization of floating stalls"],
+            NostalgiaFeliz: ["memory-echo dojo realm", "retro sky-rail village world", "ancestral courtyard constellation world"],
+            Serenidade: ["mist-temple garden realm", "floating island slow-life world", "moon-koi sanctuary civilization"],
+            PazInterior: ["lotus-cavern inner realm", "snow monastery stillness world", "mirror-lake spirit sanctuary"],
+            Contemplacao: ["astral observatory world", "world-tree twilight settlement realm", "ember-path torii ridge civilization"],
+            TensaoDramatica: ["fractured seal-frontier world", "shadow-patrolled ruin realm", "crimson storm castle district"],
+            Frustracao: ["trial-maze training realm", "blocked-rune transit world", "impossible-task iron corridor civilization"],
+            IrritacaoAtiva: ["duel-arena pressure world", "exam-ring combat realm", "unstable current tunnel civilization"],
+            RaivaExplosiva: ["burning siege frontier realm", "seal-break crater world", "rage-spirit wasteland civilization"],
+            NostalgiaProfunda: ["fading memorial lantern realm", "forgotten smithy spirit district", "ghost-theater remembrance world"],
+            Desanimo: ["ashen silent-valley realm", "evacuated ruin province world", "endless dusk outpost civilization"],
+            VulnerabilidadeEmocional: ["protected talisman safehouse realm", "healing crystal-cave world", "quiet post-storm shrine civilization"],
+            Ambivalencia: ["dual-reality crossroads realm", "day-night switching moon district", "mirror-choice corridor world"],
+            Estupor: ["time-locked colorless realm", "void transit limbo world", "suspended debris exorcist district"],
+        };
+
+        const matchedWorld = this.findByNormalizedKey(sentimentWorlds, key);
+        if (matchedWorld) {
+            return this.random(matchedWorld);
+        }
+
+        const intensityWorlds: Record<string, string[]> = {
+            euphoric: ["festival-realm with flying lantern storms", "expansive sky-rooftop fantasy world", "comet-night celebration civilization"],
+            energetic: ["kinetic combat district realm", "portal-linked action metropolis world", "thunder corridor warrior civilization"],
+            positive: ["warm shrine-town fantasy world", "gentle spirit-neighborhood realm", "optimistic moonbridge village civilization"],
+            calm: ["quiet monastery sanctuary realm", "slow cloud-garden fantasy world", "peaceful lotus-valley civilization"],
+            melancholic: ["mist-covered ruin realm", "midnight eclipse solitude world", "low-light spirit memory civilization"],
+            balanced: ["hybrid gate-and-vibrant fantasy world", "mixed clan-and-spirit realm", "observational multi-realm civilization"],
+        };
+
+        return this.random(intensityWorlds[intensity] || intensityWorlds["balanced"]);
+    }
 
 
-    private buildStyleReferences(studio: StudioStyle) {
+
+    private buildStyleReferences(studio: StudioStyle, referenceAnime: string) {
         return `
 Visual style references (very important):
 
-${studio.referenceAnimes.map(anime => `- ${anime}: use as inspiration for composition, color mood, and facial expression`).join("\n")}
+- ${referenceAnime}: use as inspiration for composition, color mood, and facial expression
 
 Blend these references into a cohesive ${studio.name} anime illustration.
 Do not copy characters or scenes directly — only use as stylistic guidance.
 `;
+    }
+
+    private getRandomReferenceAnime(studio: StudioStyle): string {
+        if (!studio.referenceAnimes.length) {
+            return "original studio visual language";
+        }
+
+        return this.random(studio.referenceAnimes);
+    }
+
+    private findByNormalizedKey<T>(record: Record<string, T>, sentiment: string): T | undefined {
+        const normalizedTarget = this.normalizeSentiment(sentiment);
+        for (const [key, value] of Object.entries(record)) {
+            if (this.normalizeSentiment(key) === normalizedTarget) {
+                return value;
+            }
+        }
+
+        return undefined;
     }
 
     // ---------------- UTIL ----------------

@@ -99,7 +99,8 @@ export class UserController {
     @Get('refreshMood')
     @UseGuards(JwtAuthGuard)
     async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string) {
-        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId);
+        const safeLimit = 50
+        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId, safeLimit);
     }
 
     @Get('refreshMood/studios')

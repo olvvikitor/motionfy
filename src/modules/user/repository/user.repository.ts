@@ -72,7 +72,7 @@ export class UserRepository {
 
     // ─── Histórico de moods ────────────────────────────────────────────────────
 
-    async getMoodHistory(userId: string, limit = 20) {
+    async getMoodHistory(userId: string, limit) {
         return this.prisma.moodAnalysis.findMany({
             where: { userId },
             orderBy: { analyzedAt: "desc" },

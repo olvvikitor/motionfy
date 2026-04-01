@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Track } from "@prisma/client";
 import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
@@ -9,8 +9,8 @@ import { MusicProviderFactory } from "src/shared/infra/music/music.provider.fact
 import { ImagePromptService, StudioStyleOption } from "src/shared/infra/IA/ImagePrompt.service";
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
-import path from "path";
 import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
+import { CreditService } from "src/modules/credits/credit.service";
 
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
@@ -26,8 +26,8 @@ export class UserService {
         private aiService: AiService,
         private prompt_imageService: ImagePromptService,
         private emotionAnalysis: EmotionAnalysisService,
+        private creditService: CreditService,
         @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
-
     ) { }
 
     private toEmotionalVector(value: unknown): EmotionalVector | null {
@@ -42,44 +42,106 @@ export class UserService {
         return vector as EmotionalVector;
     }
 
-    private buildMoodFromStoredAnalyses(
-        tracks: Track[],
-        analyses: TrackAnalysisReadItem[],
-    ): ResponseAi | null {
+    private normalizeSentimentLabel(label?: string): string {
+        return label
+            ?.trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[\s_-]+/g, "") ?? "";
+    }
+
+    private getTrackAggregationWeight(track: {
+        emotionalVector: EmotionalVector;
+        coreAxes: { polaridade: number; ativacao: number };
+        dominantSentiment: string;
+    }, index: number, total: number): number {
+        const recencyRank = total - index;
+        const recencyBoost = total <= 3 ? 1.6 : 0.6;
+        const recencyWeight = 1 + ((recencyRank - 1) / Math.max(total - 1, 1)) * recencyBoost;
+
+        const axisIntensity = (Math.abs(track.coreAxes.polaridade) + Math.abs(track.coreAxes.ativacao)) / 2;
+        const vectorIntensity = (
+            Math.abs(track.emotionalVector.Valencia - 0.5) +
+            Math.abs(track.emotionalVector.Energia - 0.5) +
+            Math.abs(track.emotionalVector.Euforia - 0.5) +
+            Math.abs(track.emotionalVector.Tensao - 0.5)
+        ) / 2;
+
+        const convictionWeight = 0.7 + (axisIntensity * 0.6) + (vectorIntensity * 0.4);
+        const ambivalenciaPenalty = this.normalizeSentimentLabel(track.dominantSentiment) === "ambivalencia" ? 0.75 : 1;
+
+        return recencyWeight * convictionWeight * ambivalenciaPenalty;
+    }
+
+    private aggregateMoodVector(
+        tracks: Array<{
+            emotionalVector: EmotionalVector;
+            dominantSentiment: string;
+            coreAxes: { polaridade: number; ativacao: number };
+        }>
+    ): EmotionalVector {
+        const weightedTracks = tracks.map((track, index) => ({
+            track,
+            weight: this.getTrackAggregationWeight(track, index, tracks.length),
+            sentimentKey: this.normalizeSentimentLabel(track.dominantSentiment),
+        }));
+
+        const sentimentScores = new Map<string, number>();
+        for (const item of weightedTracks) {
+            const prev = sentimentScores.get(item.sentimentKey) ?? 0;
+            sentimentScores.set(item.sentimentKey, prev + item.weight);
+        }
+
+        const dominantGroup = Array.from(sentimentScores.entries())
+            .sort((a, b) => b[1] - a[1])[0]?.[0];
+
+        const selected = dominantGroup
+            ? weightedTracks.filter((item) => item.sentimentKey === dominantGroup)
+            : weightedTracks;
+
+        const finalSet = selected.length >= 2 ? selected : weightedTracks;
+        const totalWeight = finalSet.reduce((acc, item) => acc + item.weight, 0) || 1;
+
+        const sums = Object.fromEntries(EMOTIONAL_DIMENSIONS.map((d) => [d, 0])) as Record<string, number>;
+        for (const item of finalSet) {
+            for (const dimension of EMOTIONAL_DIMENSIONS) {
+                sums[dimension] += item.track.emotionalVector[dimension] * item.weight;
+            }
+        }
+
+        return Object.fromEntries(
+            EMOTIONAL_DIMENSIONS.map((d) => [d, sums[d] / totalWeight]),
+        ) as EmotionalVector;
+    }
+
+    private buildMoodFromStoredAnalyses(tracks: Track[], analyses: TrackAnalysisReadItem[]): ResponseAi | null {
         if (!tracks.length || !analyses.length) return null;
         const analysisBySpotifyId = new Map(analyses.map((a) => [a.spotifyid, a]));
-        const mergedTracks = tracks
-            .map((track) => {
-                if (!track.spotifyId) return null;
-                const analysis = analysisBySpotifyId.get(track.spotifyId);
-                if (!analysis) return null;
-                const vector = this.toEmotionalVector(analysis.emotionalVector);
-                if (!vector) return null;
-                const coreAxes = analysis.coreAxes;
-                if (!coreAxes || typeof coreAxes !== "object" || Array.isArray(coreAxes)) return null;
-                return {
-                    id: track.id,
-                    music: track.title,
-                    artist: track.artist,
-                    img_url: track.img_url ?? "",
-                    emotionalVector: vector,
-                    dominantSentiment: analysis.dominantSentiment,
-                    reasoning: analysis.reasoning,
-                    moodScore: analysis.moodScore,
-                    coreAxes: coreAxes as any,
-                };
-            })
-            .filter((item) => item !== null);
+        const mergedTracks = tracks.map((track) => {
+            if (!track.spotifyId) return null;
+            const analysis = analysisBySpotifyId.get(track.spotifyId);
+            if (!analysis) return null;
+            const vector = this.toEmotionalVector(analysis.emotionalVector);
+            if (!vector) return null;
+            const coreAxes = analysis.coreAxes;
+            if (!coreAxes || typeof coreAxes !== "object" || Array.isArray(coreAxes)) return null;
+            return {
+                id: track.id,
+                music: track.title,
+                artist: track.artist,
+                img_url: track.img_url ?? "",
+                emotionalVector: vector,
+                dominantSentiment: analysis.dominantSentiment,
+                reasoning: analysis.reasoning,
+                moodScore: analysis.moodScore,
+                coreAxes: coreAxes as any,
+            };
+        }).filter((item) => item !== null);
 
         if (!mergedTracks.length) return null;
 
-        const sums = Object.fromEntries(EMOTIONAL_DIMENSIONS.map((d) => [d, 0])) as Record<string, number>;
-        for (const track of mergedTracks) {
-            for (const dimension of EMOTIONAL_DIMENSIONS) sums[dimension] += track.emotionalVector[dimension];
-        }
-        const avgVector = Object.fromEntries(
-            EMOTIONAL_DIMENSIONS.map((d) => [d, sums[d] / mergedTracks.length]),
-        ) as EmotionalVector;
+        const avgVector = this.aggregateMoodVector(mergedTracks);
         const classification = this.emotionAnalysis.classifyEmotion(avgVector);
 
         return {
@@ -122,24 +184,26 @@ export class UserService {
         return this.prompt_imageService.getAvailableStudios();
     }
 
-    async RefreshMoodUserToday(id: string, studioId?: string): Promise<ResponseAi> {
+    async RefreshMoodUserToday(id: string, studioId?: string, limit = 20): Promise<ResponseAi> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
-        await this.lastTracks(id);
-
-        const historyMusic = await this.trackRepository.getLastListened(id, 10);
-        const uniqueBySpotifyId = new Map<string, Track>();
-        for (const item of historyMusic) {
-            const spotifyId = item.track?.spotifyId;
-            if (!spotifyId || uniqueBySpotifyId.has(spotifyId)) continue;
-            uniqueBySpotifyId.set(spotifyId, item.track);
+        // ── Verifica crédito antes de qualquer processamento pesado ──
+        const { balance } = await this.creditService.getBalance(id);
+        if (balance <= 0) {
+            throw new BadRequestException('Sem créditos para gerar imagem.');
         }
 
-        const tracks = Array.from(uniqueBySpotifyId.values());
-        const spotifyIds = tracks
-            .map((t) => t.spotifyId)
-            .filter((id): id is string => Boolean(id));
+        await this.lastTracks(id);
+
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+
+        const historyMusic = await this.trackRepository.getLastListened(id, safeLimit);
+        const tracks = historyMusic
+            .map((entry) => entry.track)
+            .filter((track): track is Track => Boolean(track?.spotifyId));
+
+        const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
 
         let trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
         let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
@@ -157,38 +221,38 @@ export class UserService {
                 moodScore: fallbackClassification.moodScore,
                 dominantSentiment: fallbackClassification.dominantSentiment,
                 emotionalVector: fallbackVector,
-                reasoning: "Sem análises suficientes para compor o mood agora",
+                reasoning: `Sem análises suficientes para compor o mood agora (limit ${safeLimit})`,
                 coreAxes: fallbackClassification.coreAxes,
                 image_mood: "",
                 tracks: [],
             };
         }
 
-        const image_mood = this.prompt_imageService.build({
+        // ── Gera imagem e consome crédito ──
+        const imagePrompt = await this.aiService.buildHybridImagePrompt({
             ativacao: response.coreAxes.ativacao,
             moodScore: response.moodScore,
-            coreAxes:response.coreAxes,
+            coreAxes: response.coreAxes,
             sentiment: response.dominantSentiment,
             emotions: response.emotionalVector,
             faceReferencePath: user.face_photo_path,
             studioId,
         });
-        const image_charged = await this.aiService.genereateImage(image_mood, user.face_photo_path ?? undefined);
-        const cleanBase64 = image_charged.replace(/^data:image\/png;base64,/, '');
 
+        const imageBase64 = await this.aiService.genereateImage(imagePrompt, user.face_photo_path ?? undefined);
+
+        // Consome crédito somente após imagem gerada com sucesso
+        await this.creditService.consumeCredit(id);
+
+        const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
         const buffer = Buffer.from(cleanBase64, 'base64');
-
-        const file: UploadFile = {
-            buffer,
-            originalname: 'mood.png',
-            mimetype: 'image/png',
-        };
-        const img_url = await this.fileStorage.uploadMoodPhoto(file, user.id)
+        const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
+        const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
 
         const mood = {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
-            image_mood: img_url,
+            image_mood: imgUrl,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,
@@ -197,8 +261,8 @@ export class UserService {
         setImmediate(() => {
             this.userRepository.SaveMood(id, mood).catch(err => console.error('Erro ao salvar mood:', err));
         });
-        response.image_mood = image_charged;
 
+        response.image_mood = imageBase64;
         return response;
     }
 
@@ -231,9 +295,7 @@ export class UserService {
         return { isPlaying: true, ...analysis };
     }
 
-    // ─── Novos endpoints de perfil ────────────────────────────────────────────
-
-    async getMoodHistory(id: string, limit = 20) {
+    async getMoodHistory(id: string, limit = 1) {
         return this.userRepository.getMoodHistory(id, limit);
     }
 

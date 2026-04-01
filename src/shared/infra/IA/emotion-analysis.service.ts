@@ -74,14 +74,14 @@ const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }>
 
     // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
     EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
-    ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.38 },
+    ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.32 },
     RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 },
-    TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.36 },
+    TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.34 },
 
     // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
-    AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.35 },
-    ConexaoAfetiva:           { x:  0.75, y:  0.20, sigma: 0.25 },
-    NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.40 },
+    AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.33 },
+    ConexaoAfetiva:           { x:  0.75, y:  0.10, sigma: 0.25 },
+    NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.33 },
     Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
     PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 },
     Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
@@ -97,16 +97,32 @@ const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }>
     Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
 
     // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
-    VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.45 },
-    Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.42 },
-    Estupor:                  { x: -0.60, y:  0.15, sigma: 0.38 },
+    VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.25 },
+    Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.20 },
+    Estupor:                  { x: -0.60, y:  0.15, sigma: 0.30 },
 };
 
 @Injectable()
 export class EmotionAnalysisService {
+    private static readonly ACTIVATION_MIN = -0.25;
+    private static readonly ACTIVATION_MAX = 1.0;
 
     private clamp(value: number, min = 0, max = 1): number {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private clampDimensionValue(value: unknown): number {
+        if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+            return 0.5;
+        }
+
+        return this.clamp(value, 0, 1);
+    }
+
+    private sanitizeVector(vector: EmotionalVector): EmotionalVector {
+        return Object.fromEntries(
+            EMOTIONAL_DIMENSIONS.map((dimension) => [dimension, this.clampDimensionValue(vector[dimension])])
+        ) as EmotionalVector;
     }
 
     private normalize(value: number): number {
@@ -120,6 +136,18 @@ export class EmotionAnalysisService {
     // RBF kernel: k(d, σ) = exp(−d² / (2σ²))
     private rbfSimilarity(distance: number, sigma: number): number {
         return Math.exp(-(distance * distance) / (2 * sigma * sigma));
+    }
+
+    // Ambivalência deve dominar apenas quando o ponto está realmente próximo do centro.
+    private calibrateAmbivalenciaAffinity(polaridade: number, ativacao: number, affinity: number): number {
+        const radialDistance = Math.sqrt((polaridade * polaridade) + (ativacao * ativacao));
+
+        if (radialDistance > 0.45) return affinity * 0.45;
+        if (radialDistance > 0.30) return affinity * 0.65;
+        if (radialDistance < 0.10) return affinity * 1.20;
+        if (radialDistance < 0.16) return affinity * 1.10;
+
+        return affinity;
     }
 
     // Softmax com estabilidade numérica
@@ -174,21 +202,26 @@ export class EmotionAnalysisService {
     // Aplicamos clamp e depois normalize para mapear para [-1, +1].
     // -------------------------------------------------------------------------
     calculateCoreAxes(vector: EmotionalVector): CoreAxes {
+        const safeVector = this.sanitizeVector(vector);
 
         // Polaridade: Valencia é o eixo hedônico direto — sem mudança aqui,
         // pois o problema relatado não é polaridade mas sim ativação + moodScore.
-        const polaridade = this.normalize(vector.Valencia);
+        const polaridade = this.normalize(safeVector.Valencia);
 
         const rawAtivacao =
-            vector.Energia       *  0.50 +
-            vector.Euforia       *  0.25 +
-            vector.Dominancia    *  0.15 +
-            vector.Tensao        *  0.10 -
-            vector.Melancolia    *  0.15 -
-            vector.Vulnerabilidade * 0.10;
+            safeVector.Energia         * 0.50 +
+            safeVector.Euforia         * 0.25 +
+            safeVector.Dominancia      * 0.15 +
+            safeVector.Tensao          * 0.10 -
+            safeVector.Melancolia      * 0.15 -
+            safeVector.Vulnerabilidade * 0.10;
 
-        // Clamp antes de normalizar para evitar overflow nos extremos teóricos
-        const ativacao = this.normalize(this.clamp(rawAtivacao));
+        // Reescala pela faixa teórica do modelo para evitar saturação no lado negativo.
+        const rawAtivacaoScaled =
+            (rawAtivacao - EmotionAnalysisService.ACTIVATION_MIN) /
+            (EmotionAnalysisService.ACTIVATION_MAX - EmotionAnalysisService.ACTIVATION_MIN);
+
+        const ativacao = this.normalize(this.clamp(rawAtivacaoScaled));
         const quadrante = this.classifyQuadrant(polaridade, ativacao);
 
         return { polaridade, ativacao, quadrante };
@@ -202,14 +235,19 @@ export class EmotionAnalysisService {
     }
 
     classifyEmotion(vector: EmotionalVector): EmotionClassification {
-        const coreAxes = this.calculateCoreAxes(vector);
+        const coreAxes = this.calculateCoreAxes(this.sanitizeVector(vector));
         const { polaridade, ativacao } = coreAxes;
 
         // 1. Afinidade RBF para cada cluster
         const entries = Object.entries(CLUSTER_POSITIONS);
         const affinities = entries.map(([label, cluster]) => {
             const distance = this.euclideanDistance(polaridade, ativacao, cluster.x, cluster.y);
-            const affinity = this.rbfSimilarity(distance, cluster.sigma);
+            let affinity = this.rbfSimilarity(distance, cluster.sigma);
+
+            if (label === 'Ambivalencia') {
+                affinity = this.calibrateAmbivalenciaAffinity(polaridade, ativacao, affinity);
+            }
+
             return { label, affinity };
         });
 
