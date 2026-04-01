@@ -24,12 +24,20 @@ const allowedOrigins = [
 ];
 app.enableCors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
+    console.log('Origin:', origin); // DEBUG
+
+    if (!origin) {
+      return callback(null, true);
     }
 
-    callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app')
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} not allowed by CORS`), false);
   },
   credentials: true,
 });
