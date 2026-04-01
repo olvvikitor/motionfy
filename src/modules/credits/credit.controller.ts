@@ -22,7 +22,7 @@ export class CreditController {
 
     /** Simula compra de um pacote */
     @Post('purchase')
-    async purchase(@Body() body: { packageId: string }, @Req() req: MRequest) {
-        return this.creditService.purchasePackage(req.user!.id, body.packageId);
+    async purchase(@Body() body: { packageId: string; source?: string }, @Req() req: MRequest) {
+        return this.creditService.purchasePackage(req.user!.id, body.packageId, body.source);
     }
 }

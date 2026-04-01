@@ -3,9 +3,36 @@ import { CreditLogType } from '@prisma/client';
 import { CreditRepository } from './credit.repository';
 
 export const PACKAGES = [
-    { id: 'p1',  credits: 1,  price: 290,  label: '1 crédito',   tag: null,         popular: false },
-    { id: 'p5',  credits: 5,  price: 990,  label: '5 créditos',  tag: 'Mais vendido', popular: true  },
-    { id: 'p15', credits: 15, price: 1990, label: '15 créditos', tag: 'Melhor valor', popular: false },
+    {
+        id: 'p1',
+        credits: 1,
+        price: 290,
+        label: '1 crédito',
+        tag: null,
+        popular: false,
+        recommended: false,
+        description: 'Perfeito para testar sua próxima arte.',
+    },
+    {
+        id: 'p5',
+        credits: 5,
+        price: 990,
+        label: '5 créditos',
+        tag: 'Mais vendido',
+        popular: true,
+        recommended: true,
+        description: 'Melhor equilíbrio entre preço e frequência de uso.',
+    },
+    {
+        id: 'p15',
+        credits: 15,
+        price: 1790,
+        label: '15 créditos',
+        tag: 'Melhor valor',
+        popular: false,
+        recommended: false,
+        description: 'Para quem quer gerar sem medo e pagar menos por imagem.',
+    },
 ] as const;
 
 @Injectable()
@@ -36,7 +63,7 @@ export class CreditService {
     }
 
     // Simula compra (sem gateway real por ora — retorna sucesso direto)
-    async purchasePackage(userId: string, packageId: string): Promise<{ balance: number }> {
+    async purchasePackage(userId: string, packageId: string, source = 'unknown'): Promise<{ balance: number }> {
         const pkg = PACKAGES.find(p => p.id === packageId);
         if (!pkg) throw new BadRequestException('Pacote inválido.');
 
@@ -44,7 +71,7 @@ export class CreditService {
             userId,
             pkg.credits,
             CreditLogType.PURCHASE,
-            `Compra: ${pkg.label}`,
+            `Compra: ${pkg.label} | source: ${source}`,
         );
 
         return { balance };

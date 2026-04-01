@@ -45,7 +45,11 @@ export class CreateUserService {
         }
 
         if (user.face_photo_path) {
-            await this.fileStorage.deleteFacePhoto(user.face_photo_path);
+            try {
+                await this.fileStorage.deleteFacePhoto(user.face_photo_path);
+            } catch (error) {
+                console.warn('Falha ao remover foto anterior do usuário:', error);
+            }
         }
 
         const path = await this.fileStorage.uploadFacePhoto(file, id_user);
