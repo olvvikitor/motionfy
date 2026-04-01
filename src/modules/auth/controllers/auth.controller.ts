@@ -16,7 +16,7 @@ export class AuthController {
         const protocol = req.protocol ?? 'http';
         const host = req.get('host') ?? 'localhost:3000';
         const hostname = host.replace(/:\d+$/, '');
-        return `${protocol}://${hostname}`;
+        return `${protocol}://${hostname}:3002`;
     }
 
     @Get('spotify/callback')
