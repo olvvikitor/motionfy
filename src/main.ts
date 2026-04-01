@@ -17,18 +17,22 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
   });
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  process.env.FRONTEND_URL, // ex: https://seu-app.vercel.app
+];
+app.enableCors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOriginPattern.test(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error(`Origin ${origin} not allowed by CORS`), false);
-    },
-    credentials: true,
-  });
+    callback(new Error(`Origin ${origin} not allowed by CORS`), false);
+  },
+  credentials: true,
+});
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
