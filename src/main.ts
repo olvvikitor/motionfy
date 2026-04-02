@@ -7,7 +7,27 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
-const allowedOriginPattern = /^(https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?)$/;
+const LOCAL_NETWORK_HOST_PATTERN = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9-]+|[a-zA-Z0-9-]+\.local)$/;
+
+function isAllowedOrigin(origin?: string): boolean {
+  if (!origin) return true;
+
+  const envOrigin = process.env.FRONTEND_URL;
+  if (envOrigin && origin === envOrigin) return true;
+
+  try {
+    const parsed = new URL(origin);
+
+    if (parsed.hostname.endsWith('.vercel.app')) {
+      return true;
+    }
+
+    return LOCAL_NETWORK_HOST_PATTERN.test(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -17,23 +37,9 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads',
   });
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  process.env.FRONTEND_URL, // ex: https://seu-app.vercel.app
-];
 app.enableCors({
   origin: (origin, callback) => {
-    console.log('Origin:', origin); // DEBUG
-
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app')
-    ) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 

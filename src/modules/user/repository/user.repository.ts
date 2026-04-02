@@ -19,6 +19,10 @@ export class UserRepository {
         return this.prisma.user.findFirst({ where: { email } });
     }
 
+    async getUsersByEmail(email: string): Promise<User[]> {
+        return this.prisma.user.findMany({ where: { email } });
+    }
+
     async updatePassword(userId: string, hashedPw: string): Promise<void> {
         await this.prisma.user.update({ where: { id: userId }, data: { password: hashedPw } });
     }
