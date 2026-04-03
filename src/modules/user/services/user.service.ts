@@ -187,11 +187,23 @@ export class UserService {
     async RefreshMoodUserToday(id: string, studioId?: string, limit = 20): Promise<ResponseAi> {
         const now = new Date();
         if (now.getHours() < 19) {
-            throw new BadRequestException('Atualizacao manual do mood disponivel somente apos as 19:00.');
+            throw new BadRequestException('A geração diária do mood estará disponível a partir das 19:00.');
         }
 
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
+
+        const lastMood = await this.userRepository.getMoodUser(id);
+        if (lastMood) {
+            const moodDate = new Date(lastMood.analyzedAt);
+            if (
+                moodDate.getDate() === now.getDate() &&
+                moodDate.getMonth() === now.getMonth() &&
+                moodDate.getFullYear() === now.getFullYear()
+            ) {
+                throw new BadRequestException('O seu mood já foi gerado hoje. Volte amanhã!');
+            }
+        }
 
         await this.lastTracks(id);
 
