@@ -196,24 +196,29 @@ export class EmotionAnalysisService {
     calculateCoreAxes(vector: EmotionalVector): CoreAxes {
         const safeVector = this.sanitizeVector(vector);
 
-        // Polaridade: Valencia é o eixo hedônico direto — sem mudança aqui,
-        // pois o problema relatado não é polaridade mas sim ativação + moodScore.
-        const polaridade = this.normalize(
-            safeVector.Valencia * 0.65 +
-            safeVector.ConexaoSocial * 0.15 +
-            safeVector.Empoderamento * 0.10 -
-            safeVector.Melancolia * 0.15 -
-            safeVector.Vulnerabilidade * 0.10
+        // Polaridade (Eixo X): O eixo hedônico
+        // Adotando Math.max para permitir que Empoderamento muito alto 
+        // interceda pela Valência caso a música seja séria/focada (ex: Rap).
+        const rawPolaridade = this.clamp(
+            Math.max(safeVector.Valencia, safeVector.Empoderamento * 0.8) * 0.50 +
+            safeVector.Dominancia * 0.20 +
+            safeVector.Empoderamento * 0.15 +
+            safeVector.ConexaoSocial * 0.15 -
+            safeVector.Melancolia * 0.20 -
+            safeVector.Tensao * 0.15 -
+            safeVector.Vulnerabilidade * 0.15
         );
-        const rawAtivacao =
-            safeVector.Energia * 0.48 +
-            safeVector.Euforia * 0.22 +
-            safeVector.Dominancia * 0.15 +
-            safeVector.Tensao * 0.10 -
-            safeVector.Melancolia * 0.15 -
-            safeVector.Vulnerabilidade * 0.10;
+        const polaridade = this.normalize(rawPolaridade);
 
-        // Reescala pela faixa teórica do modelo para evitar saturação no lado negativo.
+        // Ativação (Eixo Y): O Eixo de energia fisiológica/mental
+        const rawAtivacao =
+            Math.max(safeVector.Energia, safeVector.Dominancia * 0.8) * 0.45 +
+            safeVector.Euforia * 0.20 +
+            safeVector.Tensao * 0.15 +
+            safeVector.Dominancia * 0.20 -
+            safeVector.Melancolia * 0.20 -
+            safeVector.Vulnerabilidade * 0.15;
+
         const rawAtivacaoScaled =
             (rawAtivacao - EmotionAnalysisService.ACTIVATION_MIN) /
             (EmotionAnalysisService.ACTIVATION_MAX - EmotionAnalysisService.ACTIVATION_MIN);
