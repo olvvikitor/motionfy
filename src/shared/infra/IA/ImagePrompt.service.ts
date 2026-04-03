@@ -474,6 +474,13 @@ FINAL INTENT
 ━━━━━━━━━━
 Create a cinematic anime scene where studio identity is unmistakable and dominant.
 
+━━━━━━━━━━
+OUTPUT DIMENSIONS (MANDATORY)
+━━━━━━━━━━
+- Image must be 768 pixels wide × 1344 pixels tall
+- Portrait orientation (9:16 ratio)
+- Full-body or generous upper-body framing to fill the vertical canvas
+
 Final check:
 The result MUST look like an anime illustration, NEVER a real photo.
 `;

@@ -101,10 +101,10 @@ export class AiService {
 
     this.image_model = this.genAI.getGenerativeModel({
       model: 'gemini-2.5-flash-image',
-      generationConfig:{
-        temperature:0.9,
-        topP:0.8,
-        topK:55
+      generationConfig: {
+        temperature: 0.9,
+        topP: 0.8,
+        topK: 55
       }
     });
 
@@ -454,6 +454,7 @@ ${JSON.stringify(musics, null, 2)}
     const styleLock = `
 STYLE LOCK (HIGHEST PRIORITY):
 - Generate ONLY a 2D anime illustration.
+- Output image MUST be exactly 768 pixels wide × 1344 pixels tall (9:16 portrait ratio).
 - Never generate photorealistic, live-action, CGI-realistic, or 3D-rendered output.
 - Keep medium detail and soft illustrative edges; avoid hyper-sharp texture detail.
 - Do not render realistic skin pores, realistic lens effects, photographic noise, or DSLR look.

@@ -193,14 +193,6 @@ export class UserService {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
-        // ── Verifica crédito antes de qualquer processamento pesado ──
-        const { balance } = await this.creditService.getBalance(id);
-        if (balance <= 0) {
-            throw new BadRequestException('Sem créditos para gerar imagem.');
-        }
-
-        
-
         await this.lastTracks(id);
 
         const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -247,9 +239,6 @@ export class UserService {
         });
 
         const imageBase64 = await this.aiService.genereateImage(imagePrompt, user.face_photo_path ?? undefined);
-
-        // Consome crédito somente após imagem gerada com sucesso
-        await this.creditService.consumeCredit(id);
 
         const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
         const buffer = Buffer.from(cleanBase64, 'base64');
@@ -312,5 +301,9 @@ export class UserService {
 
     async getUserStats(id: string) {
         return this.userRepository.getUserStats(id);
+    }
+
+    async getUserInsights(id: string) {
+        return this.userRepository.getUserInsights(id);
     }
 }

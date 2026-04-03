@@ -60,6 +60,12 @@ export class UserController {
         return await this.userService.getUserStats(req.user!.id);
     }
 
+    @Get('insights')
+    @UseGuards(JwtAuthGuard)
+    async getUserInsights(@Req() req: MRequest) {
+        return await this.userService.getUserInsights(req.user!.id);
+    }
+
     @Put('updateAfterCreate')
     @UseGuards(JwtAuthGuard)
     async updateAfterCreate(@Body() payload: UpdateAfterCreateDto, @Req() req: MRequest) {
