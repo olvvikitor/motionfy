@@ -186,9 +186,6 @@ export class UserService {
 
     async RefreshMoodUserToday(id: string, studioId?: string, limit = 20): Promise<ResponseAi> {
         const now = new Date();
-        if (now.getHours() < 19) {
-            throw new BadRequestException('A geração diária do mood estará disponível a partir das 19:00.');
-        }
 
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
