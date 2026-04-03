@@ -207,20 +207,31 @@ Toda música tem uma identidade emocional forte. Encontre-a e pontue nos extremo
 
 Use estas âncoras para calibrar sua escala interna antes de analisar:
 
-| Música                              | Valencia | Energia | Melancolia | Euforia | Tensao |
-|-------------------------------------|----------|---------|------------|---------|--------|
-| "Happy" – Pharrell Williams         | 0.95     | 0.85    | 0.05       | 0.90    | 0.05   |
-| "Smells Like Teen Spirit" – Nirvana | 0.25     | 0.92    | 0.45       | 0.30    | 0.80   |
-| "The Sound of Silence" – S&G        | 0.20     | 0.15    | 0.90       | 0.05    | 0.40   |
-| "Eye of the Tiger" – Survivor       | 0.75     | 0.95    | 0.05       | 0.70    | 0.55   |
-| "Mad World" – Gary Jules            | 0.10     | 0.10    | 0.95       | 0.02    | 0.35   |
-| "Mr. Brightside" – The Killers      | 0.40     | 0.88    | 0.55       | 0.45    | 0.85   |
+| Música                              | Val | Ene | Dom | Mel | Euf | Ten | Soc | Int | Emp | Vul |
+|-------------------------------------|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
+| "Happy" – Pharrell Williams         |0.95 |0.85 |0.60 |0.05 |0.90 |0.05 |0.80 |0.10 |0.70 |0.05 |
+| "Smells Like Teen Spirit" - Nirvana |0.25 |0.92 |0.80 |0.45 |0.30 |0.80 |0.85 |0.20 |0.60 |0.40 |
+| "The Sound of Silence" – S&G        |0.20 |0.15 |0.10 |0.90 |0.05 |0.40 |0.05 |0.95 |0.10 |0.85 |
+| "Eye of the Tiger" – Survivor       |0.75 |0.95 |0.95 |0.05 |0.70 |0.55 |0.60 |0.10 |0.95 |0.05 |
+| "Mad World" – Gary Jules            |0.10 |0.10 |0.05 |0.95 |0.02 |0.35 |0.05 |0.90 |0.05 |0.95 |
+| "Redemption Song" – Bob Marley      |0.70 |0.20 |0.50 |0.30 |0.15 |0.20 |0.70 |0.80 |0.90 |0.35 |
+| "Perfect" – Ed Sheeran              |0.85 |0.35 |0.30 |0.10 |0.40 |0.05 |0.90 |0.40 |0.40 |0.70 |
+| "Creep" – Radiohead                 |0.15 |0.60 |0.20 |0.80 |0.10 |0.85 |0.05 |0.95 |0.05 |0.95 |
+| "Titanium" – David Guetta & Sia     |0.80 |0.98 |0.90 |0.10 |0.85 |0.40 |0.75 |0.15 |0.95 |0.15 |
+| "Yellow" – Coldplay                 |0.75 |0.55 |0.40 |0.25 |0.30 |0.15 |0.85 |0.60 |0.50 |0.80 |
+| "Holocene" – Bon Iver               |0.60 |0.15 |0.10 |0.20 |0.05 |0.05 |0.30 |0.95 |0.30 |0.85 |
+| "Jesus Chorou" – Racionais MC's     |0.20 |0.50 |0.60 |0.80 |0.10 |0.70 |0.80 |0.90 |0.40 |0.85 |
+| "Conexões de Máfia" – Matuê         |0.50 |0.85 |0.90 |0.10 |0.60 |0.65 |0.60 |0.20 |0.85 |0.20 |
+| "SICKO MODE" – Travis Scott         |0.40 |0.95 |0.95 |0.10 |0.80 |0.75 |0.60 |0.10 |0.90 |0.10 |
+| "País Tropical" – Jorge Ben Jor     |0.95 |0.85 |0.60 |0.05 |0.85 |0.10 |0.90 |0.10 |0.70 |0.05 |
+| "Águas de Março" – Elis Regina      |0.70 |0.30 |0.20 |0.25 |0.20 |0.05 |0.40 |0.70 |0.40 |0.50 |
 
 ## DEFINIÇÕES COM ÂNCORAS VERBAIS
 
 1. **Valencia** [0.0–1.0]
    - 0.0 = desespero existencial / ódio ("Mad World")
    - 0.5 = ambiguidade real ("Mr. Brightside")
+   - 0.7 = paz, esperança reflexiva ("Redemption Song")
    - 1.0 = alegria pura e inabalável ("Happy")
 
 2. **Energia** [0.0–1.0]
@@ -233,28 +244,29 @@ Use estas âncoras para calibrar sua escala interna antes de analisar:
    - 1.0 = agressividade, autoridade, comando ("Eye of the Tiger")
 
 4. **Melancolia** [0.0–1.0]
-   - 0.0 = sem traço de tristeza ou saudade
+   - 0.0 = sem traço de tristeza ou saudade ("Happy")
+   - 0.5 = nostalgia suave, reflexão sobre o passado ("Redemption Song")
    - 1.0 = luto, perda irreparável, saudade consumidora ("The Sound of Silence")
 
 5. **Euforia** [0.0–1.0]
-   - 0.0 = apatia, indiferença
+   - 0.0 = apatia, indiferença, introspecção profunda
    - 1.0 = êxtase, celebração maníaca, peak emocional ("Happy")
 
 6. **Tensao** [0.0–1.0]
-   - 0.0 = relaxamento total, harmonia resolvida
+   - 0.0 = relaxamento total, harmonia resolvida ("Redemption Song")
    - 1.0 = ansiedade, dissonância irresolvida, conflito ("Smells Like Teen Spirit")
 
 7. **ConexaoSocial** [0.0–1.0]
    - 0.0 = isolamento absoluto, monólogo interior
-   - 1.0 = hinos coletivos, "nós", pertencimento
+   - 1.0 = hinos coletivos, "nós", pertencimento ("Redemption Song", "Happy")
 
 8. **Introspeccao** [0.0–1.0]
    - 0.0 = letra de festa, superficial, sem reflexão
-   - 1.0 = filosofia existencial, segredos íntimos, diário ("The Sound of Silence")
+   - 1.0 = filosofia existencial, segredos íntimos, diário ("The Sound of Silence", "Redemption Song")
 
 9. **Empoderamento** [0.0–1.0]
    - 0.0 = derrota, vitimização
-   - 1.0 = superação, autoconfiança inabalável ("Eye of the Tiger")
+   - 1.0 = superação, libertação mental, autoconfiança inabalável ("Eye of the Tiger", "Redemption Song")
 
 10. **Vulnerabilidade** [0.0–1.0]
     - 0.0 = armadura emocional, frieza, distância
