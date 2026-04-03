@@ -164,7 +164,7 @@ Input context:
 - quadrant: ${input.coreAxes.quadrante}
 - activation: ${input.coreAxes.ativacao}
 - moodScore: ${input.moodScore}
-- studioId: ${input.studioId ?? "random"}
+- studioId: ${input.studioId ?? "Trigger"}
 
 Seed values (improve, don't copy literally):
 ${JSON.stringify(seed, null, 2)}

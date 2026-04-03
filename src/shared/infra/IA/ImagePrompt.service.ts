@@ -699,12 +699,12 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
 
     private getStudioStyle(studioId?: string): StudioStyle {
-        if (studioId) {
-            const selected = STUDIO_STYLES.find((studio) => studio.id === studioId.trim().toLowerCase());
-            if (selected) return selected;
-        }
+        const targetId = studioId ? studioId.trim().toLowerCase() : "trigger";
+        const selected = STUDIO_STYLES.find((studio) => studio.id === targetId);
 
-        return this.random(STUDIO_STYLES);
+        if (selected) return selected;
+
+        return STUDIO_STYLES.find((studio) => studio.id === "trigger")!;
     }
     private getPose(sentiment: string, intensity: string) {
         const key = this.normalizeSentiment(sentiment);
