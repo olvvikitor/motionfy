@@ -199,16 +199,25 @@ export class EmotionAnalysisService {
         // Polaridade (Eixo X): O eixo hedônico
         // Adotando Math.max para permitir que Empoderamento muito alto 
         // interceda pela Valência caso a música seja séria/focada (ex: Rap).
-        const rawPolaridade = this.clamp(
+        let rawPolaridade =
             Math.max(safeVector.Valencia, safeVector.Empoderamento * 0.8) * 0.50 +
             safeVector.Dominancia * 0.20 +
             safeVector.Empoderamento * 0.15 +
             safeVector.ConexaoSocial * 0.15 -
             safeVector.Melancolia * 0.20 -
             safeVector.Tensao * 0.15 -
-            safeVector.Vulnerabilidade * 0.15
-        );
-        const polaridade = this.normalize(rawPolaridade);
+            safeVector.Vulnerabilidade * 0.15;
+
+        // HARD OVERRIDE PARA RAP/TRAP FOCADOS
+        // Se há altíssima dominância e empoderamento (ego elevado/confiança forte), 
+        // a polaridade real NUNCA pode ser negativa (o que forçaria para 'Frustração' ou 'Tensão'), 
+        // contornando o peso alto da 'Tensão' de letras sérias.
+        if (safeVector.Dominancia >= 0.7 && safeVector.Empoderamento >= 0.7) {
+            rawPolaridade = Math.max(rawPolaridade, 0.65);
+            // 0.65 resulta em +0.3 após normalizar, o que direciona para Confianca ou Energia.
+        }
+
+        const polaridade = this.normalize(this.clamp(rawPolaridade));
 
         // Ativação (Eixo Y): O Eixo de energia fisiológica/mental
         const rawAtivacao =
