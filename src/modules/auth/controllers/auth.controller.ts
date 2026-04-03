@@ -23,8 +23,8 @@ export class AuthController {
     @UseGuards(AuthGuard('spotify'))
     async spotifyCallback(@Req() req: any, @Res() res) {
         const { accessToken, refreshToken } = req.user;
-        const token = await this.authService.handleCallback('spotify', { accessToken, refreshToken });
-        return res.redirect(`${this.getFrontendUrl(req)}/terminate?token=${token}`);
+        const { token, isNewUser } = await this.authService.handleCallback('spotify', { accessToken, refreshToken });
+        return res.redirect(`${this.getFrontendUrl(req)}/terminate?token=${token}&new=${isNewUser}`);
     }
 
     @Get('youtube')
@@ -35,8 +35,8 @@ export class AuthController {
     @UseGuards(AuthGuard('youtube'))
     async youtubeCallback(@Req() req: any, @Res() res: any) {
         const { accessToken, refreshToken } = req.user;
-        const token = await this.authService.handleCallback('youtube', { accessToken, refreshToken });
-        return res.redirect(`${this.getFrontendUrl(req)}/terminate?token=${token}`);
+        const { token, isNewUser } = await this.authService.handleCallback('youtube', { accessToken, refreshToken });
+        return res.redirect(`${this.getFrontendUrl(req)}/terminate?token=${token}&new=${isNewUser}`);
     }
 
     @Post('login')

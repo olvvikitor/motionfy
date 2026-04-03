@@ -13,7 +13,7 @@ export class CreateUserService {
         @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
     ) { }
 
-    async create(data: User, provider: string): Promise<string> {
+    async create(data: User, provider: string): Promise<{ token: string; isNewUser: boolean }> {
         const user = await this.userRepository.getUserByEmail(data.email!, provider);
         if (!user) {
             await this.userRepository.createNewUser(data);
@@ -27,7 +27,7 @@ export class CreateUserService {
             provider: data.provider,
         });
 
-        return token;
+        return { token, isNewUser: !user };
     }
 
     async updateAfterCreate(id_user: string, data: { push: boolean; email: boolean; weekly: boolean }): Promise<void> {
