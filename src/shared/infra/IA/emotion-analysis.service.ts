@@ -72,35 +72,27 @@ export type EmotionClassification = {
 const CLUSTER_POSITIONS = {
 
     // ── POSITIVO / ATIVO ─────────────────────────────────────
-    EuforiaAtiva: { x: 0.85, y: 0.85, sigma: 0.30 },
-    ConfiancaAlta: { x: 0.55, y: 0.55, sigma: 0.28 },
-    EnergiaBruta: { x: 0.30, y: 0.90, sigma: 0.28 },
-    IntensidadeCriativa: { x: 0.00, y: 0.65, sigma: 0.30 },
+    Euforia: { x: 0.85, y: 0.85, sigma: 0.30 },
+    Confianca: { x: 0.50, y: 0.50, sigma: 0.30 },
+    Energia: { x: 0.20, y: 0.85, sigma: 0.30 },
 
     // ── POSITIVO / CALMO ─────────────────────────────────────
-    AmorLeve: { x: 0.85, y: -0.20, sigma: 0.28 },
-    ConexaoQuente: { x: 0.65, y: 0.05, sigma: 0.26 },
-    NostalgiaBoa: { x: 0.35, y: -0.35, sigma: 0.30 },
-    Sereno: { x: 0.60, y: -0.60, sigma: 0.30 },
-    PazTotal: { x: 0.45, y: -0.85, sigma: 0.28 },
-    ReflexivoPositivo: { x: 0.15, y: -0.70, sigma: 0.28 },
+    Amor: { x: 0.85, y: -0.20, sigma: 0.30 },
+    Paz: { x: 0.60, y: -0.75, sigma: 0.30 },
+    Reflexao: { x: 0.25, y: -0.50, sigma: 0.30 },
 
     // ── NEGATIVO / ATIVO ─────────────────────────────────────
-    CaosInterno: { x: -0.10, y: 0.85, sigma: 0.28 },
-    FrustracaoAtiva: { x: -0.30, y: 0.40, sigma: 0.30 },
-    AnsiedadeAlta: { x: -0.55, y: 0.65, sigma: 0.30 },
-    RaivaExplosiva: { x: -0.90, y: 0.90, sigma: 0.26 },
+    Tensao: { x: -0.30, y: 0.80, sigma: 0.30 },
+    Revolta: { x: -0.85, y: 0.85, sigma: 0.30 },
+    Frustracao: { x: -0.60, y: 0.40, sigma: 0.30 },
 
     // ── NEGATIVO / CALMO ─────────────────────────────────────
     Melancolia: { x: -0.35, y: -0.45, sigma: 0.30 },
-    TristezaProfunda: { x: -0.75, y: -0.70, sigma: 0.30 },
-    Apatia: { x: -0.90, y: -0.30, sigma: 0.28 },
-    Vazio: { x: -0.55, y: -0.10, sigma: 0.26 },
+    Tristeza: { x: -0.85, y: -0.75, sigma: 0.30 },
+    Vazio: { x: -0.70, y: -0.20, sigma: 0.30 },
 
     // ── CENTRO / TRANSIÇÃO ───────────────────────────────────
-    Vulneravel: { x: -0.10, y: -0.20, sigma: 0.24 },
-    Ambivalente: { x: 0.00, y: 0.00, sigma: 0.18 },
-    Desligado: { x: -0.40, y: -0.20, sigma: 0.24 },
+    Ambivalente: { x: 0.00, y: 0.00, sigma: 0.20 },
 };
 
 @Injectable()
