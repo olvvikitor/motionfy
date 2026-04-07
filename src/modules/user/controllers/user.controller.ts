@@ -102,11 +102,17 @@ export class UserController {
         return await this.createUser.uploadFacePhoto(req.user!.id, file);
     }
 
+    @Put('studio-preference')
+    @UseGuards(JwtAuthGuard)
+    async updateStudioPreference(@Body() body: { studioId: string }, @Req() req: MRequest) {
+        if (!body.studioId) throw new BadRequestException('ID do estúdio não fornecido');
+        return await this.userService.updateStudioPreference(req.user!.id, body.studioId);
+    }
+
     @Get('refreshMood')
     @UseGuards(JwtAuthGuard)
     async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string) {
-        const safeLimit = 50
-        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId, safeLimit);
+        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId);
     }
 
     @Get('refreshMood/studios')
@@ -119,5 +125,19 @@ export class UserController {
     @UseGuards(JwtAuthGuard)
     async getMusicListenNow(@Req() req: MRequest) {
         return await this.userService.listeningNow(req.user!.id);
+    }
+
+    @Get('today-tracks')
+    @UseGuards(JwtAuthGuard)
+    async getTodayTracks(@Req() req: MRequest) {
+        return await this.userService.getTodayTracksAnalyzed(req.user!.id);
+    }
+
+    @Get('testMood')
+    @UseGuards(JwtAuthGuard)
+    async testMoodAlgorithm(@Req() req: MRequest, @Query('limit') limit?: string) {
+        const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+        const safeLimit = parsedLimit && !isNaN(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : undefined;
+        return await this.userService.testMoodAlgorithm(req.user!.id, safeLimit);
     }
 }

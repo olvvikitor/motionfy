@@ -46,6 +46,10 @@ export class UserRepository {
         await this.prisma.user.update({ where: { id: userId }, data: { face_photo_path: facePhotoPath } });
     }
 
+    async updateStudioPreference(userId: string, studioId: string): Promise<void> {
+        await this.prisma.user.update({ where: { id: userId }, data: { preferredStudioId: studioId } });
+    }
+
     async SaveMood(userId: string, mood: {
         moodScore: number;
         sentiment: string;

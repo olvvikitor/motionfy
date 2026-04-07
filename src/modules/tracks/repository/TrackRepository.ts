@@ -160,7 +160,31 @@ export class TrackRepository {
                 playedAt: "desc", // mais recentes primeiro
             },
             take: limit, // quantidade desejada,
-            
+
+        });
+
+        return records;
+    }
+
+    async getListenedToday(userId: string) {
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        const records = await this.prisma.listeningHistory.findMany({
+            where: {
+                userId,
+                playedAt: {
+                    gte: startOfDay,
+                    lte: endOfDay,
+                },
+            },
+            include: {
+                track: true,
+            },
+            orderBy: {
+                playedAt: "desc",
+            },
         });
 
         return records;

@@ -15,9 +15,10 @@ model User {
   country         String
   provider        String
   display_name    String
-  img_profile     String
-  face_photo_path String?
-  image_credits   Int     @default(1)
+  img_profile       String
+  face_photo_path   String?
+  preferredStudioId String?
+  image_credits     Int     @default(1)
   notificateEmail Boolean @default(false)
   notificatePush  Boolean @default(false)
   notificateWeek  Boolean @default(false)
