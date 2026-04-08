@@ -84,6 +84,13 @@ export class UserRepository {
                 coreAxes: true,
                 analyzedAt: true,
                 tracksAnalyzeds: true,
+                reactions: {
+                    select: { emoji: true, user: { select: { id: true, display_name: true, img_profile: true } } },
+                },
+                comments: {
+                    select: { id: true, text: true, createdAt: true, user: { select: { id: true, display_name: true, img_profile: true } } },
+                    orderBy: { createdAt: 'asc' },
+                },
             },
         });
     }

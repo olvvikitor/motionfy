@@ -18,7 +18,7 @@ import { RespondFriendRequestDto, SendFriendRequestDto } from '../dto/friendship
 @Controller('friendship')
 @UseGuards(JwtAuthGuard)
 export class FriendshipController {
-    constructor(private readonly friendshipService: FriendshipService) {}
+    constructor(private readonly friendshipService: FriendshipService) { }
 
     /** Buscar usuários pelo nome */
     @Get('search')
@@ -72,5 +72,17 @@ export class FriendshipController {
     @Delete(':id')
     async removeFriend(@Param('id') id: string, @Req() req: MRequest) {
         return this.friendshipService.removeFriend(req.user!.id, id);
+    }
+
+    /** Reagir a um mood */
+    @Post('mood/:moodId/reaction')
+    async toggleReaction(@Param('moodId') moodId: string, @Body('emoji') emoji: string, @Req() req: MRequest) {
+        return this.friendshipService.toggleReaction(req.user!.id, moodId, emoji);
+    }
+
+    /** Comentar em um mood */
+    @Post('mood/:moodId/comment')
+    async addComment(@Param('moodId') moodId: string, @Body('text') text: string, @Req() req: MRequest) {
+        return this.friendshipService.addComment(req.user!.id, moodId, text);
     }
 }

@@ -14,7 +14,7 @@ export class FriendshipService {
         private readonly friendshipRepository: FriendshipRepository,
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
-    ) {}
+    ) { }
 
     // ─── Helpers privados ────────────────────────────────────────────────────
 
@@ -138,5 +138,40 @@ export class FriendshipService {
                 img_profile: friendInfo?.img_profile,
             },
         };
+    }
+
+    async toggleReaction(userId: string, moodId: string, emoji: string) {
+        // Assert mood logic is soft since you can react to anyone in the feed, but we will just operate on the ID
+        const existing = await this.prisma.moodReaction.findUnique({
+            where: { moodAnalysisId_userId: { moodAnalysisId: moodId, userId: userId } }
+        });
+
+        if (existing) {
+            if (existing.emoji === emoji) {
+                await this.prisma.moodReaction.delete({ where: { id: existing.id } });
+                return { action: 'removed' };
+            } else {
+                await this.prisma.moodReaction.update({ where: { id: existing.id }, data: { emoji } });
+                return { action: 'updated', emoji };
+            }
+        } else {
+            await this.prisma.moodReaction.create({
+                data: { moodAnalysisId: moodId, userId, emoji }
+            });
+            return { action: 'added', emoji };
+        }
+    }
+
+    async addComment(userId: string, moodId: string, text: string) {
+        return this.prisma.moodComment.create({
+            data: {
+                moodAnalysisId: moodId,
+                userId,
+                text,
+            },
+            include: {
+                user: { select: { id: true, display_name: true, img_profile: true } }
+            }
+        });
     }
 }

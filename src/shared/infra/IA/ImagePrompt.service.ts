@@ -424,7 +424,7 @@ Rules:
 - Preserve face structure, eyes, hairline, and proportions
 - Do NOT copy photographic texture or lighting
 - Identity must remain recognizable in anime form
-- Outfit must read like a story protagonist: iconic silhouette, distinctive layers, and memorable hero-style design
+- Outfit must read like a story protagonist: iconic silhouette, distinctive layers, and memorable styling (NO superhero costumes, NO armor, NO magical capes)
 
 ━━━━━━━━━━
 FRAMING RULES (CRITICAL)
@@ -465,7 +465,7 @@ AVOID
 - photorealism, CGI, hyper-detail, 4K sharpness
 - blurry faces, distortion, extra limbs
 - text, watermark
-- fantasy clichés (dragons, castles, armor, etc.)
+- fantasy clichés (dragons, castles, armor, superhero suits, magical tropes, etc.)
 - duplicated props or broken geometry
 ${allowFuturisticElements ? "- avoid generic neon/cyber clutter disconnected from selected reference" : "- any futuristic visual element"}
 
