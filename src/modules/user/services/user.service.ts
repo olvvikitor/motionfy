@@ -193,35 +193,53 @@ export class UserService {
 
         const resolvedStudioId = studioId ?? user.preferredStudioId ?? undefined;
 
+        let useTodayOnly = false;
+
         const lastMood = await this.userRepository.getMoodUser(id);
         if (lastMood) {
             const moodDate = new Date(lastMood.analyzedAt);
-            if (
-                moodDate.getDate() === now.getDate() &&
-                moodDate.getMonth() === now.getMonth() &&
-                moodDate.getFullYear() === now.getFullYear()
-            ) {
-                throw new BadRequestException('O seu mood já foi gerado hoje. Volte amanhã!');
+            const msIn24h = 24 * 60 * 60 * 1000;
+            const isWithin24h = (now.getTime() - moodDate.getTime()) <= msIn24h;
+
+            if (isWithin24h) {
+                const isNowPast19h = now.getHours() >= 19;
+
+                const isMoodFromToday =
+                    moodDate.getDate() === now.getDate() &&
+                    moodDate.getMonth() === now.getMonth() &&
+                    moodDate.getFullYear() === now.getFullYear();
+
+                const isMoodBefore19hToday = isMoodFromToday && moodDate.getHours() < 19;
+
+                if (isNowPast19h && isMoodBefore19hToday) {
+                    // Update triggered by 19h rule: usa apenas tracks do dia atual
+                    useTodayOnly = true;
+                } else if (isNowPast19h && !isMoodFromToday) {
+                    // Update triggered by 19h rule (old mood foi ontem): usa apenas tracks do dia atual
+                    useTodayOnly = true;
+                } else {
+                    throw new BadRequestException('Seu mood já foi gerado recentemente. Volte após as 19h ou aguarde 24h.');
+                }
+            } else {
+                // Passou de 24h: usa o bloco móvel de ultimas 24h
+                useTodayOnly = false;
             }
         }
 
         await this.lastTracks(id);
 
-        const historyMusic = await this.trackRepository.getListenedToday(id);
+        const historyMusic = useTodayOnly
+            ? await this.trackRepository.getListenedToday(id)
+            : await this.trackRepository.getListenedLast24Hours(id);
+
         const tracks = historyMusic
             .map((entry) => entry.track)
             .filter((track): track is Track => Boolean(track?.spotifyId));
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
 
-        let trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
         let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-
-        if (!response && tracks.length) {
-            await this.saveTrackService.ensureTrackAnalysesUpToDate(id, 100);
-            trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-            response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-        }
 
         if (!response) {
             const fallbackVector = this.emotionAnalysis.buildFallbackVector();
@@ -237,7 +255,7 @@ export class UserService {
             };
         }
 
-        // ── Gera imagem e consome crédito ──
+        // ── Gera imagem ──
         const imagePrompt = await this.aiService.buildHybridImagePrompt({
             ativacao: response.coreAxes.ativacao,
             moodScore: response.moodScore,
@@ -250,22 +268,31 @@ export class UserService {
 
         const imageBase64 = await this.aiService.genereateImage(imagePrompt, user.face_photo_path ?? undefined);
 
-        const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
-        const buffer = Buffer.from(cleanBase64, 'base64');
-        const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
-        const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
-
-        const mood = {
+        const moodDataStore = {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
-            image_mood: imgUrl,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,
         };
 
-        setImmediate(() => {
-            this.userRepository.SaveMood(id, mood).catch(err => console.error('Erro ao salvar mood:', err));
+        // Envio da imagem gerada e persistência em background para não onerar o tempo de resposta
+        setImmediate(async () => {
+            try {
+                const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
+                const buffer = Buffer.from(cleanBase64, 'base64');
+                const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
+                const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
+
+                const finalMood = {
+                    ...moodDataStore,
+                    image_mood: imgUrl,
+                };
+
+                await this.userRepository.SaveMood(id, finalMood);
+            } catch (err) {
+                console.error('Erro ao fazer upload e salvar mood no background:', err);
+            }
         });
 
         response.image_mood = imageBase64;
@@ -317,13 +344,12 @@ export class UserService {
         return this.userRepository.getUserInsights(id);
     }
 
-    // ── Teste do algoritmo de mood (sem imagem, sem salvar) ──
     async testMoodAlgorithm(id: string, limit?: number): Promise<any> {
         await this.lastTracks(id);
 
         const historyMusic = limit
             ? await this.trackRepository.getLastListened(id, limit)
-            : await this.trackRepository.getListenedToday(id);
+            : await this.trackRepository.getListenedLast24Hours(id);
 
         const tracks = historyMusic
             .map((entry) => entry.track)
@@ -331,14 +357,8 @@ export class UserService {
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
 
-        let trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
         let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-
-        if (!response && tracks.length) {
-            await this.saveTrackService.ensureTrackAnalysesUpToDate(id, 100);
-            trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-            response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-        }
 
         if (!response) {
             const fallbackVector = this.emotionAnalysis.buildFallbackVector();
@@ -366,23 +386,16 @@ export class UserService {
         };
     }
 
-    // ── Retorna puramente as músicas de hoje mapeadas com análise ──
     async getTodayTracksAnalyzed(id: string): Promise<any[]> {
         await this.lastTracks(id);
-        const historyMusic = await this.trackRepository.getListenedToday(id);
+        const historyMusic = await this.trackRepository.getListenedLast24Hours(id);
         const tracks = historyMusic
             .map((entry) => entry.track)
             .filter((track): track is Track => Boolean(track?.spotifyId));
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
-        let trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-        let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-
-        if (!response && tracks.length) {
-            await this.saveTrackService.ensureTrackAnalysesUpToDate(id, 100);
-            trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-            response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-        }
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
 
         return response?.tracks ?? [];
     }

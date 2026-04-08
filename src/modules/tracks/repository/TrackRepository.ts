@@ -71,32 +71,36 @@ export class TrackRepository {
     async saveTrackAnalysesBulk(analyses: TrackAnalysisWriteInput[]): Promise<void> {
         if (!analyses.length) return;
 
-        await this.prisma.$transaction(
-            analyses.map((music) => {
-                return this.prisma.tracksAnalysis.upsert({
-                    where: {
-                        spotifyid: music.spotifyid
-                    },
-                    update: {
-                        moodScore: music.moodScore,
-                        dominantSentiment: music.dominantSentiment,
-                        coreAxes: music.coreAxes as any,
-                        emotionalVector: music.emotionalVector as any,
-                        reasoning: music.reasoning,
-                        analyzedAt: music.analyzedAt ?? new Date(),
-                    },
-                    create: {
-                        spotifyid: music.spotifyid,
-                        moodScore: music.moodScore,
-                        dominantSentiment: music.dominantSentiment,
-                        coreAxes: music.coreAxes as any,
-                        emotionalVector: music.emotionalVector as any,
-                        reasoning: music.reasoning,
-                        analyzedAt: music.analyzedAt ?? new Date(),
-                    }
-                })
-            })
-        )
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < analyses.length; i += CHUNK_SIZE) {
+            const chunk = analyses.slice(i, i + CHUNK_SIZE);
+            await Promise.all(
+                chunk.map((music) =>
+                    this.prisma.tracksAnalysis.upsert({
+                        where: {
+                            spotifyid: music.spotifyid
+                        },
+                        update: {
+                            moodScore: music.moodScore,
+                            dominantSentiment: music.dominantSentiment,
+                            coreAxes: music.coreAxes as any,
+                            emotionalVector: music.emotionalVector as any,
+                            reasoning: music.reasoning,
+                            analyzedAt: music.analyzedAt ?? new Date(),
+                        },
+                        create: {
+                            spotifyid: music.spotifyid,
+                            moodScore: music.moodScore,
+                            dominantSentiment: music.dominantSentiment,
+                            coreAxes: music.coreAxes as any,
+                            emotionalVector: music.emotionalVector as any,
+                            reasoning: music.reasoning,
+                            analyzedAt: music.analyzedAt ?? new Date(),
+                        }
+                    })
+                )
+            );
+        }
     }
 
     async getTrackAnalysesByMusicIds(spotifyIds: string[]): Promise<TrackAnalysisReadItem[]> {
@@ -177,6 +181,29 @@ export class TrackRepository {
                 playedAt: {
                     gte: startOfDay,
                     lte: endOfDay,
+                },
+            },
+            include: {
+                track: true,
+            },
+            orderBy: {
+                playedAt: "desc",
+            },
+        });
+
+        return records;
+    }
+
+    async getListenedLast24Hours(userId: string) {
+        const now = new Date();
+        const startOf24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        const records = await this.prisma.listeningHistory.findMany({
+            where: {
+                userId,
+                playedAt: {
+                    gte: startOf24h,
+                    lte: now,
                 },
             },
             include: {

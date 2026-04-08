@@ -119,15 +119,20 @@ export default class SaveTracks {
     }
     async saveMusicsHistoryLine(tracks: TrackInput[], idUser: string): Promise<void> {
 
-        for (const trackData of tracks) {
-            try {
-                await this.trackRepository.createNewTrack(trackData);
-                await this.trackRepository.saveHistoryListen(idUser, trackData.spotifyId, trackData.createdAt)
-
-            } catch (error) {
-                console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);
-                continue;
-            }
+        // Otimização: Paraleliza as inserções das músicas e do histórico individual pra não somar latência sequencial
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < tracks.length; i += CHUNK_SIZE) {
+            const chunk = tracks.slice(i, i + CHUNK_SIZE);
+            await Promise.all(
+                chunk.map(async (trackData) => {
+                    try {
+                        await this.trackRepository.createNewTrack(trackData);
+                        await this.trackRepository.saveHistoryListen(idUser, trackData.spotifyId, trackData.createdAt);
+                    } catch (error) {
+                        console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);
+                    }
+                })
+            );
         }
 
         try {
@@ -138,8 +143,8 @@ export default class SaveTracks {
     }
 
     async ensureTrackAnalysesUpToDate(idUser: string, limit = 100): Promise<void> {
-        // Backfill: aproveita análises já salvas em MoodAnalysis para popular TracksAnalysis.
-        await this.syncTrackAnalysesFromMoodAnalyses(idUser);
+        // [REMOVIDO] Backfill pesado syncTrackAnalysesFromMoodAnalyses() comentado para prevenir lock/timeout da rota
+
 
         const recentHistory = await this.trackRepository.getLastListened(idUser, limit);
 
@@ -176,7 +181,7 @@ export default class SaveTracks {
 
         for (const [index, batch] of batches.entries()) {
             try {
-            console.log(`[TrackAnalysis] user=${idUser} batch=${index + 1}/${batches.length} size=${batch.length}`);
+                console.log(`[TrackAnalysis] user=${idUser} batch=${index + 1}/${batches.length} size=${batch.length}`);
                 const analyzed = await this.aiService.analyzeMusicMoodByHistoryToday(batch);
 
                 const dbIdToSpotifyId = new Map(

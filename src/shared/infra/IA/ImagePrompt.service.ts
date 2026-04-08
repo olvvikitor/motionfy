@@ -470,9 +470,18 @@ AVOID
 ${allowFuturisticElements ? "- avoid generic neon/cyber clutter disconnected from selected reference" : "- any futuristic visual element"}
 
 ━━━━━━━━━━
+CINEMATIC VISUAL IMPACT (CRITICAL)
+━━━━━━━━━━
+- Masterpiece cinematic composition with breathtaking visual scale
+- Dramatic and highly evocative lighting (stark contrast, rim lighting, god rays, or neon bloom depending on the mood)
+- Immense atmospheric depth (particles, fog, dynamic wind, or glowing embers)
+- Must feel like a high-budget, highly polished anime movie key visual
+- Vivid, striking color grading that elevates the emotional tone
+
+━━━━━━━━━━
 FINAL INTENT
 ━━━━━━━━━━
-Create a cinematic anime scene where studio identity is unmistakable and dominant.
+Create a breathtaking cinematic anime scene where studio identity is unmistakable and the visual impact is monumental.
 
 ━━━━━━━━━━
 OUTPUT DIMENSIONS (MANDATORY)
@@ -715,6 +724,12 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "half-turn candid posture caught between laugh and movement",
                 "dynamic 3/4 body posture with natural arm swing"
             ],
+            Celebracao: [
+                "dynamic group-like inclusive stance with wide reaching arms",
+                "mid-motion turning pose as if reacting to someone off-camera calling them",
+                "joyful leaning posture resting elbows on a high table or balcony",
+                "upbeat walking stance with natural torso twist and relaxed shoulders"
+            ],
             ConfiancaDominante: [
                 "upright grounded stance with subtle weight on one leg, gaze past viewer",
                 "calm dominant walk cycle captured in-between steps",
@@ -853,6 +868,15 @@ The result MUST look like an anime illustration, NEVER a real photo.
                 "walking across a rooftop helipad while the camera observes from far away",
                 "jumping across narrow bridge segments in a floating district",
                 "threading through lantern crowds while laughing mid-motion"
+            ],
+            celebracao: [
+                "raising a glass or bottle in a festive crowded street",
+                "singing loudly while walking past neon store fronts",
+                "pointing at something off-screen while laughing heartily",
+                "exchanging a high-five or dynamic gesture in a night market",
+                "sitting on the trunk of a car watching fireworks or distant lights",
+                "running towards a festival gate with friends following behind",
+                "taking a candid photo of friends with a retro camera"
             ],
             confiancadominante: [
                 "walking with steady posture through downtown",
@@ -1094,6 +1118,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
         const sentimentUniverse: Record<string, string[]> = {
             EuforiaAtiva: ["floating lantern district above cloud seas", "hidden shinobi village during celestial festival", "sky-bridge metropolis with spirit gateways", "aurora canyon where thunder spirits dance", "sunforge citadel with airborne plazas"],
+            Celebracao: ["summer festival square packed with paper lanterns", "neon plaza filled with drifting holographic flyers", "rooftop garden party above a sprawling futuristic city", "riverbank street food market at dusk with warm glowing stalls", "beachside boardwalk during a twilight music festival"],
             ConfiancaDominante: ["fortress capital ruled by elite clans", "cursed academy megacity core", "imperial sky bastion with giant guardian statues", "obsidian command tower over rune valleys", "warrior senate district inside a flying continent"],
             RockEletrizante: ["demon-hunter entertainment district", "volcanic canyon village with fire shrines", "thunder rail city under storm crown", "vibrant abyss quarter powered by cursed cores", "forge-realm colosseum with energy torrents"],
             TensaoCriativa: ["forbidden archive tower with moving staircases", "underground talisman market in a sealed ward", "ink-painted labyrinth city that redraws itself", "clockwork library floating in void", "alchemical atelier district under red moon"],
@@ -1171,6 +1196,7 @@ The result MUST look like an anime illustration, NEVER a real photo.
 
         const sentimentWorlds: Record<string, string[]> = {
             EuforiaAtiva: ["festival-realm of flying lanterns", "high-energy shinobi celebration world", "radiant sky-city of spirit music"],
+            Celebracao: ["vibrant summer night festival world", "urban rooftop gathering civilization", "twilight coastal party realm", "spirited night-market district"],
             ConfiancaDominante: ["clan-governed fortress realm", "cursed imperial megacity world", "high-command sky bastion civilization"],
             RockEletrizante: ["storm-forged demon-hunter realm", "volcanic combat district world", "vibrant-curse undercity civilization"],
             TensaoCriativa: ["arcane archive labyrinth world", "sigil-market underground realm", "shape-shifting ink metropolis"],

@@ -39,7 +39,11 @@ export interface EmotionClassification {
 // ---------------------------------------------------------------------------
 const CLUSTER_PROFILES_10D: Record<string, { vector: EmotionalVector, sigma: number }> = {
     Euforia: {
-        vector: { Valencia: 0.9, Energia: 0.85, Dominancia: 0.6, Melancolia: 0.0, Euforia: 0.95, Tensao: 0.1, ConexaoSocial: 0.8, Introspeccao: 0.0, Empoderamento: 0.7, Vulnerabilidade: 0.0 },
+        vector: { Valencia: 0.8, Energia: 0.95, Dominancia: 0.8, Melancolia: 0.0, Euforia: 0.95, Tensao: 0.2, ConexaoSocial: 0.2, Introspeccao: 0.0, Empoderamento: 0.8, Vulnerabilidade: 0.0 },
+        sigma: 0.6
+    },
+    Celebracao: {
+        vector: { Valencia: 0.9, Energia: 0.8, Dominancia: 0.5, Melancolia: 0.1, Euforia: 0.7, Tensao: 0.1, ConexaoSocial: 0.95, Introspeccao: 0.1, Empoderamento: 0.5, Vulnerabilidade: 0.2 },
         sigma: 0.6
     },
     Confianca: {

@@ -158,6 +158,7 @@ Generate cinematic creative blocks for an anime image prompt.
 Keep each field as one concise line (6-18 words), candid and non-editorial.
 Do not mention photorealism, cameras brands, or markdown.
 Respect studio-first style and avoid conflicting with anime style.
+CRITICAL MANDATE: Maximize action, pose, and environmental variety! NEVER repeat the exact same seed action. Invent entirely new, surprising, distinct, and highly creative interactions, dynamic gestures, and world placements for EVERY generation to avoid making the same image twice.
 
 Input context:
 - sentiment: ${input.sentiment}
@@ -166,7 +167,7 @@ Input context:
 - moodScore: ${input.moodScore}
 - studioId: ${input.studioId ?? "Trigger"}
 
-Seed values (improve, don't copy literally):
+Seed values (ONLY use as a loose atmospheric vibe; INVENT entirely different, highly unique actions and poses):
 ${JSON.stringify(seed, null, 2)}
 `;
 
