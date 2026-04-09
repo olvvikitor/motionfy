@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
 import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionalVector, EmotionAnalysisService } from './emotion-analysis.service';
-import { CreativePromptBlocks, HybridPromptInput, ImagePromptService } from './ImagePrompt.service';
+import { HybridPromptInput, ImagePromptService } from './ImagePrompt.service';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
 import * as https from 'https';
@@ -108,91 +108,10 @@ export class AiService {
       }
     });
 
-    this.creative_blocks_model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
-      generationConfig: {
-        temperature: 0.9,
-        topP: 0.95,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          required: [
-            "shotComposition",
-            "cameraLanguage",
-            "gazeBehavior",
-            "pose",
-            "action",
-            "worldFlavor",
-            "environment",
-          ],
-          properties: {
-            shotComposition: { type: SchemaType.STRING },
-            cameraLanguage: { type: SchemaType.STRING },
-            gazeBehavior: { type: SchemaType.STRING },
-            pose: { type: SchemaType.STRING },
-            action: { type: SchemaType.STRING },
-            worldFlavor: { type: SchemaType.STRING },
-            environment: { type: SchemaType.STRING },
-          },
-        },
-      },
-    });
-  }
-
-  private sanitizeCreativeValue(value: unknown, fallback: string): string {
-    if (typeof value !== "string") return fallback;
-
-    const cleaned = value
-      .replace(/\s+/g, " ")
-      .replace(/[\r\n\t]+/g, " ")
-      .trim();
-
-    return cleaned || fallback;
-  }
-
-  private async generateCreativePromptBlocks(input: HybridPromptInput): Promise<Partial<CreativePromptBlocks>> {
-    const seed = this.image_promprService.getCreativeSeed(input);
-
-    const instruction = `
-Generate cinematic creative blocks for an anime image prompt.
-Keep each field as one concise line (6-18 words), candid and non-editorial.
-Do not mention photorealism, cameras brands, or markdown.
-Respect studio-first style and avoid conflicting with anime style.
-CRITICAL MANDATE: Maximize action, pose, and environmental variety! NEVER repeat the exact same seed action. Invent entirely new, surprising, distinct, and highly creative interactions, dynamic gestures, and world placements for EVERY generation to avoid making the same image twice.
-
-Input context:
-- sentiment: ${input.sentiment}
-- quadrant: ${input.coreAxes.quadrante}
-- activation: ${input.coreAxes.ativacao}
-- moodScore: ${input.moodScore}
-- studioId: ${input.studioId ?? "Trigger"}
-
-Seed values (ONLY use as a loose atmospheric vibe; INVENT entirely different, highly unique actions and poses):
-${JSON.stringify(seed, null, 2)}
-`;
-
-    const result = await this.creative_blocks_model.generateContent(instruction);
-    const parsed = JSON.parse(result.response.text()) as Partial<CreativePromptBlocks>;
-
-    return {
-      shotComposition: this.sanitizeCreativeValue(parsed.shotComposition, seed.shotComposition),
-      cameraLanguage: this.sanitizeCreativeValue(parsed.cameraLanguage, seed.cameraLanguage),
-      gazeBehavior: this.sanitizeCreativeValue(parsed.gazeBehavior, seed.gazeBehavior),
-      pose: this.sanitizeCreativeValue(parsed.pose, seed.pose),
-      action: this.sanitizeCreativeValue(parsed.action, seed.action),
-      worldFlavor: this.sanitizeCreativeValue(parsed.worldFlavor, seed.worldFlavor),
-      environment: this.sanitizeCreativeValue(parsed.environment, seed.environment),
-    };
   }
 
   async buildHybridImagePrompt(input: HybridPromptInput): Promise<string> {
-    try {
-      const creativeBlocks = await this.generateCreativePromptBlocks(input);
-      return this.image_promprService.build(input, creativeBlocks);
-    } catch (error) {
-      console.warn("Falha ao gerar blocos criativos por IA, usando fallback local:", error);
-      return this.image_promprService.build(input);
-    }
+    return this.image_promprService.build(input);
   }
 
   private buildPrompt(musics: { id: string; title: string; artist: string }[]): string {
