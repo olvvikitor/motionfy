@@ -388,6 +388,8 @@ STYLE LOCK (HIGHEST PRIORITY):
 - Generate ONLY a 2D anime illustration.
 - Output image MUST be exactly 768 pixels wide × 1344 pixels tall (9:16 portrait ratio).
 - Never generate photorealistic, live-action, CGI-realistic, or 3D-rendered output.
+- The final image must always read as cinematic: like a premium movie still with deliberate framing and visual storytelling.
+- Maintain filmic depth (clear foreground/midground/background), intentional light hierarchy, and dramatic composition in every mood.
 - Keep medium detail and soft illustrative edges; avoid hyper-sharp texture detail.
 - Do not render realistic skin pores, realistic lens effects, photographic noise, or DSLR look.
 - Treat any face reference image as identity guidance only (face proportions), never as photographic texture/style source.

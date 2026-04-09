@@ -105,19 +105,16 @@ export class FriendshipService {
 
     // ─── Funcionalidades sociais ─────────────────────────────────────────────
 
-    /** Retorna o mood mais recente de um amigo */
     async getFriendMood(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
         return this.userService.getMoodUserToday(friendId);
     }
 
-    /** Retorna a música que o amigo está ouvindo agora */
     async getFriendListeningNow(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
         return this.userService.listeningNow(friendId);
     }
 
-    /** Compara o mood do usuário com o de um amigo */
     async compareMood(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
 
@@ -140,10 +137,29 @@ export class FriendshipService {
         };
     }
 
+    // ─── Perfil público do amigo ─────────────────────────────────────────────
+
+    /** Histórico de moods do amigo (últimos N) */
+    async getFriendMoodHistory(userId: string, friendId: string, limit = 20) {
+        await this.assertFriends(userId, friendId);
+        return this.userService.getMoodHistory(friendId, limit);
+    }
+
+    /** Moods dos últimos 7 dias do amigo */
+    async getFriendMoodWeek(userId: string, friendId: string) {
+        await this.assertFriends(userId, friendId);
+        return this.userService.getMoodWeek(friendId);
+    }
+
+    /** Estatísticas gerais do amigo */
+    async getFriendStats(userId: string, friendId: string) {
+        await this.assertFriends(userId, friendId);
+        return this.userService.getUserStats(friendId);
+    }
+
     async toggleReaction(userId: string, moodId: string, emoji: string) {
-        // Assert mood logic is soft since you can react to anyone in the feed, but we will just operate on the ID
         const existing = await this.prisma.moodReaction.findUnique({
-            where: { moodAnalysisId_userId: { moodAnalysisId: moodId, userId: userId } }
+            where: { moodAnalysisId_userId: { moodAnalysisId: moodId, userId } }
         });
 
         if (existing) {
@@ -164,11 +180,7 @@ export class FriendshipService {
 
     async addComment(userId: string, moodId: string, text: string) {
         return this.prisma.moodComment.create({
-            data: {
-                moodAnalysisId: moodId,
-                userId,
-                text,
-            },
+            data: { moodAnalysisId: moodId, userId, text },
             include: {
                 user: { select: { id: true, display_name: true, img_profile: true } }
             }

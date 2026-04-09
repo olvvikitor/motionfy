@@ -104,6 +104,13 @@ export class ImagePromptService {
         return `
 Create a breathtaking stylized 2D anime illustration in the style of ${studio.name}, capturing the emotional theme "${data.sentiment}".
 
+    NON-NEGOTIABLE CINEMATIC BASELINE (APPLIES TO EVERY MOOD):
+    - The image must feel like a frame from an award-winning feature film.
+    - Prioritize cinematic visual storytelling, intentional mise-en-scene, and narrative clarity.
+    - Use film-grade composition (foreground/midground/background separation), dramatic depth, and controlled light hierarchy.
+    - Preserve a cinematic camera language at all times, regardless of whether the mood is calm, joyful, melancholic, dark, or chaotic.
+    - Even minimalist scenes must look premium, theatrical, and emotionally directed like cinema.
+
 ━━━━━━━━━━
 STUDIO DIRECTION
 ━━━━━━━━━━
@@ -128,7 +135,7 @@ CREATIVE FREEDOM (IMAGINE 100%)
 ━━━━━━━━━━
 - YOU HAVE FULL CREATIVE FREEDOM. 
 - Disregard any previous constraints about composition, poses, futuristic logic, powers, camera look, or world boundaries.
-- Let the music's mood and the emotional theme completely dictate the visual elements, abstractness, magical components, metaphors, environment, lighting, and action.
+- Let the music's mood and the emotional theme dictate visual motifs, symbolism, environment details, atmosphere, and action, but never downgrade the cinematic quality.
 - Imagine freely and create a gorgeous, evocative anime masterpiece!
 
 ━━━━━━━━━━
@@ -136,6 +143,7 @@ OUTPUT
 ━━━━━━━━━━
 - Aspect Ratio: 9:16 (Portrait)
 - Format: Stylized 2D Anime Illustration. NEVER photorealistic.
+- Cinematic requirement: always look like a film still with deliberate framing and dramatic visual direction.
 - DO NOT INCLUDE TITLES OR FLOATING TEXT. No words, no typography, unless it naturally belongs in the environment (e.g., street signs, shop banners).
 `.trim();
     }
