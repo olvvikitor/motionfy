@@ -28,7 +28,8 @@ export class AuthService {
             country: profile.country,
             img_profile: profile.imageUrl ?? '',
             face_photo_path: null,
-            image_credits:1,
+            preferredStudioId: null,
+            image_credits: 1,
             provider: providerName,
             notificateEmail: false,
             notificatePush: false,
@@ -37,29 +38,29 @@ export class AuthService {
             refreshToken: userData.refreshToken
         }
 
-        return await this.createUserService.create(user, providerName)
+        return await this.createUserService.create(user, providerName);
     }
 
     async login(credentials: LoginCredentialsDto) {
-        const user = await this.userRepository.getUserByEmailAuth(credentials.email);
+        const users = await this.userRepository.getUsersByEmail(credentials.email);
+        const passwordUser = users.find(user => Boolean(user.password));
+        const providerOnlyUser = users[0];
 
-        if (!user || (!user.password && user.provider)) {
-            throw new UnauthorizedException('Credenciais inválidas ou e-mail registrado apenas via ' + (user?.provider || 'provedor externo') + '.');
+        if (!passwordUser) {
+            throw new UnauthorizedException(
+                'Credenciais inválidas ou e-mail registrado apenas via ' + (providerOnlyUser?.provider || 'provedor externo') + '.',
+            );
         }
 
-        if (!user.password) {
-            throw new UnauthorizedException('Senha não definida.');
-        }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        const isPasswordValid = await bcrypt.compare(credentials.password, passwordUser.password!);
         if (!isPasswordValid) {
             throw new UnauthorizedException('Credenciais inválidas.');
         }
 
         const token = this.jwtService.sign({
-            id: user.id,
-            email: user.email,
-            provider: user.provider
+            id: passwordUser.id,
+            email: passwordUser.email,
+            provider: passwordUser.provider
         });
 
         return { token };

@@ -169,6 +169,7 @@ export class UserService {
             img_profile: user.img_profile,
             face_photo_path: user.face_photo_path,
             provider: user.provider,
+            preferredStudioId: (user as any).preferredStudioId, // Handle TS delay for new Prisma schema
         };
     }
 
@@ -184,35 +185,61 @@ export class UserService {
         return this.prompt_imageService.getAvailableStudios();
     }
 
-    async RefreshMoodUserToday(id: string, studioId?: string, limit = 20): Promise<ResponseAi> {
+    async RefreshMoodUserToday(id: string, studioId?: string): Promise<ResponseAi> {
+        const now = new Date();
+
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
-        // ── Verifica crédito antes de qualquer processamento pesado ──
-        const { balance } = await this.creditService.getBalance(id);
-        if (balance <= 0) {
-            throw new BadRequestException('Sem créditos para gerar imagem.');
+        const resolvedStudioId = studioId ?? user.preferredStudioId ?? undefined;
+
+        let useTodayOnly = false;
+
+        const lastMood = await this.userRepository.getMoodUser(id);
+        if (lastMood) {
+            const moodDate = new Date(lastMood.analyzedAt);
+            const msIn24h = 24 * 60 * 60 * 1000;
+            const isWithin24h = (now.getTime() - moodDate.getTime()) <= msIn24h;
+
+            if (isWithin24h) {
+                const isNowPast19h = now.getHours() >= 19;
+
+                const isMoodFromToday =
+                    moodDate.getDate() === now.getDate() &&
+                    moodDate.getMonth() === now.getMonth() &&
+                    moodDate.getFullYear() === now.getFullYear();
+
+                const isMoodBefore19hToday = isMoodFromToday && moodDate.getHours() < 19;
+
+                if (isNowPast19h && isMoodBefore19hToday) {
+                    // Update triggered by 19h rule: usa apenas tracks do dia atual
+                    useTodayOnly = true;
+                } else if (isNowPast19h && !isMoodFromToday) {
+                    // Update triggered by 19h rule (old mood foi ontem): usa apenas tracks do dia atual
+                    useTodayOnly = true;
+                } else {
+                    throw new BadRequestException('Seu mood já foi gerado recentemente. Volte após as 19h ou aguarde 24h.');
+                }
+            } else {
+                // Passou de 24h: usa o bloco móvel de ultimas 24h
+                useTodayOnly = false;
+            }
         }
 
         await this.lastTracks(id);
 
-        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const historyMusic = useTodayOnly
+            ? await this.trackRepository.getListenedToday(id)
+            : await this.trackRepository.getListenedLast24Hours(id);
 
-        const historyMusic = await this.trackRepository.getLastListened(id, safeLimit);
         const tracks = historyMusic
             .map((entry) => entry.track)
             .filter((track): track is Track => Boolean(track?.spotifyId));
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
 
-        let trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
         let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-
-        if (!response && tracks.length) {
-            await this.saveTrackService.ensureTrackAnalysesUpToDate(id, 100);
-            trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-            response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-        }
 
         if (!response) {
             const fallbackVector = this.emotionAnalysis.buildFallbackVector();
@@ -221,14 +248,14 @@ export class UserService {
                 moodScore: fallbackClassification.moodScore,
                 dominantSentiment: fallbackClassification.dominantSentiment,
                 emotionalVector: fallbackVector,
-                reasoning: `Sem análises suficientes para compor o mood agora (limit ${safeLimit})`,
+                reasoning: 'Sem análises suficientes para compor o mood agora — nenhuma música ouvida hoje.',
                 coreAxes: fallbackClassification.coreAxes,
                 image_mood: "",
                 tracks: [],
             };
         }
 
-        // ── Gera imagem e consome crédito ──
+        // ── Gera imagem ──
         const imagePrompt = await this.aiService.buildHybridImagePrompt({
             ativacao: response.coreAxes.ativacao,
             moodScore: response.moodScore,
@@ -236,30 +263,36 @@ export class UserService {
             sentiment: response.dominantSentiment,
             emotions: response.emotionalVector,
             faceReferencePath: user.face_photo_path,
-            studioId,
+            studioId: resolvedStudioId,
         });
 
         const imageBase64 = await this.aiService.genereateImage(imagePrompt, user.face_photo_path ?? undefined);
 
-        // Consome crédito somente após imagem gerada com sucesso
-        await this.creditService.consumeCredit(id);
-
-        const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
-        const buffer = Buffer.from(cleanBase64, 'base64');
-        const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
-        const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
-
-        const mood = {
+        const moodDataStore = {
             moodScore: response.moodScore,
             sentiment: response.dominantSentiment,
-            image_mood: imgUrl,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,
         };
 
-        setImmediate(() => {
-            this.userRepository.SaveMood(id, mood).catch(err => console.error('Erro ao salvar mood:', err));
+        // Envio da imagem gerada e persistência em background para não onerar o tempo de resposta
+        setImmediate(async () => {
+            try {
+                const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
+                const buffer = Buffer.from(cleanBase64, 'base64');
+                const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
+                const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
+
+                const finalMood = {
+                    ...moodDataStore,
+                    image_mood: imgUrl,
+                };
+
+                await this.userRepository.SaveMood(id, finalMood);
+            } catch (err) {
+                console.error('Erro ao fazer upload e salvar mood no background:', err);
+            }
         });
 
         response.image_mood = imageBase64;
@@ -305,5 +338,70 @@ export class UserService {
 
     async getUserStats(id: string) {
         return this.userRepository.getUserStats(id);
+    }
+
+    async getUserInsights(id: string) {
+        return this.userRepository.getUserInsights(id);
+    }
+
+    async testMoodAlgorithm(id: string, limit?: number): Promise<any> {
+        await this.lastTracks(id);
+
+        const historyMusic = limit
+            ? await this.trackRepository.getLastListened(id, limit)
+            : await this.trackRepository.getListenedLast24Hours(id);
+
+        const tracks = historyMusic
+            .map((entry) => entry.track)
+            .filter((track): track is Track => Boolean(track?.spotifyId));
+
+        const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
+
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
+
+        if (!response) {
+            const fallbackVector = this.emotionAnalysis.buildFallbackVector();
+            const fallbackClassification = this.emotionAnalysis.classifyEmotion(fallbackVector);
+            response = {
+                moodScore: fallbackClassification.moodScore,
+                dominantSentiment: fallbackClassification.dominantSentiment,
+                emotionalVector: fallbackVector,
+                reasoning: 'Sem análises suficientes para compor o mood.',
+                coreAxes: fallbackClassification.coreAxes,
+                image_mood: "",
+                tracks: [],
+            };
+        }
+
+        // Inclui probabilidades de emoção para debug
+        const classification = this.emotionAnalysis.classifyEmotion(response.emotionalVector);
+
+        return {
+            ...response,
+            image_mood: undefined,
+            emotionProbabilities: classification.emotionProbabilities,
+            tracksCount: tracks.length,
+            source: limit ? `últimas ${limit}` : 'hoje',
+        };
+    }
+
+    async getTodayTracksAnalyzed(id: string): Promise<any[]> {
+        await this.lastTracks(id);
+        const historyMusic = await this.trackRepository.getListenedLast24Hours(id);
+        const tracks = historyMusic
+            .map((entry) => entry.track)
+            .filter((track): track is Track => Boolean(track?.spotifyId));
+
+        const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
+        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
+
+        return response?.tracks ?? [];
+    }
+
+    async updateStudioPreference(id: string, studioId: string) {
+        await this.userRepository.updateStudioPreference(id, studioId);
+        return { message: 'Preferência de estúdio atualizada com sucesso' };
     }
 }

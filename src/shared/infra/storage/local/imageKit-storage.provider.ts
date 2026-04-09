@@ -29,8 +29,10 @@ export class ImageKitProvider implements FileStorageService {
 
         return result.url
     }
-    deleteFacePhoto(path: string): Promise<void> {
-        throw new Error("Method not implemented.");
+    async deleteFacePhoto(path: string): Promise<void> {
+        // Para URLs do ImageKit, o delete requer fileId.
+        // Como hoje armazenamos apenas a URL, fazemos no-op para não quebrar o fluxo.
+        return;
     }
     async uploadMoodPhoto(file: UploadFile, userId: any): Promise<string> {
         const safeExt = extname(file.originalname || "").toLowerCase() || ".jpg";

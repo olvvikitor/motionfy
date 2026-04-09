@@ -15,9 +15,10 @@ model User {
   country         String
   provider        String
   display_name    String
-  img_profile     String
-  face_photo_path String?
-  image_credits   Int     @default(1)
+  img_profile       String
+  face_photo_path   String?
+  preferredStudioId String?
+  image_credits     Int     @default(1)
   notificateEmail Boolean @default(false)
   notificatePush  Boolean @default(false)
   notificateWeek  Boolean @default(false)
@@ -25,6 +26,8 @@ model User {
   histories    ListeningHistory[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
+  reactions    MoodReaction[]
+  comments     MoodComment[]
 
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
@@ -103,7 +106,9 @@ model MoodAnalysis {
   analyzedAt      DateTime @default(now())
   tracksAnalyzeds Json
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  reactions       MoodReaction[]
+  comments        MoodComment[]
 }
 
 model ListeningHistory {
@@ -115,4 +120,28 @@ model ListeningHistory {
   user     User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, trackId, playedAt])
+}
+
+model MoodReaction {
+  id             String       @id @default(uuid())
+  moodAnalysisId String
+  userId         String
+  emoji          String
+  createdAt      DateTime     @default(now())
+
+  moodAnalysis   MoodAnalysis @relation(fields: [moodAnalysisId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([moodAnalysisId, userId])
+}
+
+model MoodComment {
+  id             String       @id @default(uuid())
+  moodAnalysisId String
+  userId         String
+  text           String
+  createdAt      DateTime     @default(now())
+
+  moodAnalysis   MoodAnalysis @relation(fields: [moodAnalysisId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

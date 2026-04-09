@@ -1,105 +1,99 @@
 import { Injectable } from '@nestjs/common';
 
+export const EMOTIONAL_DIMENSIONS = [
+    'Valencia',
+    'Energia',
+    'Dominancia',
+    'Melancolia',
+    'Euforia',
+    'Tensao',
+    'ConexaoSocial',
+    'Introspeccao',
+    'Empoderamento',
+    'Vulnerabilidade',
+] as const;
+
+export type EmotionalVector = Record<typeof EMOTIONAL_DIMENSIONS[number], number>;
+
 export type CoreAxes = {
     polaridade: number;
     ativacao: number;
     quadrante: string;
+    [key: string]: any;
 };
 
-export type SentimentResult = {
-    label: string;
-    score: number;
-};
-
-export const EMOTIONAL_DIMENSIONS = [
-    "Valencia",
-    "Energia",
-    "Dominancia",
-    "Melancolia",
-    "Euforia",
-    "Tensao",
-    "ConexaoSocial",
-    "Introspeccao",
-    "Empoderamento",
-    "Vulnerabilidade"
-] as const;
-
-export type EmotionalVector = {
-    [K in typeof EMOTIONAL_DIMENSIONS[number]]: number;
-};
-
-export type EmotionClassification = {
+export interface EmotionClassification {
     dominantSentiment: string;
     moodScore: number;
     coreAxes: CoreAxes;
-    emotionProbabilities: { label: string; probability: number }[];
-};
+    emotionProbabilities: Array<{
+        label: string;
+        probability: number;
+    }>;
+}
 
 // ---------------------------------------------------------------------------
-// CLUSTER MAP  (polaridade × ativacao, ambos em [-1, +1])
-//
-// 19 clusters cobrindo todo o espaço emocional.
-//
-//   POSITIVO/ATIVO (+p, +a)
-//     EuforiaAtiva       ( 0.85,  0.80)  Festa, EDM, pop eufórico
-//     ConfiancaDominante ( 0.55,  0.55)  Rock motivacional, empoderamento
-//     RockEletrizante    ( 0.35,  0.90)  Alta energia, valência neutra-positiva
-//     TensaoCriativa     ( 0.10,  0.75)  Rock enérgico sem alegria clara
-//
-//   POSITIVO/CALMO (+p, -a)
-//     AmorCalmo          ( 0.90, -0.20)  Bossa nova, love songs suaves
-//     ConexaoAfetiva     ( 0.75,  0.10)  Amor, amizade, calor humano
-//     NostalgiaFeliz     ( 0.40, -0.35)  Saudade boa, "aquela época"
-//     Serenidade         ( 0.65, -0.60)  Relaxamento, natureza, ambient
-//     PazInterior        ( 0.50, -0.85)  Meditação, folk minimalista
-//     Contemplacao       ( 0.20, -0.85)  Filosofia, psicodelia, existencialismo
-//
-//   NEGATIVO/ATIVO (-p, +a)
-//     TensaoDramatica    (-0.10,  0.90)  Angústia intensa, post-rock tenso
-//     Frustracao         (-0.25,  0.30)  Frustração contida, pós-punk
-//     IrritacaoAtiva     (-0.50,  0.60)  Ansiedade, tensão, nervosismo
-//     RaivaExplosiva     (-0.90,  0.90)  Metal pesado, hardcore
-//
-//   NEGATIVO/CALMO (-p, -a)
-//     NostalgiaProfunda  (-0.40, -0.50)  Saudade dolorosa, melancolia "doce"
-//     Desanimo           (-0.85, -0.70)  Tristeza profunda, apatia, derrota
-//
-//   CENTRO / TRANSIÇÃO
-//     VulnerabilidadeEmocional (-0.15, -0.20)  Fragilidade, introspecção crua
-//     Ambivalencia             ( 0.05,  0.10)  Indie ambíguo, emoção difusa
-//     Estupor                  (-0.60,  0.15)  Entorpecimento, blues lento
+// MAPA 10D: Perfis Ideais (Centróides)
+// Em vez de esmagar o vetor para 2D, agora comparamos a música diretamente
+// no espaço de 10 dimensões contra esses perfis ideais.
 // ---------------------------------------------------------------------------
-
-const CLUSTER_POSITIONS: Record<string, { x: number; y: number; sigma: number }> = {
-
-    // ── POSITIVO / ATIVO ──────────────────────────────────────────────────────
-    EuforiaAtiva:             { x:  0.85, y:  0.80, sigma: 0.32 },
-    ConfiancaDominante:       { x:  0.55, y:  0.55, sigma: 0.32 },
-    RockEletrizante:          { x:  0.35, y:  0.90, sigma: 0.30 },
-    TensaoCriativa:           { x:  0.10, y:  0.75, sigma: 0.34 },
-
-    // ── POSITIVO / CALMO ──────────────────────────────────────────────────────
-    AmorCalmo:                { x:  0.90, y: -0.20, sigma: 0.33 },
-    ConexaoAfetiva:           { x:  0.75, y:  0.10, sigma: 0.25 },
-    NostalgiaFeliz:           { x:  0.40, y: -0.35, sigma: 0.33 },
-    Serenidade:               { x:  0.65, y: -0.60, sigma: 0.33 },
-    PazInterior:              { x:  0.50, y: -0.85, sigma: 0.32 },
-    Contemplacao:             { x:  0.20, y: -0.85, sigma: 0.28 },
-
-    // ── NEGATIVO / ATIVO ──────────────────────────────────────────────────────
-    TensaoDramatica:          { x: -0.10, y:  0.90, sigma: 0.30 },
-    Frustracao:               { x: -0.25, y:  0.30, sigma: 0.38 },
-    IrritacaoAtiva:           { x: -0.50, y:  0.60, sigma: 0.38 },
-    RaivaExplosiva:           { x: -0.90, y:  0.90, sigma: 0.28 },
-
-    // ── NEGATIVO / CALMO ──────────────────────────────────────────────────────
-    NostalgiaProfunda:        { x: -0.40, y: -0.50, sigma: 0.38 },
-    Desanimo:                 { x: -0.85, y: -0.70, sigma: 0.33 },
-
-    // ── CENTRO / TRANSIÇÃO ────────────────────────────────────────────────────
-    VulnerabilidadeEmocional: { x: -0.15, y: -0.20, sigma: 0.25 },
-    Ambivalencia:             { x:  0.05, y:  0.10, sigma: 0.20 },
-    Estupor:                  { x: -0.60, y:  0.15, sigma: 0.30 },
+const CLUSTER_PROFILES_10D: Record<string, { vector: EmotionalVector, sigma: number }> = {
+    Euforia: {
+        vector: { Valencia: 0.8, Energia: 0.95, Dominancia: 0.8, Melancolia: 0.0, Euforia: 0.95, Tensao: 0.2, ConexaoSocial: 0.2, Introspeccao: 0.0, Empoderamento: 0.8, Vulnerabilidade: 0.0 },
+        sigma: 0.6
+    },
+    Celebracao: {
+        vector: { Valencia: 0.9, Energia: 0.8, Dominancia: 0.5, Melancolia: 0.1, Euforia: 0.7, Tensao: 0.1, ConexaoSocial: 0.95, Introspeccao: 0.1, Empoderamento: 0.5, Vulnerabilidade: 0.2 },
+        sigma: 0.6
+    },
+    Confianca: {
+        vector: { Valencia: 0.7, Energia: 0.75, Dominancia: 0.9, Melancolia: 0.1, Euforia: 0.6, Tensao: 0.3, ConexaoSocial: 0.4, Introspeccao: 0.2, Empoderamento: 0.95, Vulnerabilidade: 0.1 },
+        sigma: 0.6
+    },
+    Energia: {
+        vector: { Valencia: 0.5, Energia: 0.95, Dominancia: 0.7, Melancolia: 0.1, Euforia: 0.5, Tensao: 0.6, ConexaoSocial: 0.5, Introspeccao: 0.1, Empoderamento: 0.6, Vulnerabilidade: 0.1 },
+        sigma: 0.6
+    },
+    Amor: {
+        vector: { Valencia: 0.9, Energia: 0.3, Dominancia: 0.3, Melancolia: 0.2, Euforia: 0.4, Tensao: 0.1, ConexaoSocial: 0.95, Introspeccao: 0.4, Empoderamento: 0.4, Vulnerabilidade: 0.5 },
+        sigma: 0.6
+    },
+    Paz: {
+        vector: { Valencia: 0.8, Energia: 0.1, Dominancia: 0.2, Melancolia: 0.2, Euforia: 0.1, Tensao: 0.0, ConexaoSocial: 0.4, Introspeccao: 0.8, Empoderamento: 0.3, Vulnerabilidade: 0.4 },
+        sigma: 0.6
+    },
+    Reflexao: {
+        vector: { Valencia: 0.5, Energia: 0.2, Dominancia: 0.3, Melancolia: 0.4, Euforia: 0.1, Tensao: 0.2, ConexaoSocial: 0.3, Introspeccao: 0.95, Empoderamento: 0.4, Vulnerabilidade: 0.6 },
+        sigma: 0.6
+    },
+    Tensao: {
+        vector: { Valencia: 0.2, Energia: 0.8, Dominancia: 0.4, Melancolia: 0.4, Euforia: 0.1, Tensao: 0.95, ConexaoSocial: 0.1, Introspeccao: 0.5, Empoderamento: 0.2, Vulnerabilidade: 0.7 },
+        sigma: 0.6
+    },
+    Revolta: {
+        vector: { Valencia: 0.1, Energia: 0.95, Dominancia: 0.85, Melancolia: 0.2, Euforia: 0.1, Tensao: 0.8, ConexaoSocial: 0.1, Introspeccao: 0.2, Empoderamento: 0.7, Vulnerabilidade: 0.2 },
+        sigma: 0.6
+    },
+    Frustracao: {
+        vector: { Valencia: 0.2, Energia: 0.6, Dominancia: 0.3, Melancolia: 0.6, Euforia: 0.1, Tensao: 0.7, ConexaoSocial: 0.1, Introspeccao: 0.6, Empoderamento: 0.2, Vulnerabilidade: 0.6 },
+        sigma: 0.6
+    },
+    Melancolia: {
+        vector: { Valencia: 0.4, Energia: 0.2, Dominancia: 0.2, Melancolia: 0.85, Euforia: 0.1, Tensao: 0.3, ConexaoSocial: 0.4, Introspeccao: 0.8, Empoderamento: 0.2, Vulnerabilidade: 0.8 },
+        sigma: 0.6
+    },
+    Tristeza: {
+        vector: { Valencia: 0.1, Energia: 0.1, Dominancia: 0.1, Melancolia: 0.95, Euforia: 0.0, Tensao: 0.4, ConexaoSocial: 0.1, Introspeccao: 0.8, Empoderamento: 0.1, Vulnerabilidade: 0.95 },
+        sigma: 0.6
+    },
+    Vazio: {
+        vector: { Valencia: 0.2, Energia: 0.1, Dominancia: 0.1, Melancolia: 0.5, Euforia: 0.0, Tensao: 0.2, ConexaoSocial: 0.0, Introspeccao: 0.7, Empoderamento: 0.0, Vulnerabilidade: 0.6 },
+        sigma: 0.6
+    },
+    Ambivalente: {
+        vector: { Valencia: 0.5, Energia: 0.4, Dominancia: 0.4, Melancolia: 0.5, Euforia: 0.3, Tensao: 0.4, ConexaoSocial: 0.5, Introspeccao: 0.5, Empoderamento: 0.4, Vulnerabilidade: 0.5 },
+        sigma: 0.45 // Mais estrito: só entra aqui se o vetor é muito central e sem picos
+    },
 };
 
 @Injectable()
@@ -115,7 +109,6 @@ export class EmotionAnalysisService {
         if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
             return 0.5;
         }
-
         return this.clamp(value, 0, 1);
     }
 
@@ -129,25 +122,18 @@ export class EmotionAnalysisService {
         return (value * 2) - 1; // [0,1] → [-1,+1]
     }
 
-    private euclideanDistance(x1: number, y1: number, x2: number, y2: number): number {
-        return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+    // Distância Euclidiana em N-Dimensões
+    private euclideanDistanceND(vecA: EmotionalVector, vecB: EmotionalVector): number {
+        let sumSquared = 0;
+        for (const dim of EMOTIONAL_DIMENSIONS) {
+            sumSquared += Math.pow(vecA[dim] - vecB[dim], 2);
+        }
+        return Math.sqrt(sumSquared);
     }
 
-    // RBF kernel: k(d, σ) = exp(−d² / (2σ²))
+    // RBF kernel com distância Euclidiana (10D)
     private rbfSimilarity(distance: number, sigma: number): number {
         return Math.exp(-(distance * distance) / (2 * sigma * sigma));
-    }
-
-    // Ambivalência deve dominar apenas quando o ponto está realmente próximo do centro.
-    private calibrateAmbivalenciaAffinity(polaridade: number, ativacao: number, affinity: number): number {
-        const radialDistance = Math.sqrt((polaridade * polaridade) + (ativacao * ativacao));
-
-        if (radialDistance > 0.45) return affinity * 0.45;
-        if (radialDistance > 0.30) return affinity * 0.65;
-        if (radialDistance < 0.10) return affinity * 1.20;
-        if (radialDistance < 0.16) return affinity * 1.10;
-
-        return affinity;
     }
 
     // Softmax com estabilidade numérica
@@ -160,63 +146,42 @@ export class EmotionAnalysisService {
 
     // -------------------------------------------------------------------------
     // Sigmoid comprimida para mapear polaridade → moodScore em [0.10, 0.90]
-    //
-    // Por que sigmoid aqui?
-    //   O mapeamento linear (polaridade + 1) / 2 produz scores acima de 85%
-    //   para músicas normalmente positivas (Valencia ≥ 0.75), que é a maioria.
-    //   A sigmoid "encolhe" os extremos — músicas muito positivas chegam a ~82%
-    //   em vez de 92%, e músicas muito negativas caem a ~18% em vez de 5%.
-    //   Isso evita que qualquer análise pareça "perfeita" ou "catastrófica".
-    //
-    // Parâmetros:
-    //   k = 2.5  → inclinação moderada (3.0+ seria muito íngreme)
-    //   min/max  → comprime a saída para [0.10, 0.90] deliberadamente:
-    //              nenhum dia é 100% eufórico ou 0% funcional.
     // -------------------------------------------------------------------------
     private polaridadeToMoodScore(polaridade: number): number {
-        const k   = 2.5;
-        const raw = 1 / (1 + Math.exp(-k * polaridade)); // sigmoid em [0,1]
-        // Re-escala de [0,1] para [0.10, 0.90]
+        const k = 2.5;
+        const raw = 1 / (1 + Math.exp(-k * polaridade));
         return 0.10 + raw * 0.80;
     }
 
     // -------------------------------------------------------------------------
-    // Cálculo do eixo de ativação — revisado
-    //
-    // Problema anterior:
-    //   rawAtivacao = Energia * 0.45 + Tensao * 0.30 + Euforia * 0.15 - Melancolia * 0.10
-    //   → Tensao pesava demais (0.30), elevando a ativação de músicas tensas mas lentas.
-    //   → Dominancia era ignorada (músicas dominantes são tipicamente ativas).
-    //   → Euforia pesava pouco (0.15) mesmo sendo amplificador primário de ativação.
-    //
-    // Revisão dos pesos:
-    //   Energia      0.50 → principal driver fisiológico (BPM, volume, drive)
-    //   Euforia      0.25 → amplificador emocional de ativação percebida
-    //   Dominancia   0.15 → músicas dominantes tendem a ter mais presença/energia
-    //   Tensao       0.10 → contribui mas não domina (tensão ≠ energia)
-    //   Melancolia  -0.15 → suprime ativamente (músicas melancólicas são passivas)
-    //   Vulnerab.   -0.10 → introspecção reduz ativação percebida
-    //
-    // Soma dos pesos positivos = 0.90, negativos = -0.25
-    // Antes de normalizar, o raw pode cair em ~[-0.25, 0.90] dependendo do vetor.
-    // Aplicamos clamp e depois normalize para mapear para [-1, +1].
+    // Cálculo do eixo de ativação 2D (Apenas para visual UI/Geração prompt)
     // -------------------------------------------------------------------------
     calculateCoreAxes(vector: EmotionalVector): CoreAxes {
         const safeVector = this.sanitizeVector(vector);
 
-        // Polaridade: Valencia é o eixo hedônico direto — sem mudança aqui,
-        // pois o problema relatado não é polaridade mas sim ativação + moodScore.
-        const polaridade = this.normalize(safeVector.Valencia);
+        let rawPolaridade =
+            Math.max(safeVector.Valencia, safeVector.Empoderamento * 0.8) * 0.50 +
+            safeVector.Dominancia * 0.20 +
+            safeVector.Empoderamento * 0.15 +
+            safeVector.ConexaoSocial * 0.15 -
+            safeVector.Melancolia * 0.20 -
+            safeVector.Tensao * 0.15 -
+            safeVector.Vulnerabilidade * 0.15;
+
+        if (safeVector.Dominancia >= 0.7 && safeVector.Empoderamento >= 0.7) {
+            rawPolaridade = Math.max(rawPolaridade, 0.65);
+        }
+
+        const polaridade = this.normalize(this.clamp(rawPolaridade));
 
         const rawAtivacao =
-            safeVector.Energia         * 0.50 +
-            safeVector.Euforia         * 0.25 +
-            safeVector.Dominancia      * 0.15 +
-            safeVector.Tensao          * 0.10 -
-            safeVector.Melancolia      * 0.15 -
-            safeVector.Vulnerabilidade * 0.10;
+            Math.max(safeVector.Energia, safeVector.Dominancia * 0.8) * 0.45 +
+            safeVector.Euforia * 0.20 +
+            safeVector.Tensao * 0.15 +
+            safeVector.Dominancia * 0.20 -
+            safeVector.Melancolia * 0.20 -
+            safeVector.Vulnerabilidade * 0.15;
 
-        // Reescala pela faixa teórica do modelo para evitar saturação no lado negativo.
         const rawAtivacaoScaled =
             (rawAtivacao - EmotionAnalysisService.ACTIVATION_MIN) /
             (EmotionAnalysisService.ACTIVATION_MAX - EmotionAnalysisService.ACTIVATION_MIN);
@@ -229,40 +194,35 @@ export class EmotionAnalysisService {
 
     classifyQuadrant(p: number, a: number): string {
         if (p >= 0 && a >= 0) return "PositivoAtivo";
-        if (p >= 0 && a <  0) return "PositivoCalmo";
-        if (p <  0 && a >= 0) return "NegativoAtivo";
+        if (p >= 0 && a < 0) return "PositivoCalmo";
+        if (p < 0 && a >= 0) return "NegativoAtivo";
         return "NegativoCalmo";
     }
 
+    // -------------------------------------------------------------------------
+    // NOVA CLASSIFICAÇÃO 10D
+    // Compara o vetor com todos os perfis 10D e extrai a similaridade RBF.
+    // -------------------------------------------------------------------------
     classifyEmotion(vector: EmotionalVector): EmotionClassification {
-        const coreAxes = this.calculateCoreAxes(this.sanitizeVector(vector));
-        const { polaridade, ativacao } = coreAxes;
+        const safeVector = this.sanitizeVector(vector);
+        const coreAxes = this.calculateCoreAxes(safeVector);
+        const { polaridade } = coreAxes;
 
-        // 1. Afinidade RBF para cada cluster
-        const entries = Object.entries(CLUSTER_POSITIONS);
-        const affinities = entries.map(([label, cluster]) => {
-            const distance = this.euclideanDistance(polaridade, ativacao, cluster.x, cluster.y);
-            let affinity = this.rbfSimilarity(distance, cluster.sigma);
-
-            if (label === 'Ambivalencia') {
-                affinity = this.calibrateAmbivalenciaAffinity(polaridade, ativacao, affinity);
-            }
-
+        const entries = Object.entries(CLUSTER_PROFILES_10D);
+        const affinities = entries.map(([label, profile]) => {
+            const distance = this.euclideanDistanceND(safeVector, profile.vector);
+            const affinity = this.rbfSimilarity(distance, profile.sigma);
             return { label, affinity };
         });
 
-        // 2. Softmax sobre afinidades → probabilidades comparáveis
         const affinityValues = affinities.map(a => a.affinity);
-        const probabilities  = this.softmax(affinityValues);
+        const probabilities = this.softmax(affinityValues);
 
         const emotionProbabilities = affinities
             .map((a, i) => ({ label: a.label, probability: probabilities[i] }))
             .sort((a, b) => b.probability - a.probability);
 
         const dominant = emotionProbabilities[0];
-
-        // 3. moodScore via sigmoid comprimida para [0.10, 0.90]
-        //    Evita extremos absolutos — nenhum dia é 100% perfeito ou 0% funcional.
         const moodScore = this.polaridadeToMoodScore(polaridade);
 
         return {

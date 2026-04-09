@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 import type { MRequest } from 'src/modules/user/controllers/user.controller';
 import { CreditService } from './credit.service';
@@ -6,7 +6,7 @@ import { CreditService } from './credit.service';
 @Controller('credits')
 @UseGuards(JwtAuthGuard)
 export class CreditController {
-    constructor(private readonly creditService: CreditService) {}
+    constructor(private readonly creditService: CreditService) { }
 
     /** Saldo + histórico + imagens geradas + pacotes disponíveis */
     @Get('status')
@@ -20,9 +20,9 @@ export class CreditController {
         return this.creditService.getBalance(req.user!.id);
     }
 
-    /** Simula compra de um pacote */
+    /** Compra de pacotes — temporariamente bloqueada */
     @Post('purchase')
-    async purchase(@Body() body: { packageId: string }, @Req() req: MRequest) {
-        return this.creditService.purchasePackage(req.user!.id, body.packageId);
+    async purchase(@Body() body: { packageId: string; source?: string }, @Req() req: MRequest) {
+        throw new BadRequestException('Compra de créditos em breve. Fique ligado!');
     }
 }
