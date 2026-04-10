@@ -587,7 +587,7 @@ type MoodNuance = { palettes: string[]; atmosphere: string[]; symbols: string[] 
 
 const MOOD_NUANCE: Record<string, MoodNuance> = {
     Euforia:    { palettes: ["electric yellow and amber burst on deep shadow", "neon gold with luminous bloom and hot white specular"], atmosphere: ["time suspended at its fastest, most alive moment", "the world incandescent for exactly this instant"], symbols: ["fireworks mid-explosion filling sky", "shattered glass frozen in light"] },
-    Celebracao: { palettes: ["warm rose gold and amber in candlelight softness", "saturated summer coral and blush tones"], atmosphere: ["happiness spreading between people like warmth", "a moment worth holding onto forever"], symbols: ["confetti mid-fall in warm light", "overflowing table of flowers food and drinks"] },
+    Celebracao: { palettes: ["vivid coral and warm gold with saturated celebration light", "festive rose and amber tones with sparkling particle bursts"], atmosphere: ["shared joy that multiplies when felt together — the electricity of belonging to a crowd that is all feeling the same thing", "the peak moment of collective euphoria, bodies close, voices loud, time suspended at its most alive"], symbols: ["crowd of friends silhouetted mid-jump against an explosive burst of fireworks, energy lines radiating outward — no food, no tables, only people and light", "festival concert crowd screaming together, protagonist lifted above them, confetti and light trails in every direction"] },
     Confianca:  { palettes: ["cool steel blue and lime on near-black", "monochrome with one sharp neon accent piercing through"], atmosphere: ["quiet authority that needs no announcement", "calm certainty before something inevitable"], symbols: ["city reflected in lenses", "geometric shadow patterns in perfect alignment"] },
     Energia:    { palettes: ["industrial orange and raw teal on black asphalt", "aggressive neon on gritty dark texture"], atmosphere: ["physics at the human limit", "every surface vibrating with kinetic potential"], symbols: ["crack lines from an impact point", "sweat frozen mid-air under harsh light"] },
     Amor:       { palettes: ["pink blush and ivory in soft morning diffusion", "warm terracotta and mauve with gentle lens flare"], atmosphere: ["time at the pace of a heartbeat", "tenderness that doesn't need words"], symbols: ["pressed flowers and a soft candle", "two cups of coffee steaming side by side"] },
@@ -682,6 +682,17 @@ export class ImagePromptService {
         const atmosphere  = nuance  ? this.random(nuance.atmosphere)  : "charged with unspoken emotion";
         const symbol      = nuance  ? this.random(nuance.symbols)     : "one meaningful visual detail";
 
+        const moodSpecificRules = moodKey === "Celebracao" ? `
+━━━━━━━━━━
+MOOD-SPECIFIC RULES — CELEBRACAO (SOCIAL CELEBRATION)
+━━━━━━━━━━
+This mood is about COLLECTIVE SOCIAL JOY as seen in iconic anime productions.
+MANDATORY: The scene must depict a crowd, group of friends, or large social gathering in a peak celebratory moment — exactly like a climactic scene from a famous anime.
+Inspiration: concert arena crowd erupting during a final performance (K-On!, Your Lie in April), school festival crowd going wild, group victory moment with characters lifted above a roaring crowd (Haikyuu!!), festival fireworks scene with silhouetted figures together (Any Given Ghibli Matsuri scene), idol stage finale with light sticks and thousands of fans (Love Live!, Oshi no Ko).
+STRICTLY FORBIDDEN: dining tables, food on tables, banquet settings, restaurant scenes, picnic setups, or any arrangement of food items near characters. No meals. No eating. No table settings of any kind.
+The energy source is PEOPLE and SHARED EMOTION, not food. Lights, confetti, fireworks, music stages, crowd movement, light sticks, and stadium energy are the only acceptable environmental elements.
+` : "";
+
         return `
 Create a breathtaking stylized 2D anime illustration in the style of ${studio.name}, capturing the emotional theme "${data.sentiment}".
 
@@ -715,7 +726,7 @@ Color palette: ${palette}
 Atmospheric quality: ${atmosphere}
 Symbolic visual element (integrate organically): ${symbol}
 Energy level: ${actMod}
-
+${moodSpecificRules}
 ━━━━━━━━━━
 CHARACTER
 ━━━━━━━━━━
