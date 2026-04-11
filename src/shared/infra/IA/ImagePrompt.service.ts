@@ -25,7 +25,7 @@ export type HybridPromptInput = {
     studioId?: string;
 };
 
-// ── Emotional quadrants ───────────────────────────────────────────────────────
+// ── Quadrantes emocionais ─────────────────────────────────────────────────────
 type Quadrant = "PositivoAtivo" | "PositivoCalmo" | "NegativoAtivo" | "NegativoCalmo" | "Centro";
 
 const MOOD_TO_QUADRANT: Record<string, Quadrant> = {
@@ -45,7 +45,7 @@ const MOOD_TO_QUADRANT: Record<string, Quadrant> = {
     Ambivalente: "Centro",
 };
 
-// ── Per-studio scene DNA by quadrant ─────────────────────────────────────────
+// ── DNA da cena por estúdio e quadrante ──────────────────────────────────────
 type SceneDNA = {
     scenarios: string[];
     motions: string[];
@@ -56,87 +56,87 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     kyoani: {
         PositivoAtivo: {
             scenarios: [
-                "school cultural festival, decorations everywhere, warm afternoon light flooding the courtyard",
-                "music club live performance on a gymnasium stage, faces lit by stage lights",
-                "sunlit school track, sports festival, banners in the wind",
+                "festival cultural escolar, decorações por toda parte, luz quente de fim de tarde inundando o pátio",
+                "apresentação ao vivo do clube de música no palco do ginásio, rostos iluminados pelas luzes do palco",
+                "pista de corrida escolar ensolarada, festival esportivo, faixas tremulando ao vento",
             ],
             motions: [
-                "spinning in joy, uniform skirt flaring, eyes bright and laughing",
-                "catching a friend mid-stumble, both erupting into laughter",
-                "running at full speed down a cherry-blossom corridor, petals flying",
+                "girando de alegria, saia do uniforme esvoaçando, olhos brilhantes e rindo",
+                "segurando uma amiga que quase tropeçou, ambas explodindo em risadas",
+                "correndo a toda velocidade por um corredor de cerejeiras, pétalas voando",
             ],
             cameraLanguage: [
-                "mid-shot with shallow depth of field, warm bokeh of lanterns behind",
-                "low angle looking up at the character against a blue sky full of streamers",
-                "wide shot of the full scene, character small but vivid in the center",
+                "plano médio com profundidade de campo rasa, bokeh quente de lanternas ao fundo",
+                "ângulo baixo olhando para cima, personagem contra um céu azul cheio de fitas coloridas",
+                "plano aberto de toda a cena, personagem pequena mas vibrante no centro",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "quiet café corner by a rain-streaked window, a cup of tea steaming",
-                "sunlit classroom after everyone left, dust in the light, open notebook",
-                "suburban park in late afternoon, bench under a gentle tree",
+                "canto silencioso de um café junto a uma janela com marcas de chuva, uma xícara de chá fumegando",
+                "sala de aula ensolarada depois que todos já foram embora, poeira na luz, caderno aberto",
+                "parque de bairro no fim da tarde, banco sob uma árvore gentil",
             ],
             motions: [
-                "reading quietly, one hand resting on the open page, slight smile",
-                "watching rain on glass, fingertip tracing a droplet downward",
-                "sitting cross-legged on a desk, headphones around the neck, eyes closed",
+                "lendo em silêncio, uma mão apoiada na página aberta, leve sorriso",
+                "observando a chuva no vidro, ponta do dedo traçando uma gota escorrendo",
+                "sentada de pernas cruzadas sobre uma carteira, fones de ouvido no pescoço, olhos fechados",
             ],
             cameraLanguage: [
-                "intimate close-up on an expression, background beautifully soft",
-                "profile shot with a window providing the only light source",
-                "over-the-shoulder looking out at the softly lit world",
+                "close-up íntimo na expressão, fundo lindamente desfocado",
+                "plano de perfil com a janela como única fonte de luz",
+                "plano por cima do ombro olhando para o mundo suavemente iluminado lá fora",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "rain-soaked school entrance, students rushing past, one figure standing still",
-                "practice room after a failed performance, instrument on the stand, tension in the air",
-                "dim hallway after a confrontation, footsteps echoing away",
+                "entrada da escola encharcada de chuva, alunos passando apressados, uma figura parada imóvel",
+                "sala de ensaio depois de uma apresentação fracassada, instrumento no suporte, tensão no ar",
+                "corredor escuro após uma confrontação, passos ecoando ao longe",
             ],
             motions: [
-                "grabbing the handle of a door without opening it, knuckles pale",
-                "standing very stiff in heavy rain, not running for shelter",
-                "hands pressed to both ears, surrounded by noise and motion",
+                "segurando a maçaneta da porta sem abri-la, nós dos dedos brancos",
+                "parada rígida sob chuva pesada, sem correr para se abrigar",
+                "mãos pressionadas contra os dois ouvidos, cercada por ruído e movimento",
             ],
             cameraLanguage: [
-                "tight close-up on the hands, emotion read through grip",
-                "reflection in a rain puddle, character looking down",
-                "over-the-shoulder framing, isolating the character from a crowd",
+                "close-up cerrado nas mãos, emoção lida pela tensão dos dedos",
+                "reflexo em uma poça de chuva, personagem olhando para baixo",
+                "enquadramento por cima do ombro, isolando a personagem da multidão",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "empty school rooftop at dusk, city fading into orange distance",
-                "bedroom at blue hour, window slightly open, curtain moving",
-                "train station platform, last train gone, alone under station lights",
+                "terraço vazio da escola ao entardecer, cidade sumindo na distância alaranjada",
+                "quarto na hora azul, janela entreaberta, cortina ondulando",
+                "plataforma da estação de trem, último trem já partiu, sozinha sob as luzes da estação",
             ],
             motions: [
-                "sitting against the wall, knees up, face turned slightly away",
-                "pressing a hand to a cold window, looking at something outside",
-                "staring at a photograph in a softly lit room, expression still and aching",
+                "sentada encostada na parede, joelhos para cima, rosto levemente virado",
+                "pressionando a mão contra uma janela fria, olhando para algo lá fora",
+                "encarando uma fotografia em um cômodo de luz suave, expressão imóvel e dolorida",
             ],
             cameraLanguage: [
-                "slow pull-back from close to wide, leaving the character very alone in the frame",
-                "low static shot at ground level, character's feet the focal point",
-                "reflection in a window with the room behind, inside and outside both soft",
+                "lento recuo de close para plano aberto, deixando a personagem muito sozinha no quadro",
+                "plano estático baixo ao nível do chão, pés da personagem como ponto focal",
+                "reflexo na janela com o quarto atrás, dentro e fora ambos suaves",
             ],
         },
         Centro: {
             scenarios: [
-                "school rooftop between classes, wind moving through everything, city visible below",
-                "empty classroom, two chairs still facing each other after a conversation",
-                "hallway junction, paths in three directions, no one else visible",
+                "terraço da escola entre as aulas, vento passando por tudo, cidade visível abaixo",
+                "sala de aula vazia, duas cadeiras ainda viradas uma para a outra após uma conversa",
+                "entroncamento de corredor, caminhos em três direções, ninguém mais visível",
             ],
             motions: [
-                "weight shifting from foot to foot, looking in two directions",
-                "hand raised to knock, pausing before contact",
-                "sitting at a desk, pencil mid-air, not writing, not stopped—just hovering",
+                "peso mudando de um pé para o outro, olhando em duas direções",
+                "mão erguida para bater, pausando antes do contato",
+                "sentada em uma carteira, lápis no ar, sem escrever, sem parar — apenas pairando",
             ],
             cameraLanguage: [
-                "perfectly symmetrical composition, character exactly centered",
-                "wide shot in which character stands at an intersection",
-                "slow rack focus between two equally important planes",
+                "composição perfeitamente simétrica, personagem exatamente centralizada",
+                "plano aberto onde a personagem está em uma encruzilhada",
+                "troca lenta de foco entre dois planos igualmente importantes",
             ],
         },
     },
@@ -144,87 +144,87 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     ghibli: {
         PositivoAtivo: {
             scenarios: [
-                "soaring above clouds on a spirit creature's back, sun breaking through below",
-                "busy fantasy market town, banners flapping, creatures and people everywhere",
-                "clifftop overlooking a magical valley, wind strong and warm",
+                "voando acima das nuvens nas costas de uma criatura espiritual, sol rompendo por baixo",
+                "cidade-mercado de fantasia movimentada, faixas tremulando, criaturas e pessoas por toda parte",
+                "topo de penhasco com vista para um vale mágico, vento forte e quente",
             ],
             motions: [
-                "arms spread wide in free flight, hair everywhere, face pure joy",
-                "running through a spirit festival crowd, color and light in every direction",
-                "leaping from a rooftop into clear sky, a spirit companion beside them",
+                "braços abertos em voo livre, cabelo em todas as direções, rosto de pura alegria",
+                "correndo pela multidão de um festival de espíritos, cor e luz em cada direção",
+                "saltando de um telhado para o céu limpo, companheiro espiritual ao lado",
             ],
             cameraLanguage: [
-                "epic wide shot from below the character against a vast azure sky",
-                "tracking shot alongside a creature in full flight, horizon tilting",
-                "slow gentle crane rising to reveal the full magical landscape below",
+                "grande plano aberto de baixo, personagem contra um vasto céu azul",
+                "plano de acompanhamento ao lado de uma criatura em pleno voo, horizonte inclinando",
+                "grua lenta e suave subindo para revelar toda a paisagem mágica abaixo",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "flower meadow in golden hour, a small cottage visible in the valley below",
-                "seaside cottage in summer, fishing boats in the harbor, soft wind through grass",
-                "ancient forest at dawn, light filtering through enormous trees, spirits drifting",
+                "campo de flores na hora dourada, uma pequena cabana visível no vale abaixo",
+                "cabana à beira-mar no verão, barcos de pesca no porto, vento suave passando pela grama",
+                "floresta ancestral ao amanhecer, luz filtrando por árvores enormes, espíritos flutuando",
             ],
             motions: [
-                "lying in tall grass looking at clouds, one hand slowly trailing through the meadow",
-                "sitting on a stone wall watching the sea, content and nowhere to be",
-                "tending something small with great care—a seed, a flower, a spirit",
+                "deitada na grama alta olhando as nuvens, uma mão trilhando lentamente pelo prado",
+                "sentada em um muro de pedra observando o mar, contente e sem lugar para ir",
+                "cuidando de algo pequeno com grande carinho — uma semente, uma flor, um espírito",
             ],
             cameraLanguage: [
-                "enormous sweeping landscape establishing shot, tiny character at rest",
-                "slow drift across a beautiful environment, character in easy companionship with it",
-                "gentle low angle from the ground, grass in foreground, character and sky above",
+                "enorme plano panorâmico de estabelecimento, personagem minúscula em repouso",
+                "deslocamento lento por um ambiente lindo, personagem em companhia tranquila com ele",
+                "ângulo baixo gentil a partir do chão, grama em primeiro plano, personagem e céu acima",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "storm bearing down on a coastal town, sea churning, shutters slamming",
-                "ancient spirit's fury made visible—forest shaking, darkness spreading",
-                "urgent flight through war-scarred sky, fires below casting upward light",
+                "tempestade caindo sobre uma cidade costeira, mar agitado, venezianas batendo",
+                "fúria de um espírito ancestral tornada visível — floresta tremendo, escuridão se espalhando",
+                "fuga urgente por um céu marcado pela guerra, fogueiras abaixo lançando luz para cima",
             ],
             motions: [
-                "holding ground against a powerful wind, hair and coat violent with movement",
-                "sprinting across a disintegrating bridge over a roiling spirit river",
-                "one arm raised to protect, the other reaching for something beyond reach",
+                "se mantendo firme contra um vento poderoso, cabelo e casaco violentos em movimento",
+                "correndo por uma ponte que se desintegra sobre um rio espiritual agitado",
+                "um braço erguido para proteção, o outro esticado para algo fora de alcance",
             ],
             cameraLanguage: [
-                "wide shot showing the full scale of the hostile environment around a small figure",
-                "ground-level tracking shot of desperate sprinting, world blurring",
-                "tight close-up of a face resolving into courage mid-storm",
+                "plano aberto mostrando toda a escala do ambiente hostil ao redor de uma figura pequena",
+                "plano de acompanhamento rente ao chão de uma corrida desesperada, mundo se borrando",
+                "close-up apertado de um rosto se resolvendo em coragem no meio da tempestade",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "abandoned shrine deep in winter forest, snow settling on stone torii",
-                "small boat at anchor in a fog-covered bay, no other boats in sight",
-                "overgrown ruins of a mechanical castle, one window still lit",
+                "santuário abandonado nas profundezas de uma floresta de inverno, neve assentando sobre torii de pedra",
+                "pequeno barco ancorado em uma baía coberta de neblina, nenhum outro barco à vista",
+                "ruínas cobertas de vegetação de um castelo mecânico, uma janela ainda acesa",
             ],
             motions: [
-                "sitting on ancient stone steps looking at falling petals, not catching them",
-                "kneeling beside a small grave marker in a forest, hand resting on it gently",
-                "walking very slowly through fog, the world reduced to ten feet in all directions",
+                "sentada em degraus de pedra antigos olhando pétalas caindo, sem tentar pegá-las",
+                "ajoelhada ao lado de uma pequena lápide na floresta, mão repousando gentilmente sobre ela",
+                "caminhando muito lentamente pela neblina, o mundo reduzido a três metros em todas as direções",
             ],
             cameraLanguage: [
-                "slow wide pull-back revealing the scale of the emptiness around the character",
-                "long static shot—nature moving subtly, character perfectly still",
-                "high angle, character small in a vast ruined landscape",
+                "lento recuo amplo revelando a escala do vazio ao redor da personagem",
+                "longo plano estático — natureza se movendo sutilmente, personagem perfeitamente imóvel",
+                "ângulo alto, personagem pequena em uma vasta paisagem em ruínas",
             ],
         },
         Centro: {
             scenarios: [
-                "ferry between two worlds, both shores visible, the water perfectly calm",
-                "crossroads in a spirit forest, paths going in four directions, none more obvious",
-                "threshold of a magical door, one world bright, one unknown",
+                "balsa entre dois mundos, ambas as margens visíveis, a água perfeitamente calma",
+                "encruzilhada em uma floresta de espíritos, caminhos em quatro direções, nenhum mais evidente",
+                "limiar de uma porta mágica, um mundo brilhante, um desconhecido",
             ],
             motions: [
-                "standing at the ferry railing looking at neither shore, just the water",
-                "one hand on the door frame, weight not committed to entering or leaving",
-                "crouching to examine something too small to name, expression unreadable",
+                "de pé na grade da balsa, sem olhar para nenhuma margem, apenas a água",
+                "uma mão no batente da porta, peso sem se comprometer a entrar ou sair",
+                "agachada examinando algo pequeno demais para nomear, expressão indecifrável",
             ],
             cameraLanguage: [
-                "perfect symmetry, both worlds mirrored on either side of the character",
-                "slow lateral dolly revealing one world replacing another",
-                "shot framed through a doorway or arch, world split by the frame",
+                "simetria perfeita, ambos os mundos espelhados em cada lado da personagem",
+                "dolly lateral lento revelando um mundo substituindo o outro",
+                "plano enquadrado por uma porta ou arco, mundo dividido pela moldura",
             ],
         },
     },
@@ -232,87 +232,87 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     ufotable: {
         PositivoAtivo: {
             scenarios: [
-                "noble phantasm activation, reality fracturing at the edges with golden light",
-                "rooftop above a city at night after a decisive victory, mana residue glowing",
-                "ancient throne room bathed in the light of a triumphant bounded field",
+                "ativação de noble phantasm, realidade fraturando nas bordas com luz dourada",
+                "terraço acima de uma cidade à noite após uma vitória decisiva, resíduo de mana brilhando",
+                "salão do trono ancestral banhado pela luz de um bounded field triunfante",
             ],
             motions: [
-                "weapon raised high, magic circles blooming open beneath the feet",
-                "landing from height, crater forming, energy dissipating outward",
-                "eyes opened after a surge of power, glow fading, breath leveling",
+                "arma erguida ao alto, círculos mágicos desabrochando sob os pés",
+                "aterrissando de grande altura, cratera se formando, energia dissipando para fora",
+                "olhos abertos após uma explosão de poder, brilho diminuindo, respiração se acalmando",
             ],
             cameraLanguage: [
-                "sweeping 3D arc shot around a triumphant figure, sky enormous",
-                "low hero angle with volumetric light rays emanating from behind",
-                "high-speed tracking pull-back from insanely close to vast scale",
+                "arco amplo em 3D ao redor de uma figura triunfante, céu imenso",
+                "ângulo heroico baixo com raios de luz volumétrica emanando por trás",
+                "tracking pull-back de alta velocidade, de extremamente perto a uma escala vasta",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "moonlit Japanese shrine after battle, torii casting perfect shadows",
-                "a servant and master in a quiet garden, the magical world momentarily at peace",
-                "a castle's great library at dusk, last light through tall windows on old books",
+                "santuário japonês sob luar após a batalha, torii projetando sombras perfeitas",
+                "servo e mestre em um jardim tranquilo, o mundo mágico momentaneamente em paz",
+                "grande biblioteca de um castelo ao entardecer, última luz pelas janelas altas sobre livros antigos",
             ],
             motions: [
-                "sheathing a weapon slowly, eyes closing in quiet relief",
-                "two figures sitting together, not speaking, magic residue fading from the air",
-                "one hand raised to touch a floating magical artifact, expression peaceful",
+                "embainhando uma arma lentamente, olhos fechando em alívio silencioso",
+                "duas figuras sentadas juntas, em silêncio, resíduo mágico desaparecendo do ar",
+                "uma mão erguida para tocar um artefato mágico flutuante, expressão pacífica",
             ],
             cameraLanguage: [
-                "slow push-in on a composed expression in magical ambient light",
-                "tight two-shot with extraordinary depth of field and particle glow",
-                "high-angle establishing shot of a serene magical landscape at golden hour",
+                "push-in lento em uma expressão composta sob luz ambiente mágica",
+                "two-shot cerrado com profundidade de campo extraordinária e brilho de partículas",
+                "plano de estabelecimento em ângulo alto de uma paisagem mágica serena na hora dourada",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "ley line eruption cracking a city district, light and shadow in violent battle",
-                "bounded field collapsing inward, reality peeling at the edges",
-                "abandoned church, fog and dark flame, two forces about to collide",
+                "erupção de linha ley rachando um distrito da cidade, luz e sombra em batalha violenta",
+                "bounded field colapsando para dentro, realidade descascando nas bordas",
+                "igreja abandonada, neblina e chama escura, duas forças prestes a colidir",
             ],
             motions: [
-                "arm extended calling forth a noble phantasm, the air warping around it",
-                "sliding to a defensive stance, command seal blazing on the back of the hand",
-                "back against a pillar, breath controlled, calculating before striking",
+                "braço estendido invocando um noble phantasm, ar distorcendo ao redor",
+                "deslizando para uma postura defensiva, selo de comando brilhando nas costas da mão",
+                "costas contra um pilar, respiração controlada, calculando antes de golpear",
             ],
             cameraLanguage: [
-                "camera spinning in an arc around the character as energy erupts outward",
-                "Dutch tilt with volumetric dark light, character in sharp relief",
-                "crash push-in at point of maximum tension, depth of field collapsing",
+                "câmera girando em arco ao redor da personagem enquanto energia explode para fora",
+                "ângulo holandês com luz volumétrica sombria, personagem em relevo nítido",
+                "push-in acelerado no ponto de tensão máxima, profundidade de campo colapsando",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "ruined church interior after a battle, stained glass broken, moonlight on debris",
-                "empty grail chamber, no winner, the chamber's light dying",
-                "servant beginning to fade, outline softening, eyes still open",
+                "interior de igreja em ruínas após uma batalha, vitrais quebrados, luar sobre escombros",
+                "câmara do graal vazia, sem vencedor, a luz da câmara morrendo",
+                "servo começando a desaparecer, contorno suavizando, olhos ainda abertos",
             ],
             motions: [
-                "kneeling with one hand on the ground, strength almost gone",
-                "looking at vanishing hands as a spirit form dissolves into light",
-                "standing at the edge of a ruined platform, looking down, not falling",
+                "ajoelhado com uma mão no chão, forças quase esgotadas",
+                "olhando as mãos desaparecendo conforme a forma espiritual se dissolve em luz",
+                "de pé na borda de uma plataforma em ruínas, olhando para baixo, sem cair",
             ],
             cameraLanguage: [
-                "slow pull-back from an intimate close-up to a vast empty space",
-                "overhead looking straight down on a solitary figure in the ruins",
-                "side profile in a shaft of moonlight, most of the frame in deep shadow",
+                "lento recuo de um close-up íntimo para um vasto espaço vazio",
+                "vista aérea olhando direto para baixo sobre uma figura solitária nas ruínas",
+                "perfil lateral em um feixe de luar, maior parte do quadro em sombra profunda",
             ],
         },
         Centro: {
             scenarios: [
-                "Einzbern forest at twilight, neither day nor night, magic suspended in the air",
-                "a bridge over a dark river, two servants stopped mid-crossing",
-                "the moment before a command seal choice, the seal half-illuminated",
+                "floresta dos Einzbern no crepúsculo, nem dia nem noite, magia suspensa no ar",
+                "uma ponte sobre um rio escuro, dois servos parados no meio da travessia",
+                "o momento antes de uma escolha de selo de comando, o selo pela metade iluminado",
             ],
             motions: [
-                "hands clasped, eyes closed, not yet decided, the moment held",
-                "two figures on opposite ends of a bridge, neither moving first",
-                "a single step arrested mid-air, everything around it paused",
+                "mãos entrelaçadas, olhos fechados, ainda sem decisão, o momento suspenso",
+                "duas figuras em extremidades opostas de uma ponte, nenhuma se movendo primeiro",
+                "um único passo interrompido no ar, tudo ao redor pausado",
             ],
             cameraLanguage: [
-                "split diopter—near and far equally sharp, neither one dominant",
-                "slow orbit around a perfectly still figure in a liminal space",
-                "rack focus cycling between two equal planes, finding no answer",
+                "diopter dividido — perto e longe igualmente nítidos, nenhum dominante",
+                "órbita lenta ao redor de uma figura perfeitamente imóvel em um espaço liminar",
+                "troca de foco ciclando entre dois planos iguais, sem encontrar resposta",
             ],
         },
     },
@@ -320,87 +320,87 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     mappa: {
         PositivoAtivo: {
             scenarios: [
-                "Tokyo rooftop at night, neon reflections soaking the wet concrete below",
-                "underground boxing ring, red corner light, crowd on their feet",
-                "Shibuya crossing cleared, character in the center, city exploding around them",
+                "terraço de Tóquio à noite, reflexos de neon encharcando o concreto molhado abaixo",
+                "ringue de boxe subterrâneo, luz vermelha do corner, multidão de pé",
+                "cruzamento de Shibuya esvaziado, personagem no centro, cidade explodindo ao redor",
             ],
             motions: [
-                "fist raised after a fight, sweat and exhilaration, crowd behind",
-                "urban parkour—launching off a rail, city dropping away below",
-                "slamming through a door into open air, back-lit by the city below",
+                "punho erguido após uma luta, suor e euforia, multidão atrás",
+                "parkour urbano — se lançando de um corrimão, cidade caindo abaixo",
+                "arrombando uma porta para o ar aberto, contraluz da cidade abaixo",
             ],
             cameraLanguage: [
-                "crash zoom in on a triumphant expression, bokeh of city lights",
-                "low Dutch angle showing scale and momentum, world tilted with energy",
-                "whip pan tracking movement at full speed through an urban frame",
+                "crash zoom na expressão triunfante, bokeh de luzes da cidade",
+                "ângulo holandês baixo mostrando escala e ímpeto, mundo inclinado com energia",
+                "whip pan acompanhando o movimento a toda velocidade por um cenário urbano",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "izakaya corner booth, warm amber light, two people after a hard day",
-                "convenience store 2 AM, only customer, fluorescent warmth against blue night outside",
-                "apartment rooftop at sunset, laundry on the line, city going quiet below",
+                "canto de booth em izakaya, luz âmbar quente, duas pessoas após um dia difícil",
+                "konbini às 2 da manhã, único cliente, calor fluorescente contra a noite azul lá fora",
+                "terraço de apartamento ao pôr do sol, roupas no varal, cidade ficando silenciosa abaixo",
             ],
             motions: [
-                "leaning back with a can, looking at the city from a railing, at ease",
-                "laughing at something small, elbows on a low table",
-                "two people walking slowly home, hands nearly touching",
+                "recostado com uma latinha, olhando a cidade de uma grade, à vontade",
+                "rindo de algo pequeno, cotovelos apoiados em uma mesa baixa",
+                "duas pessoas caminhando lentamente para casa, mãos quase se tocando",
             ],
             cameraLanguage: [
-                "intimate mid-shot with textured urban background softly lit",
-                "side profile with soft warm light from inside cutting into blue exterior",
-                "wide shot of the full human scene, city as backdrop not threat",
+                "plano médio íntimo com fundo urbano texturizado suavemente iluminado",
+                "perfil lateral com luz quente suave de dentro cortando o exterior azul",
+                "plano aberto da cena humana completa, cidade como pano de fundo e não ameaça",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "domain expansion collapsing Shibuya, cursed energy splitting the air",
-                "ruined city block under a blood-red sky, only one figure standing",
-                "underground cage fight, fury and desperation, metal mesh catching the light",
+                "expansão de domínio colapsando Shibuya, energia amaldiçoada rasgando o ar",
+                "quarteirão da cidade em ruínas sob um céu vermelho-sangue, apenas uma figura de pé",
+                "luta subterrânea em gaiola, fúria e desespero, tela de metal captando a luz",
             ],
             motions: [
-                "Black Flash hit—time fractalized, fist at impact, world going white",
-                "screaming with a domain expanding out of the body, arms thrown wide",
-                "catching a falling wall fragment bare-handed, knees buckling under the load",
+                "golpe Black Flash — tempo fractalizado, punho no impacto, mundo ficando branco",
+                "gritando com um domínio se expandindo do corpo, braços abertos",
+                "segurando um fragmento de parede caindo com as mãos nuas, joelhos cedendo sob o peso",
             ],
             cameraLanguage: [
-                "impact freeze-frame: full stop, energy lines, extreme close-up",
-                "extreme Dutch tilt with fast handheld energy, chaos barely contained",
-                "cut to black mid-motion, held for a beat, then cut back",
+                "freeze-frame de impacto: parada total, linhas de energia, close-up extremo",
+                "ângulo holandês extremo com energia handheld frenética, caos mal contido",
+                "corte para preto no meio do movimento, mantido por um instante, depois corte de volta",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "empty gym at 4 AM, single overhead light, punching bag still swinging",
-                "back alley under an overpass in the rain, chain-link fence, one puddle of reflected orange light",
-                "apartment with all lights off except a monitor glow, takeout box cold on the desk",
+                "academia vazia às 4 da manhã, uma única luz no teto, saco de pancadas ainda balançando",
+                "beco sob um viaduto na chuva, cerca de arame, uma poça de luz laranja refletida",
+                "apartamento com todas as luzes apagadas exceto o brilho do monitor, marmita fria na mesa",
             ],
             motions: [
-                "sitting on a locker room bench, head down, forearms on knees",
-                "standing in rain under a failing umbrella, not moving for shelter",
-                "leaning against a cold concrete wall, sliding slowly down to sit on the floor",
+                "sentado em um banco de vestiário, cabeça baixa, antebraços nos joelhos",
+                "de pé na chuva sob um guarda-chuva falhando, sem se mover para se abrigar",
+                "encostado em uma parede de concreto frio, escorregando lentamente até sentar no chão",
             ],
             cameraLanguage: [
-                "tight close-up on hands hanging between knees, face barely visible",
-                "low floor-level shot, character folded into themselves in a corner",
-                "flat static mid shot, character inside harsh fluorescent box light",
+                "close-up apertado nas mãos penduradas entre os joelhos, rosto mal visível",
+                "plano baixo no nível do chão, personagem dobrado sobre si mesmo em um canto",
+                "plano médio estático e achatado, personagem dentro de uma caixa de luz fluorescente agressiva",
             ],
         },
         Centro: {
             scenarios: [
-                "train platform at midnight, character mid-decision, train visible in the distance",
-                "Shibuya crossing 3 AM, all signals paused, alone in the center",
-                "apartment half-packed with boxes, some put away, some still open",
+                "plataforma de trem à meia-noite, personagem no meio de uma decisão, trem visível ao longe",
+                "cruzamento de Shibuya às 3 da manhã, todos os sinais pausados, sozinho no centro",
+                "apartamento meio empacotado com caixas, algumas guardadas, outras ainda abertas",
             ],
             motions: [
-                "phone in hand, unsent message on screen, thumb hovering",
-                "one foot on the train, one still on the platform, doors about to close",
-                "looking at two different jackets laid out, neither picked up",
+                "celular na mão, mensagem não enviada na tela, polegar pairando",
+                "um pé no trem, outro ainda na plataforma, portas prestes a fechar",
+                "olhando para duas jaquetas diferentes dispostas, nenhuma pegada",
             ],
             cameraLanguage: [
-                "centered symmetrical shot, character the axis between two worlds",
-                "slow push-in that doesn't commit to either side of the frame",
-                "handheld subtle float, unresolved, searching",
+                "plano simétrico centralizado, personagem como eixo entre dois mundos",
+                "push-in lento que não se compromete com nenhum lado do quadro",
+                "handheld com flutuação sutil, sem resolução, buscando",
             ],
         },
     },
@@ -408,87 +408,87 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     shaft: {
         PositivoAtivo: {
             scenarios: [
-                "impossible architecture shattering into geometric fragments of brilliant color",
-                "abstract kaleidoscopic space made of tilted text panels and color blocks in celebration",
-                "a surreal cityscape where gravity has abandoned its usual direction, character at its apex",
+                "arquitetura impossível se estilhaçando em fragmentos geométricos de cor brilhante",
+                "espaço caleidoscópico abstrato feito de painéis de texto inclinados e blocos de cor em celebração",
+                "paisagem urbana surreal onde a gravidade abandonou sua direção habitual, personagem em seu ápice",
             ],
             motions: [
-                "head tilted at an impossible angle, breaking into a smile that breaks the composition",
-                "arms outstretched, silhouette against a void of pure saturated color",
-                "spinning in a mathematically impossible environment, each rotation revealing a new world",
+                "cabeça inclinada em um ângulo impossível, abrindo um sorriso que quebra a composição",
+                "braços esticados, silhueta contra um vazio de cor pura saturada",
+                "girando em um ambiente matematicamente impossível, cada rotação revelando um novo mundo",
             ],
             cameraLanguage: [
-                "spiral zoom centered on the character, geometry unfolding around them",
-                "extreme Dutch tilt inverting to extreme Dutch tilt the opposite direction mid-shot",
-                "rapid cuts between static geometric frames, each one a different angle on the same moment",
+                "zoom em espiral centrado na personagem, geometria se desdobrando ao redor",
+                "ângulo holandês extremo invertendo para o extremo oposto no meio do plano",
+                "cortes rápidos entre quadros geométricos estáticos, cada um com um ângulo diferente do mesmo momento",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "bookshelves stretching to infinite in warm amber light, impossible scale and stillness",
-                "a white room with one impossibly beautiful window and nothing else",
-                "a symbolic garden with no physics—flowers in the air, water flowing upward",
+                "estantes de livros se estendendo ao infinito em luz âmbar quente, escala e quietude impossíveis",
+                "um cômodo branco com uma única janela impossivelmente bela e nada mais",
+                "um jardim simbólico sem física — flores no ar, água fluindo para cima",
             ],
             motions: [
-                "sitting in white space, one leg crossed, reading something only they can see",
-                "a hand reaching toward an impossible light source from the left side of the frame only",
-                "completely still, facing away, the environment arranged in perfect calm around them",
+                "sentada em espaço branco, perna cruzada, lendo algo que só ela pode ver",
+                "uma mão alcançando uma fonte de luz impossível, vindo apenas do lado esquerdo do quadro",
+                "completamente imóvel, de costas, o ambiente arranjado em calma perfeita ao redor",
             ],
             cameraLanguage: [
-                "extreme long shot—character a single glyph in an infinite warm space",
-                "flat frontal shot with all depth removed, purely graphic",
-                "slow drift sideways, the environment a continuous panel of abstract warmth",
+                "plano longuíssimo — personagem um único glifo em um espaço quente infinito",
+                "plano frontal achatado com toda a profundidade removida, puramente gráfico",
+                "deslocamento lateral lento, o ambiente um painel contínuo de calor abstrato",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "surreal corridor tilting toward a vanishing point that leads nowhere",
-                "abstract shapes collapsing inward like a world folding onto itself",
-                "a confrontation in a field of negative space—only figures and shadow, no environment",
+                "corredor surreal inclinando em direção a um ponto de fuga que não leva a lugar nenhum",
+                "formas abstratas colapsando para dentro como um mundo se dobrando sobre si mesmo",
+                "confronto em um campo de espaço negativo — apenas figuras e sombra, sem ambiente",
             ],
             motions: [
-                "the iconic head tilt—but performed at 90 degrees, eye locked directly at the viewer",
-                "shadow peeling from the body and moving independently in a different direction",
-                "two silhouettes at opposite ends of a tilting frame, both rigid, neither yielding",
+                "a icônica inclinação de cabeça — mas executada a 90 graus, olho travado direto no espectador",
+                "sombra se descascando do corpo e se movendo independentemente em outra direção",
+                "duas silhuetas em extremidades opostas de um quadro inclinado, ambas rígidas, nenhuma cedendo",
             ],
             cameraLanguage: [
-                "extreme Dutch at 45°, nothing horizontal in the frame",
-                "quick hard cuts between uncomfortable static angles, rhythm building pressure",
-                "smash to pure color, held, then hard cut to tight close-up",
+                "ângulo holandês extremo a 45°, nada horizontal no quadro",
+                "cortes secos rápidos entre ângulos estáticos desconfortáveis, ritmo construindo pressão",
+                "smash para cor pura, mantido, depois corte seco para close-up apertado",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "monochrome infinite hallway with a single detail—one lit window, one open door",
-                "a void of flat grey with one impossible chair and one impossible lamp",
-                "a room made of stacked books, all closed, all grey, going on forever",
+                "corredor infinito monocromático com um único detalhe — uma janela acesa, uma porta aberta",
+                "um vazio de cinza plano com uma cadeira impossível e uma luminária impossível",
+                "um cômodo feito de livros empilhados, todos fechados, todos cinza, se estendendo para sempre",
             ],
             motions: [
-                "sitting absolutely still, facing the camera, expression removed of all affect",
-                "one single tear drawn as a perfect geometric line on a flat-drawn face",
-                "standing in a void, arms at sides, the environment doing all the emotional work",
+                "sentada absolutamente imóvel, enfrentando a câmera, expressão desprovida de todo afeto",
+                "uma única lágrima desenhada como uma linha geométrica perfeita em um rosto de traço plano",
+                "de pé em um vazio, braços ao lado do corpo, o ambiente fazendo todo o trabalho emocional",
             ],
             cameraLanguage: [
-                "perfectly locked-off frontal shot, zero camera movement, formally composed",
-                "extreme close-up on the eye, the void reflected in it",
-                "very slow mechanical push-in over a long duration, no arrival point",
+                "plano frontal perfeitamente travado, zero movimento de câmera, composição formal",
+                "close-up extremo no olho, o vazio refletido nele",
+                "push-in mecânico muito lento por longa duração, sem ponto de chegada",
             ],
         },
         Centro: {
             scenarios: [
-                "an impossible staircase going both up and down with no difference between the two",
-                "a mirrored room where the reflection shows a different moment than the one happening",
-                "a corridor with identical doors on both sides, all the same, no way to distinguish",
+                "uma escadaria impossível subindo e descendo sem diferença entre os dois",
+                "um cômodo espelhado onde o reflexo mostra um momento diferente do que está acontecendo",
+                "um corredor com portas idênticas em ambos os lados, todas iguais, sem como distinguir",
             ],
             motions: [
-                "hands folded in a lap, facing the camera, perfectly still, neither yes nor no",
-                "reflection doing something slightly different from the original figure",
-                "finger pointed at the camera, paused, never arriving",
+                "mãos cruzadas no colo, de frente para a câmera, perfeitamente imóvel, nem sim nem não",
+                "reflexo fazendo algo levemente diferente da figura original",
+                "dedo apontado para a câmera, pausado, nunca chegando",
             ],
             cameraLanguage: [
-                "split frame—left half and right half doing completely different things simultaneously",
-                "slow rotation of the whole frame, character staying upright as the world turns",
-                "rack focus that never commits, cycling back and forth between two planes",
+                "quadro dividido — metade esquerda e metade direita fazendo coisas completamente diferentes simultaneamente",
+                "rotação lenta de todo o quadro, personagem permanecendo vertical enquanto o mundo gira",
+                "troca de foco que nunca se compromete, ciclando entre dois planos",
             ],
         },
     },
@@ -496,170 +496,170 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA>> = {
     trigger: {
         PositivoAtivo: {
             scenarios: [
-                "giant mech cockpit at peak synchronization, spiral galaxy through the viewport",
-                "neon dystopian city at 200 km/h, buildings streaking to color",
-                "arena floor after a decisive victory, crowd exploding, lights on the winner",
+                "cabine de mecha gigante em sincronização máxima, galáxia espiral pela janela de visualização",
+                "cidade neon distópica a 200 km/h, prédios se borrando em cor",
+                "chão da arena após uma vitória decisiva, plateia explodindo, luzes no vencedor",
             ],
             motions: [
-                "dramatic pointing at the sky, cape exploding outward, impossible proportions",
-                "mid-transformation sequence—half human, half something cosmic",
-                "screaming a battle cry at maximum volume, the world bending around the sound",
+                "apontando dramaticamente para o céu, capa explodindo para fora, proporções impossíveis",
+                "sequência de transformação — metade humano, metade algo cósmico",
+                "gritando um grito de guerra no volume máximo, mundo se curvando ao redor do som",
             ],
             cameraLanguage: [
-                "spiral zoom in to extreme close-up, energy lines in every direction",
-                "impossible low angle, character against an infinitely winding galaxy",
-                "smash cut to impact frame: full stop, white out, energy lines, then explode to wide",
+                "zoom em espiral para close-up extremo, linhas de energia em todas as direções",
+                "ângulo baixo impossível, personagem contra uma galáxia infinitamente espiral",
+                "smash cut para quadro de impacto: parada total, white-out, linhas de energia, depois explosão para plano aberto",
             ],
         },
         PositivoCalmo: {
             scenarios: [
-                "beach at an impossibly saturated sunset—sky doing things physics doesn't allow",
-                "hilltop overlooking a glowing neon city, impossible color harmony above and below",
-                "the inside of a Trigger promotional poster come to life—stylized and iconic",
+                "praia em um pôr do sol impossivelmente saturado — céu fazendo coisas que a física não permite",
+                "topo de colina com vista para uma cidade neon brilhante, harmonia de cores impossível acima e abaixo",
+                "o interior de um pôster promocional da Trigger ganhando vida — estilizado e icônico",
             ],
             motions: [
-                "leaning back on a hillside, arms behind the head, completely unguarded",
-                "squinting at the horizon, expression the smug calm of someone who already won",
-                "feet dangling over an enormous drop, at perfect peace with it",
+                "recostado em uma encosta, braços atrás da cabeça, completamente desguarnecido",
+                "olhos semicerrados para o horizonte, expressão de calma presunçosa de quem já venceu",
+                "pés pendurados sobre uma queda enorme, em paz perfeita com isso",
             ],
             cameraLanguage: [
-                "stylized wide shot with the character as a graphic element in a graphic world",
-                "sweeping crane up from ground to reveal the full impossible landscape",
-                "flat silhouette against a saturated gradient sky, strong graphic design energy",
+                "plano aberto estilizado com a personagem como elemento gráfico em um mundo gráfico",
+                "grua panorâmica subindo do chão para revelar toda a paisagem impossível",
+                "silhueta achatada contra um céu de gradiente saturado, forte energia de design gráfico",
             ],
         },
         NegativoAtivo: {
             scenarios: [
-                "city under attack from spiral energy—buildings shearing, sky cracking",
-                "final stand on a destroyed platform, the world falling around a single figure",
-                "the inside of a collapsing mech cockpit, the pilot refusing to stop",
+                "cidade sob ataque de energia espiral — prédios cisalhando, céu rachando",
+                "resistência final em uma plataforma destruída, o mundo caindo ao redor de uma única figura",
+                "interior de uma cabine de mecha colapsando, piloto recusando parar",
             ],
             motions: [
-                "full-body forward charge, exaggerated smear frames, speed lines everywhere",
-                "mid-air rotation before a devastating attack, body wound to maximum tension",
-                "fist at point of impact, shockwave radiating outward, world splitting at the point",
+                "carga corporal total para frente, quadros de smear exagerados, linhas de velocidade em toda parte",
+                "rotação no ar antes de um ataque devastador, corpo tencionado ao máximo",
+                "punho no ponto de impacto, onda de choque irradiando para fora, mundo rachando no ponto",
             ],
             cameraLanguage: [
-                "rotating dutch angle combined with crash zoom—pure kinetic chaos",
-                "impact freeze frame: white flash, energy lines, held for exactly one breath",
-                "extreme low angle from the ground, attack coming down at full scale",
+                "ângulo holandês rotativo combinado com crash zoom — puro caos cinético",
+                "freeze-frame de impacto: flash branco, linhas de energia, mantido por exatamente uma respiração",
+                "ângulo extremo baixo a partir do chão, ataque vindo de cima em escala total",
             ],
         },
         NegativoCalmo: {
             scenarios: [
-                "aftermath of a mech battle—one figure kneeling in a field of debris, sky clearing",
-                "single character at the center of a destroyed arena, smoke rising, crowd gone",
-                "rocky coast at dawn after something enormous ended the night before",
+                "rescaldo de uma batalha mecha — uma figura ajoelhada em um campo de destroços, céu clareando",
+                "personagem solitária no centro de uma arena destruída, fumaça subindo, plateia se foi",
+                "costa rochosa ao amanhecer depois de algo enorme ter terminado na noite anterior",
             ],
             motions: [
-                "sitting cross-legged in wreckage, hands in the lap, eyes closed, at peace now",
-                "one hand pressed to the chest, head tilted back, breathless but alive",
-                "looking at a broken weapon held in both hands, expression soft with acceptance",
+                "sentado de pernas cruzadas nos escombros, mãos no colo, olhos fechados, em paz agora",
+                "uma mão pressionada contra o peito, cabeça inclinada para trás, sem fôlego mas vivo",
+                "olhando para uma arma quebrada segurada com ambas as mãos, expressão suave de aceitação",
             ],
             cameraLanguage: [
-                "slow wide crane revealing the full scale of the aftermath around a small still figure",
-                "tight close-up on an expression of exhausted peace, debris soft in the background",
-                "back shot, character facing the horizon, world behind them done",
+                "grua aberta lenta revelando toda a escala do rescaldo ao redor de uma pequena figura imóvel",
+                "close-up cerrado em uma expressão de paz exausta, destroços suaves ao fundo",
+                "plano traseiro, personagem de frente para o horizonte, mundo atrás encerrado",
             ],
         },
         Centro: {
             scenarios: [
-                "crossroads between two impossible worlds—one spiral, one linear, both total",
-                "the exact geometric center of a Trigger universe, equidistant from all forces",
-                "a still point inside an ongoing spiral that hasn't resolved its direction yet",
+                "encruzilhada entre dois mundos impossíveis — um espiral, um linear, ambos totais",
+                "o exato centro geométrico de um universo Trigger, equidistante de todas as forças",
+                "um ponto de quietude dentro de uma espiral em andamento que ainda não resolveu sua direção",
             ],
             motions: [
-                "standing arms out, weight on one foot, not yet committed to the next move",
-                "eyes half-open looking at two equally impossible futures with equal calm",
-                "one hand closed, one hand open—neither action chosen",
+                "de pé com braços abertos, peso em um pé, ainda sem se comprometer com o próximo movimento",
+                "olhos semicerrados olhando para dois futuros igualmente impossíveis com calma igual",
+                "uma mão fechada, uma mão aberta — nenhuma ação escolhida",
             ],
             cameraLanguage: [
-                "rotating shot that never stops, the world cycling endlessly around the character",
-                "symmetrical split showing two equal and opposite forces perfectly balanced",
-                "pull back from extremely close to cosmic-wide, pausing at the exact center",
+                "plano rotativo que nunca para, mundo ciclando infinitamente ao redor da personagem",
+                "divisão simétrica mostrando duas forças iguais e opostas perfeitamente equilibradas",
+                "recuo de extremamente perto a cosmicamente amplo, pausando no centro exato",
             ],
         },
     },
 };
 
-// ── Per-mood emotional nuance (palette, atmosphere, symbol) ───────────────────
+// ── Nuance emocional por mood (paleta, atmosfera, símbolo) ────────────────────
 type MoodNuance = { palettes: string[]; atmosphere: string[]; symbols: string[] };
 
 const MOOD_NUANCE: Record<string, MoodNuance> = {
-    Euforia:    { palettes: ["electric yellow and amber burst on deep shadow", "neon gold with luminous bloom and hot white specular"], atmosphere: ["time suspended at its fastest, most alive moment", "the world incandescent for exactly this instant"], symbols: ["fireworks mid-explosion filling sky", "shattered glass frozen in light"] },
-    Celebracao: { palettes: ["vivid coral and warm gold with saturated celebration light", "festive rose and amber tones with sparkling particle bursts"], atmosphere: ["shared joy that multiplies when felt together — the electricity of belonging to a crowd that is all feeling the same thing", "the peak moment of collective euphoria, bodies close, voices loud, time suspended at its most alive"], symbols: ["crowd of friends silhouetted mid-jump against an explosive burst of fireworks, energy lines radiating outward — no food, no tables, only people and light", "festival concert crowd screaming together, protagonist lifted above them, confetti and light trails in every direction"] },
-    Confianca:  { palettes: ["cool steel blue and lime on near-black", "monochrome with one sharp neon accent piercing through"], atmosphere: ["quiet authority that needs no announcement", "calm certainty before something inevitable"], symbols: ["city reflected in lenses", "geometric shadow patterns in perfect alignment"] },
-    Energia:    { palettes: ["industrial orange and raw teal on black asphalt", "aggressive neon on gritty dark texture"], atmosphere: ["physics at the human limit", "every surface vibrating with kinetic potential"], symbols: ["crack lines from an impact point", "sweat frozen mid-air under harsh light"] },
-    Amor:       { palettes: ["pink blush and ivory in soft morning diffusion", "warm terracotta and mauve with gentle lens flare"], atmosphere: ["time at the pace of a heartbeat", "tenderness that doesn't need words"], symbols: ["pressed flowers and a soft candle", "two cups of coffee steaming side by side"] },
-    Paz:        { palettes: ["seafoam and pale sky blue on cream morning light", "dusty lavender and cloud white at golden hour"], atmosphere: ["the quiet before the world wakes up", "stillness chosen and complete"], symbols: ["a single feather drifting in still air", "light through leaves making shifting patterns"] },
-    Reflexao:   { palettes: ["deep indigo and lavender with star-glow accents", "midnight navy with violet bloom of distant city lights"], atmosphere: ["a question without an answer yet", "memory and present blending at the edges"], symbols: ["candle reflected in rain-streaked glass", "stars mirrored in a still puddle"] },
-    Tensao:     { palettes: ["sick green-yellow fluorescent over cold shadow", "desaturated near-monochrome with one red light source"], atmosphere: ["the dread of something unsaid and unavoidable", "every small sound carrying double meaning"], symbols: ["a phone screen flashing face-down", "a cracked mirror in a dim bathroom"] },
-    Revolta:    { palettes: ["blood red and obsidian with harsh rim light", "sulfur yellow and char black with ember glow"], atmosphere: ["rage that has been held too long and finally broken", "destruction as the only language left"], symbols: ["shattered concrete with rebar exposed", "embers rising from a dying fire"] },
-    Frustracao: { palettes: ["muddy amber and charcoal with harsh overhead source", "muted orange-gold with cold blue underlight"], atmosphere: ["friction between what should be and what is", "energy trapped with nowhere to go"], symbols: ["a dead end sign in the rain", "a clock face whose hands refuse to move"] },
-    Melancolia: { palettes: ["muted steel blue and dusty lavender in fog-diffused light", "sepia warmth bleeding into cool evening blue"], atmosphere: ["nostalgia worn smooth by time—bittersweet not sharp", "the beauty of things passing, not yet gone"], symbols: ["a forgotten umbrella on a bench in rain", "a name carved in an old tree growing out of shape"] },
-    Tristeza:   { palettes: ["deep slate and pewter on near-black", "low-contrast grey-blue wash with one dim warm source point"], atmosphere: ["grief that has settled in and is not leaving", "the absence of something that once filled the frame"], symbols: ["a wilted flower in a glass of water", "an empty chair at a set table"] },
-    Vazio:      { palettes: ["concrete grey and washed-out white—no warmth anywhere", "flat desaturated teal and near-black with zero contrast"], atmosphere: ["the static between stations, signal gone", "not sadness—just the complete absence of everything"], symbols: ["a blank screen reflecting a face", "a room with everything in its place and no one in it"] },
-    Ambivalente:{ palettes: ["two-tone split: warm amber one side, cool blue the other", "golden hour and overcast in the same frame, perfectly divided"], atmosphere: ["the suspended moment between two completely different futures", "the strange beauty of not knowing yet"], symbols: ["a coin mid-spin both faces visible", "a door half-open with different light on each side"] },
+    Euforia:    { palettes: ["explosão de amarelo elétrico e âmbar sobre sombra profunda", "ouro neon com bloom luminoso e especular branco quente"], atmosphere: ["tempo suspenso em seu momento mais rápido e mais vivo", "o mundo incandescente por exatamente este instante"], symbols: ["fogos de artifício em plena explosão preenchendo o céu", "vidro estilhaçado congelado na luz"] },
+    Celebracao: { palettes: ["coral vívido e ouro quente com luz de celebração saturada", "rosa festivo e tons âmbar com explosões de partículas cintilantes"], atmosphere: ["alegria compartilhada que se multiplica quando sentida junto — a eletricidade de pertencer a uma multidão que está toda sentindo a mesma coisa", "o momento ápice de euforia coletiva, corpos próximos, vozes altas, tempo suspenso em seu ponto mais vivo"], symbols: ["multidão de amigos em silhueta no meio de um salto contra uma explosão de fogos de artifício, linhas de energia radiando — sem comida, sem mesas, apenas pessoas e luz", "multidão de show em festival gritando juntos, protagonista erguido acima deles, confete e trilhas de luz em todas as direções"] },
+    Confianca:  { palettes: ["azul aço frio e lima sobre quase-preto", "monocromático com um acento neon afiado perfurando"], atmosphere: ["autoridade silenciosa que não precisa de anúncio", "certeza calma antes de algo inevitável"], symbols: ["cidade refletida em lentes", "padrões geométricos de sombra em alinhamento perfeito"] },
+    Energia:    { palettes: ["laranja industrial e ciano bruto sobre asfalto preto", "neon agressivo sobre textura escura e áspera"], atmosphere: ["a física no limite humano", "cada superfície vibrando com potencial cinético"], symbols: ["linhas de rachadura a partir de um ponto de impacto", "suor congelado no ar sob luz agressiva"] },
+    Amor:       { palettes: ["rosa corado e marfim em difusão suave de manhã", "terracota quente e malva com suave flare de lente"], atmosphere: ["tempo no ritmo de um batimento cardíaco", "ternura que não precisa de palavras"], symbols: ["flores prensadas e uma vela suave", "duas xícaras de café fumegando lado a lado"] },
+    Paz:        { palettes: ["verde-espuma e azul celeste pálido sobre luz creme da manhã", "lavanda empoeirada e branco-nuvem na hora dourada"], atmosphere: ["o silêncio antes de o mundo acordar", "quietude escolhida e completa"], symbols: ["uma única pena flutuando no ar parado", "luz através de folhas fazendo padrões ondulantes"] },
+    Reflexao:   { palettes: ["índigo profundo e lavanda com acentos de brilho estelar", "azul-marinho de meia-noite com bloom violeta de luzes distantes da cidade"], atmosphere: ["uma pergunta sem resposta ainda", "memória e presente se misturando nas bordas"], symbols: ["vela refletida em vidro com marcas de chuva", "estrelas espelhadas em uma poça parada"] },
+    Tensao:     { palettes: ["verde-amarelo doentio fluorescente sobre sombra fria", "quase-monocromático dessaturado com uma única fonte de luz vermelha"], atmosphere: ["o pavor de algo não dito e inevitável", "cada pequeno som carregando duplo significado"], symbols: ["tela de celular piscando virada para baixo", "espelho rachado em um banheiro escuro"] },
+    Revolta:    { palettes: ["vermelho-sangue e obsidiana com rim light agressiva", "amarelo-enxofre e preto-carvão com brilho de brasa"], atmosphere: ["raiva contida por tempo demais e finalmente rompida", "destruição como a única linguagem restante"], symbols: ["concreto estilhaçado com vergalhão exposto", "brasas subindo de um fogo morrendo"] },
+    Frustracao: { palettes: ["âmbar enlameado e carvão com fonte agressiva de cima", "laranja-dourado apagado com subluz azul fria"], atmosphere: ["atrito entre o que deveria ser e o que é", "energia presa sem lugar para ir"], symbols: ["uma placa de beco sem saída na chuva", "um relógio cujos ponteiros se recusam a mover"] },
+    Melancolia: { palettes: ["azul-aço suave e lavanda empoeirada em luz difundida pela neblina", "calor sépia sangrando em azul de fim de tarde frio"], atmosphere: ["nostalgia desgastada suavemente pelo tempo — agridoce, não aguda", "a beleza das coisas passando, ainda não idas"], symbols: ["um guarda-chuva esquecido em um banco na chuva", "um nome entalhado em uma árvore velha crescendo fora de forma"] },
+    Tristeza:   { palettes: ["ardósia profunda e estanho sobre quase-preto", "lavagem azul-cinza de baixo contraste com um único ponto quente fraco de luz"], atmosphere: ["luto que se acomodou e não vai embora", "a ausência de algo que antes preenchia o quadro"], symbols: ["uma flor murcha em um copo d'água", "uma cadeira vazia em uma mesa posta"] },
+    Vazio:      { palettes: ["cinza-concreto e branco desbotado — sem calor em lugar nenhum", "ciano dessaturado e achatado com quase-preto e zero contraste"], atmosphere: ["a estática entre estações, sinal perdido", "não é tristeza — apenas a ausência completa de tudo"], symbols: ["uma tela em branco refletindo um rosto", "um cômodo com tudo no lugar e ninguém nele"] },
+    Ambivalente:{ palettes: ["bicolor dividido: âmbar quente de um lado, azul frio do outro", "hora dourada e nublado no mesmo quadro, perfeitamente divididos"], atmosphere: ["o momento suspenso entre dois futuros completamente diferentes", "a estranha beleza de ainda não saber"], symbols: ["uma moeda no meio do giro com ambas as faces visíveis", "uma porta entreaberta com luz diferente de cada lado"] },
 };
 
-// ── Activation modifier ───────────────────────────────────────────────────────
+// ── Modificador de ativação ───────────────────────────────────────────────────
 function activationModifier(ativacao: number): string {
-    if (ativacao >  0.6) return "HIGH KINETIC ENERGY: scene pulsing with motion. Use motion blur on peripherals, dynamic angles, violent environmental movement. Time feels compressed and fast.";
-    if (ativacao >  0.2) return "MODERATE ENERGY: natural forward momentum. Environment moving (swaying lights, passing cars, wind). Character engaged and present.";
-    if (ativacao > -0.2) return "BALANCED ENERGY: the scene breathes naturally. Small movements only—leaf falling, steam rising, cloth in the wind. Character composed and aware.";
-    if (ativacao > -0.6) return "LOW GENTLE ENERGY: slow and contemplative. Long still moments. Minimal motion. Character absorbed inward.";
-    return                      "NEAR-STATIC: almost motionless. Dust in a light beam. A held breath. The character barely moves—stillness is the subject.";
+    if (ativacao >  0.6) return "ENERGIA CINÉTICA ALTA: cena pulsando com movimento. Use motion blur nas periferias, ângulos dinâmicos, movimento ambiental violento. O tempo parece comprimido e rápido.";
+    if (ativacao >  0.2) return "ENERGIA MODERADA: impulso natural para frente. Ambiente em movimento (luzes balançando, carros passando, vento). Personagem engajada e presente.";
+    if (ativacao > -0.2) return "ENERGIA EQUILIBRADA: a cena respira naturalmente. Apenas pequenos movimentos — folha caindo, vapor subindo, tecido ao vento. Personagem composta e atenta.";
+    if (ativacao > -0.6) return "ENERGIA BAIXA E SUAVE: lento e contemplativo. Longos momentos de quietude. Movimento mínimo. Personagem absorvida para dentro.";
+    return                      "QUASE ESTÁTICO: praticamente imóvel. Poeira em um feixe de luz. Uma respiração contida. A personagem mal se move — a quietude é o tema.";
 }
 
-// ── Studio styles ─────────────────────────────────────────────────────────────
+// ── Estilos dos estúdios ──────────────────────────────────────────────────────
 const STUDIO_STYLES: StudioStyle[] = [
     {
-        id: "kyoani", name: "Kyoto Animation inspired (KyoAni)", company: "Kyoto Animation", logoKey: "kyoani",
+        id: "kyoani", name: "Inspirado em Kyoto Animation (KyoAni)", company: "Kyoto Animation", logoKey: "kyoani",
         referenceAnimes: ["Violet Evergarden", "K-On!", "Hyouka", "A Silent Voice", "Clannad After Story"],
-        visualLanguage: "soft diffused lighting, pastel palette, glossy expressive eyes, detailed micro-expressions, clean polished rendering, slice-of-life emotional realism",
-        cinematography: "stable natural framing, intimate close-ups, focus on character acting over spectacle",
-        motionStyle: "extremely fluid, subtle gestures—eye movement, breathing, hair sway—high frame consistency",
-        renderingNotes: "meticulous anatomy and fabric detail, realistic lighting, rich everyday environments with depth and softness",
+        visualLanguage: "iluminação difusa e suave, paleta pastel, olhos brilhantes e expressivos, micro-expressões detalhadas, renderização limpa e polida, realismo emocional slice-of-life",
+        cinematography: "enquadramento natural e estável, close-ups íntimos, foco na atuação da personagem acima do espetáculo",
+        motionStyle: "extremamente fluida, gestos sutis — movimento dos olhos, respiração, balanço do cabelo — alta consistência entre quadros",
+        renderingNotes: "anatomia e detalhe de tecido meticulosos, iluminação realista, ambientes cotidianos ricos com profundidade e suavidade",
     },
     {
-        id: "ghibli", name: "Studio Ghibli inspired", company: "Studio Ghibli", logoKey: "ghibli",
+        id: "ghibli", name: "Inspirado em Studio Ghibli", company: "Studio Ghibli", logoKey: "ghibli",
         referenceAnimes: ["Spirited Away", "Howl's Moving Castle", "Princess Mononoke", "The Wind Rises", "My Neighbor Totoro"],
-        visualLanguage: "hand-painted watercolor backgrounds, organic textures, natural color harmony, deeply expressive but simple character designs, nostalgic and dreamlike",
-        cinematography: "wide scenic shots, environmental storytelling, slow contemplative pacing, atmosphere and world immersion above all",
-        motionStyle: "weighty and natural movement, grounded physics even in fantasy, calm and deliberate timing",
-        renderingNotes: "visible brush strokes, traditional cel feel, strong connection between characters and living natural world",
+        visualLanguage: "fundos pintados à mão em aquarela, texturas orgânicas, harmonia de cores natural, designs de personagem profundamente expressivos mas simples, nostálgico e onírico",
+        cinematography: "planos cênicos amplos, narrativa ambiental, ritmo lento e contemplativo, atmosfera e imersão no mundo acima de tudo",
+        motionStyle: "movimento com peso e natural, física crível mesmo na fantasia, ritmo calmo e deliberado",
+        renderingNotes: "pinceladas visíveis, sensação de cel tradicional, forte conexão entre personagens e o mundo natural vivo",
     },
     {
-        id: "ufotable", name: "Ufotable inspired", company: "ufotable", logoKey: "ufotable",
+        id: "ufotable", name: "Inspirado em Ufotable", company: "ufotable", logoKey: "ufotable",
         referenceAnimes: ["Fate/stay night UBW", "Demon Slayer", "Kara no Kyoukai", "Tales of Zestiria the X"],
-        visualLanguage: "cinematic lighting, high contrast, glowing highlights, heavy particle effects (embers smoke sparks), digital compositing with depth of field",
-        cinematography: "dynamic camera movement, sweeping 3D-assisted angles, cinematic tracking shots comparable to live-action film",
-        motionStyle: "smooth but impactful, dramatic anticipation and release, layered VFX timing precision",
-        renderingNotes: "polished compositing, volumetric atmospheric lighting, strong depth layering between character and effect",
+        visualLanguage: "iluminação cinematográfica, alto contraste, destaques brilhantes, efeitos pesados de partículas (brasas fumaça faíscas), composição digital com profundidade de campo",
+        cinematography: "movimento de câmera dinâmico, ângulos amplos assistidos por 3D, planos de acompanhamento cinematográficos comparáveis a filmes live-action",
+        motionStyle: "suave mas impactante, antecipação e liberação dramáticas, precisão de timing em camadas de VFX",
+        renderingNotes: "composição polida, iluminação atmosférica volumétrica, forte estratificação de profundidade entre personagem e efeito",
     },
     {
-        id: "mappa", name: "Studio MAPPA inspired", company: "MAPPA", logoKey: "mappa",
+        id: "mappa", name: "Inspirado em Studio MAPPA", company: "MAPPA", logoKey: "mappa",
         referenceAnimes: ["Jujutsu Kaisen", "Chainsaw Man", "Attack on Titan Final Season", "Vinland Saga S2"],
-        visualLanguage: "cinematic contrast, gritty urban texture, expressive linework, intense facial emotion, grounded anatomy with dramatic impact",
-        cinematography: "dynamic but controlled camera, strong silhouettes, action-first staging with moody atmospheric depth",
-        motionStyle: "weighty impactful movement with sharp key poses, high-tension rhythm and readable choreography",
-        renderingNotes: "rich shadow design, textured backgrounds, dramatic color separation, grounded realism without photorealism",
+        visualLanguage: "contraste cinematográfico, textura urbana áspera, linework expressivo, emoção facial intensa, anatomia ancorada com impacto dramático",
+        cinematography: "câmera dinâmica mas controlada, silhuetas fortes, staging focado em ação com profundidade atmosférica sombria",
+        motionStyle: "movimento pesado e impactante com poses-chave marcadas, ritmo de alta tensão e coreografia legível",
+        renderingNotes: "design rico de sombras, fundos texturizados, separação dramática de cores, realismo ancorado sem fotorrealismo",
     },
     {
-        id: "shaft", name: "Studio Shaft inspired", company: "Shaft", logoKey: "shaft",
+        id: "shaft", name: "Inspirado em Studio Shaft", company: "Shaft", logoKey: "shaft",
         referenceAnimes: ["Bakemonogatari", "Puella Magi Madoka Magica", "March Comes in Like a Lion", "Sayonara Zetsubou Sensei"],
-        visualLanguage: "avant-garde composition, bold color blocking, abstract or symbolic backgrounds, minimalist environments with strong graphic identity",
-        cinematography: "extreme angles, head tilts, rapid hard cuts, unusual framing with heavy negative space",
-        motionStyle: "limited animation used stylistically—focus on composition and graphic rhythm over fluid motion",
-        renderingNotes: "surreal staging, symbolic imagery, experimental visual storytelling—form serves psychology not naturalism",
+        visualLanguage: "composição avant-garde, blocos de cor ousados, fundos abstratos ou simbólicos, ambientes minimalistas com forte identidade gráfica",
+        cinematography: "ângulos extremos, inclinações de cabeça, cortes secos rápidos, enquadramento incomum com pesado espaço negativo",
+        motionStyle: "animação limitada usada estilisticamente — foco em composição e ritmo gráfico acima de fluidez de movimento",
+        renderingNotes: "encenação surreal, imagética simbólica, narrativa visual experimental — a forma serve a psicologia, não o naturalismo",
     },
     {
-        id: "trigger", name: "Studio Trigger inspired", company: "Studio Trigger", logoKey: "trigger",
+        id: "trigger", name: "Inspirado em Studio Trigger", company: "Studio Trigger", logoKey: "trigger",
         referenceAnimes: ["Kill la Kill", "Promare", "Cyberpunk Edgerunners", "Gurren Lagann", "Little Witch Academia"],
-        visualLanguage: "bold linework, maximum saturated color, exaggerated proportions, cartoony expressive design pushed to extremes",
-        cinematography: "fast cuts, extreme zooms, dynamic impossible framing, high-energy visual storytelling at maximum volume",
-        motionStyle: "hyper-kinetic, smear frames, exaggerated to the point of deformation—intentional chaos that is always readable",
-        renderingNotes: "strong silhouettes, maximum contrast shapes, expressive deformation always preferred over anatomical realism",
+        visualLanguage: "linework ousado, cor saturada ao máximo, proporções exageradas, design expressivo e cartunesco levado ao extremo",
+        cinematography: "cortes rápidos, zooms extremos, enquadramento dinâmico impossível, narrativa visual de alta energia no volume máximo",
+        motionStyle: "hipercinética, smear frames, exagerado até o ponto de deformação — caos intencional que é sempre legível",
+        renderingNotes: "silhuetas fortes, formas de contraste máximo, deformação expressiva sempre preferida sobre realismo anatômico",
     },
 ];
 
@@ -675,72 +675,72 @@ export class ImagePromptService {
         const nuance      = MOOD_NUANCE[moodKey];
         const actMod      = activationModifier(data.ativacao ?? 0);
 
-        const scenario    = dna     ? this.random(dna.scenarios)      : "an evocative environment";
-        const motion      = dna     ? this.random(dna.motions)        : "a considered emotional pose";
-        const camera      = dna     ? this.random(dna.cameraLanguage) : "deliberate mid-shot";
-        const palette     = nuance  ? this.random(nuance.palettes)    : "rich cinematic color grading";
-        const atmosphere  = nuance  ? this.random(nuance.atmosphere)  : "charged with unspoken emotion";
-        const symbol      = nuance  ? this.random(nuance.symbols)     : "one meaningful visual detail";
+        const scenario    = dna     ? this.random(dna.scenarios)      : "um ambiente evocativo";
+        const motion      = dna     ? this.random(dna.motions)        : "uma pose emocional deliberada";
+        const camera      = dna     ? this.random(dna.cameraLanguage) : "plano médio deliberado";
+        const palette     = nuance  ? this.random(nuance.palettes)    : "gradação de cor cinematográfica rica";
+        const atmosphere  = nuance  ? this.random(nuance.atmosphere)  : "carregado de emoção não dita";
+        const symbol      = nuance  ? this.random(nuance.symbols)     : "um detalhe visual significativo";
 
         const moodSpecificRules = moodKey === "Celebracao" ? `
 ━━━━━━━━━━
-MOOD-SPECIFIC RULES — CELEBRACAO (SOCIAL CELEBRATION)
+REGRAS ESPECÍFICAS DO MOOD — CELEBRAÇÃO (CELEBRAÇÃO SOCIAL)
 ━━━━━━━━━━
-This mood is about COLLECTIVE SOCIAL JOY as seen in iconic anime productions.
-MANDATORY: The scene must depict a crowd, group of friends, or large social gathering in a peak celebratory moment — exactly like a climactic scene from a famous anime.
-Inspiration: concert arena crowd erupting during a final performance (K-On!, Your Lie in April), school festival crowd going wild, group victory moment with characters lifted above a roaring crowd (Haikyuu!!), festival fireworks scene with silhouetted figures together (Any Given Ghibli Matsuri scene), idol stage finale with light sticks and thousands of fans (Love Live!, Oshi no Ko).
-STRICTLY FORBIDDEN: dining tables, food on tables, banquet settings, restaurant scenes, picnic setups, or any arrangement of food items near characters. No meals. No eating. No table settings of any kind.
-The energy source is PEOPLE and SHARED EMOTION, not food. Lights, confetti, fireworks, music stages, crowd movement, light sticks, and stadium energy are the only acceptable environmental elements.
+Este mood é sobre ALEGRIA SOCIAL COLETIVA como vista em produções icônicas de anime.
+OBRIGATÓRIO: A cena deve retratar uma multidão, grupo de amigos, ou grande reunião social em um momento ápice de celebração — exatamente como uma cena climática de um anime famoso.
+Inspiração: multidão de arena de show explodindo durante uma performance final (K-On!, Your Lie in April), multidão de festival escolar enlouquecendo, momento de vitória em grupo com personagens erguidos acima de uma multidão eufórica (Haikyuu!!), cena de fogos de festival com figuras em silhueta juntas (qualquer cena de matsuri Ghibli), finale de palco de idol com light sticks e milhares de fãs (Love Live!, Oshi no Ko).
+ESTRITAMENTE PROIBIDO: mesas de jantar, comida em mesas, cenários de banquete, cenas de restaurante, montagens de piquenique, ou qualquer arranjo de itens de comida perto de personagens. Sem refeições. Sem comer. Sem arrumações de mesa de qualquer tipo.
+A fonte de energia são PESSOAS e EMOÇÃO COMPARTILHADA, não comida. Luzes, confete, fogos de artifício, palcos de música, movimento de multidão, light sticks e energia de estádio são os únicos elementos ambientais aceitáveis.
 ` : "";
 
         return `
-Create a breathtaking stylized 2D anime illustration in the style of ${studio.name}, capturing the emotional theme "${data.sentiment}".
+Crie uma ilustração 2D estilizada de anime de tirar o fôlego no estilo de ${studio.name}, capturando o tema emocional "${data.sentiment}".
 
-NON-NEGOTIABLE VISUAL FIDELITY:
-Stay 100% true to the studio's aesthetic DNA at all times. Every choice—environment, lighting, linework, color, motion—must feel like it authentically belongs in a production from ${studio.company}. Reference anime: ${refAnime}.
-
-━━━━━━━━━━
-STUDIO DNA
-━━━━━━━━━━
-Visual language: ${studio.visualLanguage}
-Cinematography: ${studio.cinematography}
-Motion style: ${studio.motionStyle}
-Rendering: ${studio.renderingNotes}
+FIDELIDADE VISUAL INEGOCIÁVEL:
+Mantenha 100% de fidelidade ao DNA estético do estúdio em todos os momentos. Cada escolha — ambiente, iluminação, linework, cor, movimento — deve parecer que pertence autenticamente a uma produção da ${studio.company}. Anime de referência: ${refAnime}.
 
 ━━━━━━━━━━
-SCENE — THROUGH ${studio.company.toUpperCase()}'S LENS
+DNA DO ESTÚDIO
 ━━━━━━━━━━
-Environment (render in authentic ${studio.company} style):
+Linguagem visual: ${studio.visualLanguage}
+Cinematografia: ${studio.cinematography}
+Estilo de movimento: ${studio.motionStyle}
+Renderização: ${studio.renderingNotes}
+
+━━━━━━━━━━
+CENA — PELAS LENTES DA ${studio.company.toUpperCase()}
+━━━━━━━━━━
+Ambiente (renderizar no estilo autêntico da ${studio.company}):
 ${scenario}
 
-Character posture / motion (grounded in ${studio.company}'s animation vocabulary):
+Postura / movimento da personagem (ancorado no vocabulário de animação da ${studio.company}):
 ${motion}
 
-Camera language (strictly ${studio.company} cinematography):
+Linguagem de câmera (estritamente cinematografia da ${studio.company}):
 ${camera}
 
 ━━━━━━━━━━
-EMOTIONAL DIRECTION — "${data.sentiment.toUpperCase()}"
+DIREÇÃO EMOCIONAL — "${data.sentiment.toUpperCase()}"
 ━━━━━━━━━━
-Color palette: ${palette}
-Atmospheric quality: ${atmosphere}
-Symbolic visual element (integrate organically): ${symbol}
-Energy level: ${actMod}
+Paleta de cores: ${palette}
+Qualidade atmosférica: ${atmosphere}
+Elemento visual simbólico (integrar organicamente): ${symbol}
+Nível de energia: ${actMod}
 ${moodSpecificRules}
 ━━━━━━━━━━
-CHARACTER
+PERSONAGEM
 ━━━━━━━━━━
-Face reference: ${data.faceReferencePath ?? "not provided"}
-- If a face reference is provided, translate their identity into ${studio.company}'s character design language. Do not retain photorealism.
-- Single young adult character.
+Referência facial: ${data.faceReferencePath ?? "não fornecida"}
+- Se uma referência facial for fornecida, traduza a identidade para a linguagem de design de personagem da ${studio.company}. Não retenha fotorrealismo.
+- Personagem jovem adulto(a) único(a).
 
 ━━━━━━━━━━
-OUTPUT
+SAÍDA
 ━━━━━━━━━━
-- Aspect Ratio: 9:16 (Portrait)
-- Format: Stylized 2D Anime Illustration. NEVER photorealistic.
-- The result must be instantly recognizable as a ${studio.company} production.
-- DO NOT include readable text or floating typography (incidental environmental text, e.g., distant signs, is acceptable).
+- Proporção: 9:16 (Retrato)
+- Formato: Ilustração 2D Estilizada de Anime. NUNCA fotorrealista.
+- O resultado deve ser instantaneamente reconhecível como uma produção da ${studio.company}.
+- NÃO inclua texto legível ou tipografia flutuante (texto ambiental incidental, como placas distantes, é aceitável).
 `.trim();
     }
 

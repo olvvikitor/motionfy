@@ -266,7 +266,10 @@ export class UserService {
             studioId: resolvedStudioId,
         });
 
-        const imageBase64 = await this.aiService.genereateImage(imagePrompt, user.face_photo_path ?? undefined);
+        const imageBuffer = await this.aiService.generateImage(
+            imagePrompt,
+            user.face_photo_path ?? undefined
+        );
 
         const moodDataStore = {
             moodScore: response.moodScore,
@@ -276,12 +279,15 @@ export class UserService {
             tracks: response.tracks,
         };
 
-        // Envio da imagem gerada e persistência em background para não onerar o tempo de resposta
+        // Upload em background
         setImmediate(async () => {
             try {
-                const cleanBase64 = imageBase64.replace(/^data:image\/[^;]+;base64,/, '');
-                const buffer = Buffer.from(cleanBase64, 'base64');
-                const file: UploadFile = { buffer, originalname: 'mood.png', mimetype: 'image/png' };
+                const file: UploadFile = {
+                    buffer: imageBuffer,
+                    originalname: 'mood.png',
+                    mimetype: 'image/png',
+                };
+
                 const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
 
                 const finalMood = {
@@ -295,10 +301,12 @@ export class UserService {
             }
         });
 
-        response.image_mood = imageBase64;
+        // Se quiser retornar base64 pro front:
+        const base64 = imageBuffer.toString('base64');
+        response.image_mood = `data:image/png;base64,${base64}`;
+
         return response;
     }
-
     async getMoodUserToday(id: string): Promise<any> {
         return this.userRepository.getMoodUser(id);
     }

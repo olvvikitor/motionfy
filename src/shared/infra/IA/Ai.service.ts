@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { Track } from '@prisma/client';
+import OpenAI, { toFile } from "openai";
 import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionalVector, EmotionAnalysisService } from './emotion-analysis.service';
 import { HybridPromptInput, ImagePromptService } from './ImagePrompt.service';
 import { promises as fs } from 'fs';
@@ -99,13 +100,8 @@ export class AiService {
       },
     });
 
-    this.image_model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-image',
-      generationConfig: {
-        temperature: 0.9,
-        topP: 0.8,
-        topK: 55
-      }
+    this.image_model = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
 
   }
@@ -382,78 +378,68 @@ ${JSON.stringify(musics, null, 2)}
     });
   }
 
-  async genereateImage(prompt: string, facePhotoPath?: string) {
-    const styleLock = `
+async generateImage(prompt: string, facePhotoPath?: string) {
+  const styleLock = `
 STYLE LOCK (HIGHEST PRIORITY):
 - Generate ONLY a 2D anime illustration.
-- Output image MUST be exactly 768 pixels wide × 1344 pixels tall (9:16 portrait ratio).
-- Never generate photorealistic, live-action, CGI-realistic, or 3D-rendered output.
-- The final image must always read as cinematic: like a premium movie still with deliberate framing and visual storytelling.
-- Maintain filmic depth (clear foreground/midground/background), intentional light hierarchy, and dramatic composition in every mood.
-- Keep medium detail and soft illustrative edges; avoid hyper-sharp texture detail.
-- Do not render realistic skin pores, realistic lens effects, photographic noise, or DSLR look.
-- Treat any face reference image as identity guidance only (face proportions), never as photographic texture/style source.
-- If any result tends toward realism, restylize to clearly illustrated anime drawing.
+- Cinematic composition, soft edges, medium detail.
+- Never photorealistic or 3D.
 `;
 
-    const requestParts: any[] = [
-      { text: styleLock.trim() },
-      { text: prompt },
-    ];
+  const fullPrompt = `${styleLock.trim()}\n\n${prompt}`;
 
-    if (facePhotoPath) {
-      try {
-        const localPath = this.resolveLocalUploadPath(facePhotoPath);
-        if (localPath) {
-          const fileBuffer = await fs.readFile(localPath);
-          requestParts.push({
-            inlineData: {
-              mimeType: this.getMimeTypeByExt(localPath),
-              data: fileBuffer.toString('base64'),
-            },
-          });
-        } else {
-          const remoteUrl = new URL(facePhotoPath);
-          if (this.isAllowedRemoteReference(remoteUrl)) {
-            const downloaded = await this.downloadRemoteImage(remoteUrl);
-            const fallbackMimeType = this.getMimeTypeByExt(remoteUrl.pathname);
-            requestParts.push({
-              inlineData: {
-                mimeType: downloaded.mimeType ?? fallbackMimeType,
-                data: downloaded.buffer.toString('base64'),
-              },
-            });
-          } else {
-            console.warn('Host da imagem de referência não permitido:', remoteUrl.host);
-          }
-        }
-      } catch (error) {
-        console.warn('Falha ao carregar imagem de referência do usuário:', error);
+  let faceFile: Awaited<ReturnType<typeof toFile>> | null = null;
+
+  if (facePhotoPath) {
+    try {
+      const localPath = this.resolveLocalUploadPath(facePhotoPath);
+
+      let buffer: Buffer;
+      let mimeType: string;
+
+      if (localPath) {
+        buffer = await fs.readFile(localPath);
+        mimeType = this.getMimeTypeByExt(localPath);
+      } else {
+        const remoteUrl = new URL(facePhotoPath);
+        const downloaded = await this.downloadRemoteImage(remoteUrl);
+        buffer = downloaded.buffer;
+        mimeType = downloaded.mimeType as string;
       }
+
+      const ext = mimeType.split('/')[1] || 'png';
+      faceFile = await toFile(buffer, `face.${ext}`, { type: mimeType });
+
+    } catch (error) {
+      console.warn('Erro ao carregar imagem:', error);
     }
-
-    const result = await this.image_model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: requestParts,
-        },
-      ],
-    });
-
-    const response = result.response;
-
-    const responseParts = response.candidates?.[0]?.content?.parts ?? [];
-
-    const imagePart = responseParts.find((part: any) => part.inlineData);
-
-    if (!imagePart?.inlineData?.data) {
-      throw new Error('Nenhuma imagem foi gerada.');
-    }
-
-    const base64 = imagePart.inlineData.data;
-    const mimeType = imagePart.inlineData.mimeType || "image/png";
-
-    return `data:${mimeType};base64,${base64}`;
   }
+
+  let result: any;
+
+  if (faceFile) {
+    // images.edit aceita o parâmetro 'image' para referência facial
+    result = await this.image_model.images.edit({
+      model: "gpt-image-1",
+      prompt: fullPrompt,
+      image: faceFile,
+      size: "1024x1024",
+      input_fidelity: "high",
+    });
+  } else {
+    result = await this.image_model.images.generate({
+      model: "gpt-image-1",
+      prompt: fullPrompt,
+      size: "1024x1792",
+    });
+  }
+
+  const imageBase64 = result.data[0].b64_json;
+
+  if (!imageBase64) {
+    throw new Error('Nenhuma imagem foi gerada.');
+  }
+
+  return Buffer.from(imageBase64, 'base64');
+}
 }
