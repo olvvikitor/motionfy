@@ -183,15 +183,15 @@ export class ImagePromptService {
         const moodKey  = this.normalizeMoodKey(data.sentiment);
         const quadrant = MOOD_TO_QUADRANT[moodKey] ?? "Centro";
         const dna      = STUDIO_SCENE_DNA[studio.id]?.[quadrant];
-        const nuance   = MOOD_NUANCE[moodKey];
+        // const nuance   = MOOD_NUANCE[moodKey];
         const actMod   = activationModifier(data.ativacao ?? 0);
 
         const scenario  = dna    ? dna.scenario     : "ambiente evocativo";
         const motion    = dna    ? dna.motion        : "pose emocional deliberada";
         const camera    = dna    ? dna.camera         : "plano médio deliberado";
-        const palette   = nuance ? nuance.palette     : "gradação cinematográfica rica";
-        const atmosphere= nuance ? nuance.atmosphere  : "carregado de emoção não dita";
-        const symbol    = nuance ? nuance.symbol      : "detalhe visual significativo";
+        // const palette   = nuance ? nuance.palette     : "gradação cinematográfica rica";
+        // const atmosphere= nuance ? nuance.atmosphere  : "carregado de emoção não dita";
+        // const symbol    = nuance ? nuance.symbol      : "detalhe visual significativo";
 
         const celebrationRule = moodKey === "Celebracao"
             ? "\nREGRA: Celebração social. Multidão/grupo em ápice de alegria (festival, show, vitória). SEM comida/mesas/banquetes. Energia vem de PESSOAS: luzes, confete, fogos, palcos."
@@ -207,7 +207,6 @@ ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionSty
 
 CENA: ${scenario}. POSE: ${motion}. CÂMERA: ${camera}.
 
-EMOÇÃO "${data.sentiment}": Paleta: ${palette}. Atmosfera: ${atmosphere}. Símbolo: ${symbol}. ${actMod}${celebrationRule}
 
 PERSONAGEM: ${faceRef}
 

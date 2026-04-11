@@ -215,6 +215,7 @@ export class UserService {
 
                 if (isNowPast19h && isMoodBefore19hToday) {
                     // Update triggered by 19h rule: usa apenas tracks do dia atual
+                    
                     useTodayOnly = true;
                 } else if (isNowPast19h && !isMoodFromToday) {
                     // Update triggered by 19h rule (old mood foi ontem): usa apenas tracks do dia atual
@@ -257,6 +258,26 @@ export class UserService {
             };
         }
 
+        const moodDataStore = {
+            moodScore: response.moodScore,
+            sentiment: response.dominantSentiment,
+            emotions: response.emotionalVector,
+            coreAxes: response.coreAxes,
+            tracks: response.tracks,
+        };
+
+        const isSameSentimentAsLast = lastMood && lastMood.sentiment === response.dominantSentiment && lastMood.image_mood;
+
+        if (isSameSentimentAsLast) {
+            response.image_mood = lastMood.image_mood as string;
+            const finalMood = {
+                ...moodDataStore,
+                image_mood: lastMood.image_mood as string,
+            };
+            await this.userRepository.SaveMood(id, finalMood);
+            return response;
+        }
+
         // ── Gera imagem ──
         const imagePrompt = await this.aiImageService.buildHybridImagePrompt({
             ativacao: response.coreAxes.ativacao,
@@ -272,14 +293,6 @@ export class UserService {
             imagePrompt,
             user.face_photo_path ?? undefined
         );
-
-        const moodDataStore = {
-            moodScore: response.moodScore,
-            sentiment: response.dominantSentiment,
-            emotions: response.emotionalVector,
-            coreAxes: response.coreAxes,
-            tracks: response.tracks,
-        };
 
         // Upload em background
         setImmediate(async () => {
