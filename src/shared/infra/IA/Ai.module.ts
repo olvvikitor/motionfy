@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
-import { AiService } from "./Ai.service";
+import { AiTextService } from "./AiText.service";
+import { AiImageService } from "./AiImage.service";
 import { EmotionAnalysisService } from "./emotion-analysis.service";
 import { ImagePromptService } from "./ImagePrompt.service";
 
 @Module({
-    providers:[AiService, EmotionAnalysisService,ImagePromptService],
-    exports:[AiService,ImagePromptService,EmotionAnalysisService],
+    providers: [AiTextService, AiImageService, EmotionAnalysisService, ImagePromptService],
+    exports: [AiTextService, AiImageService, ImagePromptService, EmotionAnalysisService],
 })
-export class AiModule{}
+export class AiModule {}

@@ -4,7 +4,8 @@ import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
 import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
-import { AiService, ResponseAi } from "src/shared/infra/IA/Ai.service";
+import { AiTextService, ResponseAi } from "src/shared/infra/IA/AiText.service";
+import { AiImageService } from "src/shared/infra/IA/AiImage.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
 import { ImagePromptService, StudioStyleOption } from "src/shared/infra/IA/ImagePrompt.service";
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
@@ -23,7 +24,8 @@ export class UserService {
         private providerMusic: MusicProviderFactory,
         private saveTrackService: SaveTracks,
         private trackRepository: TrackRepository,
-        private aiService: AiService,
+        private aiTextService: AiTextService,
+        private aiImageService: AiImageService,
         private prompt_imageService: ImagePromptService,
         private emotionAnalysis: EmotionAnalysisService,
         private creditService: CreditService,
@@ -256,7 +258,7 @@ export class UserService {
         }
 
         // ── Gera imagem ──
-        const imagePrompt = await this.aiService.buildHybridImagePrompt({
+        const imagePrompt = await this.aiImageService.buildHybridImagePrompt({
             ativacao: response.coreAxes.ativacao,
             moodScore: response.moodScore,
             coreAxes: response.coreAxes,
@@ -266,7 +268,7 @@ export class UserService {
             studioId: resolvedStudioId,
         });
 
-        const imageBuffer = await this.aiService.generateImage(
+        const imageBuffer = await this.aiImageService.generateImage(
             imagePrompt,
             user.face_photo_path ?? undefined
         );
@@ -332,7 +334,7 @@ export class UserService {
             img_url: currentTrack.img_url,
             createdAt: currentTrack.createdAt ?? new Date(),
         };
-        const analysis = await this.aiService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
+        const analysis = await this.aiTextService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
         return { isPlaying: true, ...analysis };
     }
 

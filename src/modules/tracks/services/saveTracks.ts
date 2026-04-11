@@ -4,13 +4,13 @@ import { TrackAnalysisWriteInput, TrackRepository } from "../repository/TrackRep
 import { SpotifySavedTracksItem } from "src/shared/types/TrackResponseSpotify";
 import { mapSpotifySavedTracksToPrisma } from "../mappers/spotifyToPrisma";
 import { TrackInput } from "src/shared/types/TrackInput";
-import { AiService } from "src/shared/infra/IA/Ai.service";
+import { AiTextService } from "src/shared/infra/IA/AiText.service";
 
 @Injectable()
 export default class SaveTracks {
     constructor(
         private trackRepository: TrackRepository,
-        private readonly aiService: AiService,
+        private readonly aiTextService: AiTextService,
     ) { }
 
     private chunkArray<T>(items: T[], size: number): T[][] {
@@ -182,7 +182,7 @@ export default class SaveTracks {
         for (const [index, batch] of batches.entries()) {
             try {
                 console.log(`[TrackAnalysis] user=${idUser} batch=${index + 1}/${batches.length} size=${batch.length}`);
-                const analyzed = await this.aiService.analyzeMusicMoodByHistoryToday(batch);
+                const analyzed = await this.aiTextService.analyzeMusicMoodByHistoryToday(batch);
 
                 const dbIdToSpotifyId = new Map(
                     batch
