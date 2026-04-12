@@ -306,16 +306,18 @@ export class ImagePromptService {
             ? "Traduzir identidade facial da referência para o estilo do estúdio. Sem fotorrealismo."
             : "Personagem jovem adulto(a) original.";
 
-        return `Ilustração 2D anime no estilo ${studio.name} (ref: ${refAnime}). Tema: "${data.sentiment}".
+        const copyrightRule = "\n\nREGRA ESTRITA DE COPYRIGHT: TODOS os personagens (protagonista e qualquer pessoa no fundo) DEVEM ser 100% originais e genéricos (OCs). É EXPRESSAMENTE PROIBIDO desenhar personagens que se pareçam com personagens existentes de animes para evitar direitos autorais. O anime de referência serve APENAS para guiar o estilo de coloração, luz e traço, nunca o design dos personagens.";
+
+        return `Ilustração 2D anime orginal. Tema: "${data.sentiment}". (Inspirar-se APENAS no estilo de arte de: ${studio.name}, especialmente ${refAnime}).
 
 ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionStyle}. ${studio.renderingNotes}.
 
 CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}
 
 
-PERSONAGEM CENTRAL: ${faceRef}
+PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}
 
-SAÍDA: Retrato 9:16, ilustração 2D anime estilizada. NUNCA fotorrealista. Sem texto/tipografia. Reconhecível como ${studio.company}.`.trim();
+SAÍDA: Retrato 9:16, ilustração 2D anime estilizada. NUNCA fotorrealista. Sem texto/tipografia. Reconhecível como arte do estúdio ${studio.company}.`.trim();
     }
 
     getAvailableStudios(): StudioStyleOption[] {
