@@ -93,6 +93,8 @@ model TracksAnalysis {
   coreAxes          Json
   emotionalVector   Json
   reasoning         String
+  genre             String
+  subgenre          String
   analyzedAt        DateTime @default(now())
 }
 

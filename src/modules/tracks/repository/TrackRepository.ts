@@ -9,6 +9,8 @@ export type TrackAnalysisWriteInput = {
     coreAxes: Prisma.JsonValue;
     emotionalVector: Prisma.JsonValue;
     reasoning: string;
+    genre: string;
+    subgenre: string;
     analyzedAt?: Date;
 };
 
@@ -19,6 +21,8 @@ export type TrackAnalysisReadItem = {
     coreAxes: Prisma.JsonValue;
     emotionalVector: Prisma.JsonValue;
     reasoning: string;
+    genre: string;
+    subgenre: string;
     analyzedAt: Date;
 };
 
@@ -83,6 +87,8 @@ export class TrackRepository {
                         update: {
                             moodScore: music.moodScore,
                             dominantSentiment: music.dominantSentiment,
+                            genre: music.genre,
+                            subgenre: music.subgenre,
                             coreAxes: music.coreAxes as any,
                             emotionalVector: music.emotionalVector as any,
                             reasoning: music.reasoning,
@@ -92,6 +98,8 @@ export class TrackRepository {
                             spotifyid: music.spotifyid,
                             moodScore: music.moodScore,
                             dominantSentiment: music.dominantSentiment,
+                            genre: music.genre,
+                            subgenre: music.subgenre,
                             coreAxes: music.coreAxes as any,
                             emotionalVector: music.emotionalVector as any,
                             reasoning: music.reasoning,
@@ -114,6 +122,8 @@ export class TrackRepository {
                 spotifyid: true,
                 moodScore: true,
                 dominantSentiment: true,
+                genre: true,
+                subgenre: true,
                 coreAxes: true,
                 emotionalVector: true,
                 reasoning: true,

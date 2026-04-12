@@ -80,6 +80,8 @@ export default class SaveTracks {
             const emotionalVector = row.snapshot.emotionalVector;
             const coreAxes = row.snapshot.coreAxes;
             const reasoning = row.snapshot.reasoning;
+            const genre = row.snapshot.genre;
+            const subgenre = row.snapshot.subgenre;
 
             if (typeof moodScore !== "number" || !Number.isFinite(moodScore)) continue;
             if (typeof dominantSentiment !== "string" || !dominantSentiment.trim()) continue;
@@ -93,6 +95,8 @@ export default class SaveTracks {
                 emotionalVector,
                 coreAxes,
                 reasoning: typeof reasoning === "string" ? reasoning : "",
+                genre: typeof genre === "string" ? genre : "Unknown",
+                subgenre: typeof subgenre === "string" ? subgenre : "Unknown",
                 analyzedAt: row.analyzedAt,
             });
         }
@@ -202,6 +206,8 @@ export default class SaveTracks {
                         coreAxes: resultTrack.coreAxes,
                         emotionalVector: resultTrack.emotionalVector,
                         reasoning: resultTrack.reasoning ?? "",
+                        genre: resultTrack.genre ?? "Unknown",
+                        subgenre: resultTrack.subgenre ?? "Unknown",
                         analyzedAt: new Date(),
                     });
                 }

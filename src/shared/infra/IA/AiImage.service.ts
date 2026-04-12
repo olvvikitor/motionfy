@@ -55,15 +55,14 @@ export class AiImageService {
     if (faceFile) {
       // images.edit aceita o parâmetro 'image' para referência facial
       result = await this.openai.images.edit({
-        model: "gpt-image-1",
+        model: "gpt-image-1-mini",
         prompt: fullPrompt,
         image: faceFile,
         size: "auto",
-        input_fidelity: "low",
       });
     } else {
       result = await this.openai.images.generate({
-        model: "gpt-image-1",
+        model: "gpt-image-1-mini",
         prompt: fullPrompt,
         size: "auto",
       });

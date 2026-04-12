@@ -8,8 +8,15 @@ export type ResponseAi = {
   dominantSentiment: string;
   emotionalVector: EmotionalVector;
   reasoning: string;
+
   coreAxes: CoreAxes;
   image_mood: string
+  mostListenedGenre?: string;
+  mostListenedSong?: {
+    name: string;
+    artist: string;
+    img_url: string;
+  };
   tracks: {
     id: string;
     music: string;
@@ -19,6 +26,8 @@ export type ResponseAi = {
     dominantSentiment: string;
     reasoning: string;
     moodScore: number;
+    genre: string;
+    subgenre: string;
     coreAxes: CoreAxes;
   }[];
 };
@@ -31,6 +40,8 @@ type GeminiResponse = {
     id: string;
     music: string;
     reasoning: string;
+    genre: string;
+    subgenre: string;
     artist: string;
     emotionalVector: EmotionalVector;
   }[];
@@ -69,12 +80,14 @@ export class AiTextService {
               type: SchemaType.ARRAY,
               items: {
                 type: SchemaType.OBJECT,
-                required: ["id", "music", "artist", "emotionalVector"],
+                required: ["id", "music", "artist", "emotionalVector", "genre", "subgenre"],
                 properties: {
                   id: { type: SchemaType.STRING },
                   music: { type: SchemaType.STRING },
                   artist: { type: SchemaType.STRING },
                   reasoning: { type: SchemaType.STRING },
+                  genre: { type: SchemaType.STRING },
+                  subgenre: { type: SchemaType.STRING },
                   emotionalVector: {
                     type: SchemaType.OBJECT,
                     required: [...EMOTIONAL_DIMENSIONS],
@@ -205,6 +218,8 @@ ${JSON.stringify(musics, null, 2)}
           ...track,
           img_url: imageMap.get(track.id) ?? '',
           dominantSentiment,
+          genre: track.genre,
+          subgenre: track.subgenre,
           moodScore,
           coreAxes,
         };

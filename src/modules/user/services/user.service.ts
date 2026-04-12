@@ -117,6 +117,51 @@ export class UserService {
         ) as EmotionalVector;
     }
 
+    private computeMostListened(tracks: any[]): { mostListenedGenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
+        if (!tracks || !tracks.length) return {};
+        const trackCounts = new Map<string, number>();
+        const genreCounts = new Map<string, number>();
+
+        tracks.forEach(t => {
+            const songKey = t.id || t.spotifyId;
+            if (songKey) trackCounts.set(songKey, (trackCounts.get(songKey) || 0) + 1);
+            
+            let g = t.genre;
+            if (g) genreCounts.set(g, (genreCounts.get(g) || 0) + 1);
+        });
+
+        let topSongId = "";
+        let maxSongCount = 0;
+        for (const [id, count] of trackCounts.entries()) {
+            if (count > maxSongCount) { maxSongCount = count; topSongId = id; }
+        }
+
+        let topGenre = "";
+        let maxGenreCount = 0;
+        for (const [g, count] of genreCounts.entries()) {
+            if (count > maxGenreCount) { maxGenreCount = count; topGenre = g; }
+        }
+
+        let mostListenedSong: { name: string, artist: string, img_url: string } | undefined;
+        let mostListenedGenre: string | undefined;
+
+        if (topGenre) mostListenedGenre = topGenre;
+        
+        if (topSongId) {
+            const topTrack = tracks.find(t => (t.id === topSongId) || (t.spotifyId === topSongId));
+            if (topTrack) {
+                mostListenedSong = {
+                    name: topTrack.music || topTrack.title || "",
+                    artist: topTrack.artist || "",
+                    img_url: topTrack.img_url || ""
+                };
+            }
+        }
+
+        console.log("DEBUG mostListened computed:", { mostListenedGenre, mostListenedSong: mostListenedSong?.name });
+        return { mostListenedGenre, mostListenedSong };
+    }
+
     private buildMoodFromStoredAnalyses(tracks: Track[], analyses: TrackAnalysisReadItem[]): ResponseAi | null {
         if (!tracks.length || !analyses.length) return null;
         const analysisBySpotifyId = new Map(analyses.map((a) => [a.spotifyid, a]));
@@ -136,6 +181,8 @@ export class UserService {
                 emotionalVector: vector,
                 dominantSentiment: analysis.dominantSentiment,
                 reasoning: analysis.reasoning,
+                genre: analysis.genre,
+                subgenre: analysis.subgenre,
                 moodScore: analysis.moodScore,
                 coreAxes: coreAxes as any,
             };
@@ -146,6 +193,8 @@ export class UserService {
         const avgVector = this.aggregateMoodVector(mergedTracks);
         const classification = this.emotionAnalysis.classifyEmotion(avgVector);
 
+        const mostListened = this.computeMostListened(mergedTracks);
+
         return {
             moodScore: classification.moodScore,
             dominantSentiment: classification.dominantSentiment,
@@ -154,6 +203,8 @@ export class UserService {
             coreAxes: classification.coreAxes,
             image_mood: "",
             tracks: mergedTracks,
+            mostListenedGenre: mostListened.mostListenedGenre,
+            mostListenedSong: mostListened.mostListenedSong,
         };
     }
 
@@ -323,7 +374,17 @@ export class UserService {
         return response;
     }
     async getMoodUserToday(id: string): Promise<any> {
-        return this.userRepository.getMoodUser(id);
+        const mood = await this.userRepository.getMoodUser(id);
+        if (mood && mood.tracksAnalyzeds) {
+            const parsedTracks = typeof mood.tracksAnalyzeds === 'string' ? JSON.parse(mood.tracksAnalyzeds as string) : mood.tracksAnalyzeds;
+            
+            const mostListened = this.computeMostListened(Array.isArray(parsedTracks) ? parsedTracks : []);
+            return {
+                ...mood,
+                ...mostListened
+            };
+        }
+        return mood;
     }
 
     async getValidToken(id: string): Promise<string> {

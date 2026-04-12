@@ -1,0 +1,1682 @@
+[
+  {
+    "id": "40f09b62-3297-47e2-b533-c34474d85121",
+    "genre": "Jazz",
+    "music": "Morning Sunrise",
+    "artist": "Weldon Irvine",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485194453d2b896d741646a1f70e",
+    "coreAxes": {
+      "ativacao": -0.21760000000000002,
+      "quadrante": "PositivoCalmo",
+      "polaridade": 0.09999999999999987
+    },
+    "subgenre": "Spiritual Jazz",
+    "moodScore": 0.5497412007086385,
+    "reasoning": "Smooth jazz evoke introspective peace, gentle hope, and communal connection.",
+    "emotionalVector": {
+      "Tensao": 0.1,
+      "Energia": 0.3,
+      "Euforia": 0.35,
+      "Valencia": 0.75,
+      "Dominancia": 0.4,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.7,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Paz"
+  },
+  {
+    "id": "c8b70367-13dc-4afc-adf3-c2bc7e770e29",
+    "genre": "Rock",
+    "music": "Stab",
+    "artist": "Planet Hemp",
+    "img_url": "https://i.scdn.co/image/ab67616d000048515c8ad3fe084f5885fff30c68",
+    "coreAxes": {
+      "ativacao": 0.704,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.32000000000000006
+    },
+    "subgenre": "Reggae Metal",
+    "moodScore": 0.65197958490209,
+    "reasoning": "Letra sobre superação e força, com batida pesada e ritmo contagiante.",
+    "emotionalVector": {
+      "Tensao": 0.75,
+      "Energia": 0.95,
+      "Euforia": 0.65,
+      "Valencia": 0.7,
+      "Dominancia": 0.9,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "c887cfad-264f-4249-833c-5b984fde0ecf",
+    "genre": "Hip Hop",
+    "music": "Que Nem o Meu Cachorro",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851f8944e77d77b2dfe04f852f4",
+    "coreAxes": {
+      "ativacao": 0.45599999999999996,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap Nacional",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Flow confiante, batida forte, celebração da vida e conquistas.",
+    "emotionalVector": {
+      "Tensao": 0.4,
+      "Energia": 0.85,
+      "Euforia": 0.65,
+      "Valencia": 0.75,
+      "Dominancia": 0.7,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.45,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.15
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "ca075220-c733-459e-b161-34eb61420324",
+    "genre": "Hip Hop",
+    "music": "Na Zona Sul",
+    "artist": "Sabotage, Helião, Cascão, DJ CIA",
+    "img_url": "https://i.scdn.co/image/ab67616d000048516ac9c35f920912f7eaf364b0",
+    "coreAxes": {
+      "ativacao": 0.18000000000000016,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.32500000000000007
+    },
+    "subgenre": "Rap Nacional",
+    "moodScore": 0.34588641349221105,
+    "reasoning": "Retrato cru da realidade, união comunitária, tensão e superação urbana.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.75,
+      "Euforia": 0.3,
+      "Valencia": 0.3,
+      "Dominancia": 0.8,
+      "Melancolia": 0.5,
+      "Introspeccao": 0.8,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.5
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "d138cb91-7e68-45ed-9b17-63b59c5ab242",
+    "genre": "Rap Rock",
+    "music": "Queimando Tudo",
+    "artist": "Planet Hemp",
+    "img_url": "https://i.scdn.co/image/ab67616d000048518357f8322f36422ab11aae5b",
+    "coreAxes": {
+      "ativacao": 0.532,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Hardcore Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Hino de protesto com batida pesada e vocais agressivos, clamando por mudança.",
+    "emotionalVector": {
+      "Tensao": 0.75,
+      "Energia": 0.9,
+      "Euforia": 0.4,
+      "Valencia": 0.25,
+      "Dominancia": 0.85,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.2,
+      "ConexaoSocial": 0.8,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "02957e06-2ea4-4a20-9d3e-adc7606fc67b",
+    "genre": "Hip Hop",
+    "music": "Canão Foi Tão Bom",
+    "artist": "Sabotage, Negra Li, Lakers, DBS Gordão Chefe, Instituto, Ganjaman",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851fac7a564f376b3047b9b769b",
+    "coreAxes": {
+      "ativacao": 0.11999999999999988,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.1699999999999997
+    },
+    "subgenre": "Consciente",
+    "moodScore": 0.5837432677712074,
+    "reasoning": "Celebração da vida e da música com flow suave e mensagem positiva de união.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.6,
+      "Euforia": 0.6,
+      "Valencia": 0.75,
+      "Dominancia": 0.5,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.5,
+      "ConexaoSocial": 0.9,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "86c3a79d-1e8a-4505-b2b5-ca2d6bbf161d",
+    "genre": "Hip Hop",
+    "music": "Estilo do Gueto",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512b1678cbc2c4ec91c6da1cf1",
+    "coreAxes": {
+      "ativacao": 0.31200000000000006,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.29999999999999993
+    },
+    "subgenre": "Gangsta Rap",
+    "moodScore": 0.35665704065968573,
+    "reasoning": "Narrativa crua da vida urbana, com batida forte e flow confiante sobre superação.",
+    "emotionalVector": {
+      "Tensao": 0.65,
+      "Energia": 0.85,
+      "Euforia": 0.45,
+      "Valencia": 0.3,
+      "Dominancia": 0.7,
+      "Melancolia": 0.4,
+      "Introspeccao": 0.7,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.65,
+      "Vulnerabilidade": 0.4
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "5e58e8c1-4570-45c0-bb1d-719fc7712e11",
+    "genre": "Hip Hop",
+    "music": "Bogotá",
+    "artist": "Criolo",
+    "img_url": "https://i.scdn.co/image/ab67616d000048514309d355d1ba95d16e7f40fb",
+    "coreAxes": {
+      "ativacao": -0.656,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -1
+    },
+    "subgenre": "Experimental",
+    "moodScore": 0.16068654401699484,
+    "reasoning": "Reflexão sombria e poética sobre a vida, com instrumentação minimalista e vocal introspectivo.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.3,
+      "Euforia": 0.05,
+      "Valencia": 0.2,
+      "Dominancia": 0.2,
+      "Melancolia": 0.8,
+      "Introspeccao": 0.9,
+      "ConexaoSocial": 0.4,
+      "Empoderamento": 0.2,
+      "Vulnerabilidade": 0.9
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "88179105-24e7-41ea-aff3-3d718823701c",
+    "genre": "Rap Rock",
+    "music": "Mantenha o Respeito",
+    "artist": "Planet Hemp",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851d8bedbdf2d6f558e234587c5",
+    "coreAxes": {
+      "ativacao": 0.42399999999999993,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Consciente",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Mensagem de resistência e união contra a opressão, com batida forte e refrão marcante.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.85,
+      "Euforia": 0.4,
+      "Valencia": 0.2,
+      "Dominancia": 0.8,
+      "Melancolia": 0.25,
+      "Introspeccao": 0.3,
+      "ConexaoSocial": 0.75,
+      "Empoderamento": 0.75,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "f91d5632-68eb-4cc7-bf42-3c07382978ae",
+    "genre": "Hip Hop",
+    "music": "Eu Já Sabia",
+    "artist": "Marcelo D2, Sain, Helio Bentes",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851035adf718091a78acd010132",
+    "coreAxes": {
+      "ativacao": 0.31200000000000006,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.0050000000000001155
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.4975000325515747,
+    "reasoning": "Flow envolvente sobre a vida e conquistas, com batida contagiante e refrão cativante.",
+    "emotionalVector": {
+      "Tensao": 0.4,
+      "Energia": 0.75,
+      "Euforia": 0.55,
+      "Valencia": 0.6,
+      "Dominancia": 0.65,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.35,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "66e59f5f-dea7-48d2-9f85-9fa5dff70f89",
+    "genre": "Hip Hop",
+    "music": "Caminhos do Destino",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512b1678cbc2c4ec91c6da1cf1",
+    "coreAxes": {
+      "ativacao": -0.29999999999999993,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.7799999999999999
+    },
+    "subgenre": "Consciente",
+    "moodScore": 0.19964268654993317,
+    "reasoning": "Reflexão sobre a jornada da vida, com batida cadenciada e letras profundas e pessoais.",
+    "emotionalVector": {
+      "Tensao": 0.45,
+      "Energia": 0.5,
+      "Euforia": 0.2,
+      "Valencia": 0.35,
+      "Dominancia": 0.4,
+      "Melancolia": 0.6,
+      "Introspeccao": 0.8,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.45,
+      "Vulnerabilidade": 0.7
+    },
+    "dominantSentiment": "Reflexao"
+  },
+  {
+    "id": "63d63c45-46bf-4519-ae8b-6a88e45c6920",
+    "genre": "Hip Hop",
+    "music": "Duas de Cinco",
+    "artist": "Criolo",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485101aeb110e069a8025d1f60e6",
+    "coreAxes": {
+      "ativacao": 0.1359999999999999,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.3849999999999999
+    },
+    "subgenre": "Boombap",
+    "moodScore": 0.32110234602764787,
+    "reasoning": "Narrativa urbana com flow ágil e batida marcante, abordando a dualidade da vida.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.7,
+      "Euforia": 0.4,
+      "Valencia": 0.4,
+      "Dominancia": 0.55,
+      "Melancolia": 0.3,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.55,
+      "Vulnerabilidade": 0.4
+    },
+    "dominantSentiment": "Ambivalente"
+  },
+  {
+    "id": "83567c1a-5a51-4587-af31-b05594640a80",
+    "genre": "Rap Rock",
+    "music": "Contexto",
+    "artist": "Planet Hemp",
+    "img_url": "https://i.scdn.co/image/ab67616d000048515c8ad3fe084f5885fff30c68",
+    "coreAxes": {
+      "ativacao": 0.31199999999999983,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Protesto",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Crítica social contundente com batida agressiva e vocais raivosos, clamando por justiça.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.8,
+      "Euforia": 0.35,
+      "Valencia": 0.15,
+      "Dominancia": 0.7,
+      "Melancolia": 0.3,
+      "Introspeccao": 0.5,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "a8ad7132-bdda-449a-bfb1-36139334e3fe",
+    "genre": "Hip Hop",
+    "music": "Real Gold",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851d263c2fd3cd00d35dfb3a2e2",
+    "coreAxes": {
+      "ativacao": 0.22799999999999998,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.06499999999999995
+    },
+    "subgenre": "Consciente",
+    "moodScore": 0.5324286714190315,
+    "reasoning": "Mensagem de valorização pessoal e autenticidade com flow confiante e batida envolvente.",
+    "emotionalVector": {
+      "Tensao": 0.35,
+      "Energia": 0.7,
+      "Euforia": 0.5,
+      "Valencia": 0.65,
+      "Dominancia": 0.6,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.45,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.75,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "5f8e1355-ca1f-4573-9dac-46734ef41b07",
+    "genre": "Hip Hop",
+    "music": "Avista",
+    "artist": "DV Tribo",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851db61ab9bf13e76eda21d3a57",
+    "coreAxes": {
+      "ativacao": 0.42000000000000015,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Letra de superação com batida forte e energética, celebração da vida.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.85,
+      "Euforia": 0.55,
+      "Valencia": 0.7,
+      "Dominancia": 0.75,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.2,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "76588d90-10de-4035-a06c-70e8aae0dca6",
+    "genre": "Hip Hop",
+    "music": "Castelos & Ruínas",
+    "artist": "BK, Sain",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851db0575a1263dce6d0607cd3d",
+    "coreAxes": {
+      "ativacao": 0.19200000000000017,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Reflexão sobre o passado e presente, com crítica social e batida intensa.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.75,
+      "Euforia": 0.35,
+      "Valencia": 0.3,
+      "Dominancia": 0.8,
+      "Melancolia": 0.55,
+      "Introspeccao": 0.8,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.45
+    },
+    "dominantSentiment": "Frustracao"
+  },
+  {
+    "id": "4cc7e506-f365-4f37-809d-d28e93f27393",
+    "genre": "Hip Hop",
+    "music": "SEI BEM",
+    "artist": "Nitcho, Luiz Barata",
+    "img_url": "https://i.scdn.co/image/ab67616d000048515331a7b0f73a98373019a894",
+    "coreAxes": {
+      "ativacao": 0.2679999999999998,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.2350000000000001
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.614233059392621,
+    "reasoning": "Confiança e autoconhecimento expressos com flow confiante e melodia cativante.",
+    "emotionalVector": {
+      "Tensao": 0.35,
+      "Energia": 0.7,
+      "Euforia": 0.65,
+      "Valencia": 0.8,
+      "Dominancia": 0.6,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.4,
+      "ConexaoSocial": 0.75,
+      "Empoderamento": 0.75,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "1875b138-e161-4854-9567-477551bdffb6",
+    "genre": "MPB",
+    "music": "Fio de Pumo (Padê Onã)",
+    "artist": "Criolo, Juçara Marçal",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485101aeb110e069a8025d1f60e6",
+    "coreAxes": {
+      "ativacao": -0.5015999999999998,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.8199999999999998
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.1912419050238327,
+    "reasoning": "Ritualístico e ancestral, evoca espiritualidade, ancestralidade e reflexão profunda.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.3,
+      "Euforia": 0.15,
+      "Valencia": 0.45,
+      "Dominancia": 0.4,
+      "Melancolia": 0.7,
+      "Introspeccao": 0.9,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.35,
+      "Vulnerabilidade": 0.85
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "2df010c1-cddb-42d6-a324-89a6e87288b5",
+    "genre": "Hip Hop",
+    "music": "Mister Niterói",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512b1678cbc2c4ec91c6da1cf1",
+    "coreAxes": {
+      "ativacao": 0.31600000000000006,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Autoconfiança e resiliência urbana, com flow marcante e batida envolvente.",
+    "emotionalVector": {
+      "Tensao": 0.55,
+      "Energia": 0.7,
+      "Euforia": 0.5,
+      "Valencia": 0.6,
+      "Dominancia": 0.85,
+      "Melancolia": 0.25,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "63492fbc-2170-422c-ace0-d79a6b46fc76",
+    "genre": "Hip Hop",
+    "music": "Nunca Duvide de um Mano",
+    "artist": "Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d000048513998b0b552e565d0c2761132",
+    "coreAxes": {
+      "ativacao": 0.42800000000000016,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.47999999999999976
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.7148198267992141,
+    "reasoning": "Mensagem de força e união, com batida contagiante e flow motivacional.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.8,
+      "Euforia": 0.7,
+      "Valencia": 0.85,
+      "Dominancia": 0.7,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.25,
+      "ConexaoSocial": 0.8,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.15
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "ac17cacc-e946-4217-9d05-c503d89825c6",
+    "genre": "Hip Hop",
+    "music": "RUAS DE FORTAL (feat. Brandão85)",
+    "artist": "WIU, Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851579f466c5440da475393fdff",
+    "coreAxes": {
+      "ativacao": 0.56,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Celebração da origem e da força coletiva, com batida vibrante e energia alta.",
+    "emotionalVector": {
+      "Tensao": 0.45,
+      "Energia": 0.9,
+      "Euforia": 0.75,
+      "Valencia": 0.75,
+      "Dominancia": 0.85,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.3,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "fd68da9a-3de8-42bc-b906-3b779cd91863",
+    "genre": "Hip Hop",
+    "music": "Armamento Russo",
+    "artist": "Leviano, Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851811fc7641d9b5ebf0ee62110",
+    "coreAxes": {
+      "ativacao": 0.7159999999999997,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Agresividade e ostentação com batida pesada e flow dominante, foco na força.",
+    "emotionalVector": {
+      "Tensao": 0.8,
+      "Energia": 0.95,
+      "Euforia": 0.7,
+      "Valencia": 0.35,
+      "Dominancia": 0.95,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.25,
+      "ConexaoSocial": 0.55,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "693063d9-b7a0-4ee8-a282-f81f749bae89",
+    "genre": "Hip Hop",
+    "music": "SEGREDO",
+    "artist": "Alee, Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851eb021b18fcead1189954756d",
+    "coreAxes": {
+      "ativacao": 0.3640000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Autoconfiança e superação de adversidades, com batida envolvente e flow assertivo.",
+    "emotionalVector": {
+      "Tensao": 0.4,
+      "Energia": 0.8,
+      "Euforia": 0.6,
+      "Valencia": 0.65,
+      "Dominancia": 0.7,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.3,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.85,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "08a7c270-e103-412e-b276-60b55f29df14",
+    "genre": "Hip Hop",
+    "music": "EM DIREÇÃO DO SOL",
+    "artist": "Brandão85, Alee",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851b6f14ef4b165522dfac3ed0e",
+    "coreAxes": {
+      "ativacao": 0.5,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.595
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.7525621917741063,
+    "reasoning": "Otimismo radiante e busca por um futuro brilhante, com batida eufórica e letra positiva.",
+    "emotionalVector": {
+      "Tensao": 0.2,
+      "Energia": 0.85,
+      "Euforia": 0.8,
+      "Valencia": 0.9,
+      "Dominancia": 0.7,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "d0f37b37-6161-40ec-9612-334edaca2512",
+    "genre": "Trap",
+    "music": "ESPAÇONAVE",
+    "artist": "Brandão85, WIU, Matuê",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851b6f14ef4b165522dfac3ed0e",
+    "coreAxes": {
+      "ativacao": 0.5760000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.34499999999999975
+    },
+    "subgenre": "Drill",
+    "moodScore": 0.6625461689758467,
+    "reasoning": "Trap com batida acelerada, letras sobre ostentação e ascensão. Energia e dominância altas.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.9,
+      "Euforia": 0.75,
+      "Valencia": 0.7,
+      "Dominancia": 0.85,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.85,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "94742700-9e32-45f2-b229-93ceba547b74",
+    "genre": "Trap",
+    "music": "WARZONE",
+    "artist": "Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851ae440982c7d6efdd2da6749e",
+    "coreAxes": {
+      "ativacao": 0.7240000000000002,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.43500000000000005
+    },
+    "subgenre": "Drill",
+    "moodScore": 0.6983285304365098,
+    "reasoning": "Batida agressiva, letras de confronto e superação. Domínio e energia extremos.",
+    "emotionalVector": {
+      "Tensao": 0.45,
+      "Energia": 0.95,
+      "Euforia": 0.8,
+      "Valencia": 0.65,
+      "Dominancia": 0.95,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.05
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "94742700-9e32-45f2-b229-93ceba547b74",
+    "genre": "Trap",
+    "music": "WARZONE",
+    "artist": "Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851ae440982c7d6efdd2da6749e",
+    "coreAxes": {
+      "ativacao": 0.7240000000000002,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.43500000000000005
+    },
+    "subgenre": "Drill",
+    "moodScore": 0.6983285304365098,
+    "reasoning": "Batida agressiva, letras de confronto e superação. Domínio e energia extremos.",
+    "emotionalVector": {
+      "Tensao": 0.45,
+      "Energia": 0.95,
+      "Euforia": 0.8,
+      "Valencia": 0.65,
+      "Dominancia": 0.95,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.05
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "fba4212f-0159-4f38-9828-7895e7d759ec",
+    "genre": "Trap",
+    "music": "100% MOLHO",
+    "artist": "Brandão85, Jovem Dex, Leviano, Alee",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485151f1bdb15406e4706081c00d",
+    "coreAxes": {
+      "ativacao": 0.5680000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.41000000000000014
+    },
+    "subgenre": "Rage",
+    "moodScore": 0.6887563151417189,
+    "reasoning": "Trap vibrante com flow rápido e tema de festa. Euforia e conexão social elevadas.",
+    "emotionalVector": {
+      "Tensao": 0.25,
+      "Energia": 0.9,
+      "Euforia": 0.85,
+      "Valencia": 0.8,
+      "Dominancia": 0.75,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.8,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.15
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "c2c6d61d-3732-4647-b8c7-0e4902cba976",
+    "genre": "Trap",
+    "music": "XTRANHO",
+    "artist": "Matuê, Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851f78ea8aae8a360d9def9e819",
+    "coreAxes": {
+      "ativacao": 0.492,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Melodic Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Trap com melodia marcante, flow confiante e temas de status. Energia e dominância fortes.",
+    "emotionalVector": {
+      "Tensao": 0.4,
+      "Energia": 0.85,
+      "Euforia": 0.7,
+      "Valencia": 0.6,
+      "Dominancia": 0.8,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.25,
+      "ConexaoSocial": 0.55,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "1dde1f3e-8fff-4d02-a73d-8405fdde774c",
+    "genre": "Trap",
+    "music": "Isso é Sério",
+    "artist": "Matuê, Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512eb219eef2414503421a5704",
+    "coreAxes": {
+      "ativacao": 0.24799999999999978,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.2999999999999996
+    },
+    "subgenre": "Melodic Trap",
+    "moodScore": 0.6433429593403142,
+    "reasoning": "Trap reflexivo sobre a vida e relacionamentos, com batida mais suave. Conexão social e empoderamento altos.",
+    "emotionalVector": {
+      "Tensao": 0.2,
+      "Energia": 0.7,
+      "Euforia": 0.6,
+      "Valencia": 0.75,
+      "Dominancia": 0.65,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.4,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.75,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "8653f6eb-d287-499c-8d61-2385092f1e32",
+    "genre": "Trap",
+    "music": "NOITE PERFEITA",
+    "artist": "Brandão85",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485151f1bdb15406e4706081c00d",
+    "coreAxes": {
+      "ativacao": 0.3599999999999999,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.4849999999999999
+    },
+    "subgenre": "Melodic Trap",
+    "moodScore": 0.7165927970395679,
+    "reasoning": "Trap com vibe positiva e romântica, celebração do momento. Valencia e conexão social elevados.",
+    "emotionalVector": {
+      "Tensao": 0.15,
+      "Energia": 0.75,
+      "Euforia": 0.7,
+      "Valencia": 0.85,
+      "Dominancia": 0.7,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.35,
+      "ConexaoSocial": 0.9,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "352530f0-bb5b-42aa-97ac-9dd57440f11b",
+    "genre": "Trap",
+    "music": "JAPONÊS",
+    "artist": "Brandão85, Matuê",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851f29287e8181a5aef70b66f14",
+    "coreAxes": {
+      "ativacao": 0.6200000000000003,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.3700000000000001
+    },
+    "subgenre": "Drill",
+    "moodScore": 0.6728478350525678,
+    "reasoning": "Trap agressivo com foco em poder e sucesso, batida forte. Dominância e energia altas.",
+    "emotionalVector": {
+      "Tensao": 0.35,
+      "Energia": 0.9,
+      "Euforia": 0.8,
+      "Valencia": 0.7,
+      "Dominancia": 0.9,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "e113e705-b5bb-4161-9fdd-f092b896c7ab",
+    "genre": "Hip Hop",
+    "music": "The Villest (with Erykah Badu)",
+    "artist": "J. Cole, Erykah Badu",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485180788f104c780412212e97e3",
+    "coreAxes": {
+      "ativacao": 0.06400000000000006,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.43000000000000016
+    },
+    "subgenre": "Conscious Hip Hop",
+    "moodScore": 0.3035627086988778,
+    "reasoning": "Hip Hop introspectivo com crítica social e batida cadenciada. Tensão e introspecção moderadas.",
+    "emotionalVector": {
+      "Tensao": 0.65,
+      "Energia": 0.6,
+      "Euforia": 0.35,
+      "Valencia": 0.3,
+      "Dominancia": 0.7,
+      "Melancolia": 0.4,
+      "Introspeccao": 0.7,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.55
+    },
+    "dominantSentiment": "Ambivalente"
+  },
+  {
+    "id": "6b175843-3026-4494-a46d-69b307fa52a4",
+    "genre": "MPB",
+    "music": "Caindo em si",
+    "artist": "Derxan, Pedro Apoema, Manel Beats",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851ed0e2959ea2f58897d69a774",
+    "coreAxes": {
+      "ativacao": -0.808,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -1
+    },
+    "subgenre": "Lo-fi",
+    "moodScore": 0.16068654401699484,
+    "reasoning": "Lo-fi melancólico e introspectivo, com vocais suaves e batida lenta. Melancolia e introspecção extremas.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.2,
+      "Euforia": 0.05,
+      "Valencia": 0.25,
+      "Dominancia": 0.15,
+      "Melancolia": 0.85,
+      "Introspeccao": 0.95,
+      "ConexaoSocial": 0.2,
+      "Empoderamento": 0.1,
+      "Vulnerabilidade": 0.9
+    },
+    "dominantSentiment": "Tristeza"
+  },
+  {
+    "id": "c2a69009-37b4-4751-9394-63903926e989",
+    "genre": "Hip Hop",
+    "music": "Ready to Die - 2005 Remaster",
+    "artist": "The Notorious B.I.G.",
+    "img_url": "https://i.scdn.co/image/ab67616d000048510f51e29700232d57fe8a0830",
+    "coreAxes": {
+      "ativacao": 0.272,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Gangsta Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Gangsta rap cru e sombrio, com narrativa de vida dura. Tensão e dominância altas.",
+    "emotionalVector": {
+      "Tensao": 0.8,
+      "Energia": 0.85,
+      "Euforia": 0.4,
+      "Valencia": 0.15,
+      "Dominancia": 0.9,
+      "Melancolia": 0.6,
+      "Introspeccao": 0.5,
+      "ConexaoSocial": 0.45,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.65
+    },
+    "dominantSentiment": "Revolta"
+  },
+  {
+    "id": "1abfb28a-80fb-487c-b6b9-7fd55d3e1da8",
+    "genre": "Hip Hop",
+    "music": "Dutumob",
+    "artist": "Filipe Ret, Mãolee, Daniel Shadow",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851f1364384afc987781648856f",
+    "coreAxes": {
+      "ativacao": 0.56,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Trap moderno com batidas fortes e flow confiante, celebração de conquistas.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.9,
+      "Euforia": 0.7,
+      "Valencia": 0.6,
+      "Dominancia": 0.85,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.85,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "64f1099e-50f6-4410-8d6e-ef259c0df6c0",
+    "genre": "Hip Hop",
+    "music": "Hit 'Em Up - Single Version",
+    "artist": "2Pac, Outlawz",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851d81a092eb373ded457d94eec",
+    "coreAxes": {
+      "ativacao": 0.5639999999999998,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Gangsta Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Diss track agressiva, cheia de raiva e rivalidade, com forte senso de grupo.",
+    "emotionalVector": {
+      "Tensao": 0.9,
+      "Energia": 0.95,
+      "Euforia": 0.5,
+      "Valencia": 0.2,
+      "Dominancia": 0.95,
+      "Melancolia": 0.4,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.8,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "801d1f6d-589b-4e66-8344-3fee1e14449b",
+    "genre": "Hip Hop",
+    "music": "Tiramisu",
+    "artist": "Don Toliver",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485125c28f3c9fbdbab1a88dd619",
+    "coreAxes": {
+      "ativacao": 0.3800000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.02499999999999969
+    },
+    "subgenre": "R&B",
+    "moodScore": 0.5124959325784124,
+    "reasoning": "Estilo melódico e sensual com batida envolvente, temas de desejo e prazer.",
+    "emotionalVector": {
+      "Tensao": 0.4,
+      "Energia": 0.8,
+      "Euforia": 0.75,
+      "Valencia": 0.7,
+      "Dominancia": 0.6,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.3,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "c0ab87c1-132f-4d0a-b923-914d04044c09",
+    "genre": "Hip Hop",
+    "music": "BULLY (feat. CeeLo Green)",
+    "artist": "Kanye West, Ye, CeeLo Green",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485195184f6a953569b683ca9a0d",
+    "coreAxes": {
+      "ativacao": 0.6280000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Experimental Hip Hop",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Batida agressiva e sombria, com vocais desafiadores e tema de confronto.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.9,
+      "Euforia": 0.6,
+      "Valencia": 0.3,
+      "Dominancia": 0.95,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.25,
+      "ConexaoSocial": 0.4,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.15
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "db4d3096-3c71-474e-b642-260719b02d24",
+    "genre": "MPB",
+    "music": "Ela Me Faz",
+    "artist": "Rael, Beatnick, K-Salaam",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851a8fe8e93e64233849ca3eb91",
+    "coreAxes": {
+      "ativacao": -0.17199999999999993,
+      "quadrante": "PositivoCalmo",
+      "polaridade": 0.28000000000000025
+    },
+    "subgenre": "Reggae",
+    "moodScore": 0.634550217734533,
+    "reasoning": "Vibração positiva e relaxante, letra romântica e reflexiva sobre amor e conexão.",
+    "emotionalVector": {
+      "Tensao": 0.05,
+      "Energia": 0.4,
+      "Euforia": 0.5,
+      "Valencia": 0.9,
+      "Dominancia": 0.3,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.4
+    },
+    "dominantSentiment": "Amor"
+  },
+  {
+    "id": "a4da00b2-62c6-4b12-9629-9fc0bc752e60",
+    "genre": "Hip Hop",
+    "music": "Sigo na Sombra",
+    "artist": "BK, El Lif Beatz",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851db0575a1263dce6d0607cd3d",
+    "coreAxes": {
+      "ativacao": 0.11999999999999988,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.3550000000000001
+    },
+    "subgenre": "Conscious Hip Hop",
+    "moodScore": 0.33330080717413835,
+    "reasoning": "Rap introspectivo com crítica social, flow cadenciado e batida marcante.",
+    "emotionalVector": {
+      "Tensao": 0.6,
+      "Energia": 0.7,
+      "Euforia": 0.3,
+      "Valencia": 0.3,
+      "Dominancia": 0.75,
+      "Melancolia": 0.45,
+      "Introspeccao": 0.85,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.5
+    },
+    "dominantSentiment": "Frustracao"
+  },
+  {
+    "id": "8fb22eea-8935-40af-9a5c-4de4d73b6d12",
+    "genre": "Samba",
+    "music": "Está Chegando a Hora (Abre Alas)",
+    "artist": "Marcelo D2",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851035adf718091a78acd010132",
+    "coreAxes": {
+      "ativacao": 0.472,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.605
+    },
+    "subgenre": "Samba-Rock",
+    "moodScore": 0.7555451289808928,
+    "reasoning": "Hino carnavalesco vibrante e contagiante, celebração coletiva e alegria.",
+    "emotionalVector": {
+      "Tensao": 0.1,
+      "Energia": 0.85,
+      "Euforia": 0.85,
+      "Valencia": 0.95,
+      "Dominancia": 0.6,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.9,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.05
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "ab1e8333-be09-4871-8fe6-b8d3cfbe7b34",
+    "genre": "Hip Hop",
+    "music": "Origens 2: “Quadrilha Sonora”",
+    "artist": "NOG, MV Bill, Sombra, Magrão AllFavela, Zuluzão, Teo Guedx",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485152d5f6c3d46a1fcd60574621",
+    "coreAxes": {
+      "ativacao": -0.18000000000000005,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.5700000000000001
+    },
+    "subgenre": "Conscious Hip Hop",
+    "moodScore": 0.25510315025908786,
+    "reasoning": "Retrato cru da realidade social, letras densas e reflexivas sobre as origens.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.6,
+      "Euforia": 0.15,
+      "Valencia": 0.2,
+      "Dominancia": 0.7,
+      "Melancolia": 0.7,
+      "Introspeccao": 0.9,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.5,
+      "Vulnerabilidade": 0.75
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "2df010c1-cddb-42d6-a324-89a6e87288b5",
+    "genre": "Hip Hop",
+    "music": "Mister Niterói",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512b1678cbc2c4ec91c6da1cf1",
+    "coreAxes": {
+      "ativacao": 0.31600000000000006,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Autoconfiança e resiliência urbana, com flow marcante e batida envolvente.",
+    "emotionalVector": {
+      "Tensao": 0.55,
+      "Energia": 0.7,
+      "Euforia": 0.5,
+      "Valencia": 0.6,
+      "Dominancia": 0.85,
+      "Melancolia": 0.25,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "a4da00b2-62c6-4b12-9629-9fc0bc752e60",
+    "genre": "Hip Hop",
+    "music": "Sigo na Sombra",
+    "artist": "BK, El Lif Beatz",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851db0575a1263dce6d0607cd3d",
+    "coreAxes": {
+      "ativacao": 0.11999999999999988,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.3550000000000001
+    },
+    "subgenre": "Conscious Hip Hop",
+    "moodScore": 0.33330080717413835,
+    "reasoning": "Rap introspectivo com crítica social, flow cadenciado e batida marcante.",
+    "emotionalVector": {
+      "Tensao": 0.6,
+      "Energia": 0.7,
+      "Euforia": 0.3,
+      "Valencia": 0.3,
+      "Dominancia": 0.75,
+      "Melancolia": 0.45,
+      "Introspeccao": 0.85,
+      "ConexaoSocial": 0.65,
+      "Empoderamento": 0.6,
+      "Vulnerabilidade": 0.5
+    },
+    "dominantSentiment": "Frustracao"
+  },
+  {
+    "id": "8fb22eea-8935-40af-9a5c-4de4d73b6d12",
+    "genre": "Samba",
+    "music": "Está Chegando a Hora (Abre Alas)",
+    "artist": "Marcelo D2",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851035adf718091a78acd010132",
+    "coreAxes": {
+      "ativacao": 0.472,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.605
+    },
+    "subgenre": "Samba-Rock",
+    "moodScore": 0.7555451289808928,
+    "reasoning": "Hino carnavalesco vibrante e contagiante, celebração coletiva e alegria.",
+    "emotionalVector": {
+      "Tensao": 0.1,
+      "Energia": 0.85,
+      "Euforia": 0.85,
+      "Valencia": 0.95,
+      "Dominancia": 0.6,
+      "Melancolia": 0.05,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.9,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.05
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "ab1e8333-be09-4871-8fe6-b8d3cfbe7b34",
+    "genre": "Hip Hop",
+    "music": "Origens 2: “Quadrilha Sonora”",
+    "artist": "NOG, MV Bill, Sombra, Magrão AllFavela, Zuluzão, Teo Guedx",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485152d5f6c3d46a1fcd60574621",
+    "coreAxes": {
+      "ativacao": -0.18000000000000005,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.5700000000000001
+    },
+    "subgenre": "Conscious Hip Hop",
+    "moodScore": 0.25510315025908786,
+    "reasoning": "Retrato cru da realidade social, letras densas e reflexivas sobre as origens.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.6,
+      "Euforia": 0.15,
+      "Valencia": 0.2,
+      "Dominancia": 0.7,
+      "Melancolia": 0.7,
+      "Introspeccao": 0.9,
+      "ConexaoSocial": 0.85,
+      "Empoderamento": 0.5,
+      "Vulnerabilidade": 0.75
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "2df010c1-cddb-42d6-a324-89a6e87288b5",
+    "genre": "Hip Hop",
+    "music": "Mister Niterói",
+    "artist": "Black Alien",
+    "img_url": "https://i.scdn.co/image/ab67616d000048512b1678cbc2c4ec91c6da1cf1",
+    "coreAxes": {
+      "ativacao": 0.31600000000000006,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Autoconfiança e resiliência urbana, com flow marcante e batida envolvente.",
+    "emotionalVector": {
+      "Tensao": 0.55,
+      "Energia": 0.7,
+      "Euforia": 0.5,
+      "Valencia": 0.6,
+      "Dominancia": 0.85,
+      "Melancolia": 0.25,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "45f82afd-55b5-4bae-b545-0d6763fca664",
+    "genre": "Hip Hop",
+    "music": "PASSADO DE UM VILÃO",
+    "artist": "Alee",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851eb021b18fcead1189954756d",
+    "coreAxes": {
+      "ativacao": 0.39600000000000013,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Flow agressivo e sombrio, com temas de superação e ostentação.",
+    "emotionalVector": {
+      "Tensao": 0.75,
+      "Energia": 0.85,
+      "Euforia": 0.4,
+      "Valencia": 0.25,
+      "Dominancia": 0.8,
+      "Melancolia": 0.3,
+      "Introspeccao": 0.4,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.35
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "67caf81b-7f94-481d-ae19-69156fd89bc7",
+    "genre": "Hip Hop",
+    "music": "WAGWAN",
+    "artist": "Central Cee",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851fd610e1f73791997614f4059",
+    "coreAxes": {
+      "ativacao": 0.556,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Drill",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Som enérgico e direto, com flow confiante e temas de vida urbana e sucesso.",
+    "emotionalVector": {
+      "Tensao": 0.65,
+      "Energia": 0.9,
+      "Euforia": 0.55,
+      "Valencia": 0.4,
+      "Dominancia": 0.85,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.2,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "314b8840-fe5c-4aeb-ba09-d4ccab85bcf6",
+    "genre": "Hip Hop",
+    "music": "1967 - Live",
+    "artist": "Marcelo D2",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851800e2e437b09ca2bc4f36b58",
+    "coreAxes": {
+      "ativacao": 0.3400000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Rap brasileiro com batida forte, celebração da vida e da cultura.",
+    "emotionalVector": {
+      "Tensao": 0.3,
+      "Energia": 0.8,
+      "Euforia": 0.6,
+      "Valencia": 0.75,
+      "Dominancia": 0.7,
+      "Melancolia": 0.2,
+      "Introspeccao": 0.4,
+      "ConexaoSocial": 0.8,
+      "Empoderamento": 0.75,
+      "Vulnerabilidade": 0.25
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "e5ca2a05-a871-4405-9e5f-f603a8ab0e8c",
+    "genre": "Hip Hop",
+    "music": "Hate It Or Love It",
+    "artist": "The Game, 50 Cent",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851b1d860ab1ba847e778b2796d",
+    "coreAxes": {
+      "ativacao": 0.6839999999999997,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Gangsta Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Narrativa de superação na adversidade, ostentação e domínio territorial.",
+    "emotionalVector": {
+      "Tensao": 0.8,
+      "Energia": 0.95,
+      "Euforia": 0.7,
+      "Valencia": 0.3,
+      "Dominancia": 0.95,
+      "Melancolia": 0.3,
+      "Introspeccao": 0.15,
+      "ConexaoSocial": 0.6,
+      "Empoderamento": 0.9,
+      "Vulnerabilidade": 0.1
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "1e157aa6-b1b3-401a-a5af-caaef399ff4c",
+    "genre": "Hip Hop",
+    "music": "I CAN’T WAIT",
+    "artist": "Kanye West, Ye",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485195184f6a953569b683ca9a0d",
+    "coreAxes": {
+      "ativacao": 0.6200000000000003,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Trap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Afirmação de poder e confiança, batida energética e vocal assertivo.",
+    "emotionalVector": {
+      "Tensao": 0.6,
+      "Energia": 0.9,
+      "Euforia": 0.75,
+      "Valencia": 0.6,
+      "Dominancia": 0.85,
+      "Melancolia": 0.15,
+      "Introspeccao": 0.25,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.95,
+      "Vulnerabilidade": 0.15
+    },
+    "dominantSentiment": "Confianca"
+  },
+  {
+    "id": "ea129dca-d513-4b4b-b4c3-b3aaf8b02a9a",
+    "genre": "Hip Hop",
+    "music": "I Don't Give A Damn",
+    "artist": "MC Ren",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851b45ad59bdd13ff6350120b29",
+    "coreAxes": {
+      "ativacao": 0.5720000000000001,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.30000000000000004
+    },
+    "subgenre": "Gangsta Rap",
+    "moodScore": 0.6433429593403145,
+    "reasoning": "Atitude desafiadora e agressiva, batida intensa e vocal de protesto.",
+    "emotionalVector": {
+      "Tensao": 0.85,
+      "Energia": 0.9,
+      "Euforia": 0.5,
+      "Valencia": 0.2,
+      "Dominancia": 0.9,
+      "Melancolia": 0.25,
+      "Introspeccao": 0.1,
+      "ConexaoSocial": 0.4,
+      "Empoderamento": 0.8,
+      "Vulnerabilidade": 0.2
+    },
+    "dominantSentiment": "Energia"
+  },
+  {
+    "id": "5f1787f3-3721-41e3-b0f9-eae151e09156",
+    "genre": "Hip Hop",
+    "music": "Morro Sem Você",
+    "artist": "BK, Paulo DK",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851dd12836650253ee55aefc990",
+    "coreAxes": {
+      "ativacao": -0.64,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -1
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.16068654401699484,
+    "reasoning": "Letra sobre perda e saudade, melodia triste e vocal introspectivo.",
+    "emotionalVector": {
+      "Tensao": 0.5,
+      "Energia": 0.3,
+      "Euforia": 0.05,
+      "Valencia": 0.15,
+      "Dominancia": 0.3,
+      "Melancolia": 0.85,
+      "Introspeccao": 0.9,
+      "ConexaoSocial": 0.3,
+      "Empoderamento": 0.2,
+      "Vulnerabilidade": 0.9
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "a921d116-74d9-49ee-895c-5a543ccc54f7",
+    "genre": "Hip Hop",
+    "music": "Convoque Seu Buda",
+    "artist": "Criolo",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485101aeb110e069a8025d1f60e6",
+    "coreAxes": {
+      "ativacao": -0.384,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.785
+    },
+    "subgenre": "Rap",
+    "moodScore": 0.1985573958491317,
+    "reasoning": "Reflexão social e espiritual com batida cadenciada e vocal poético.",
+    "emotionalVector": {
+      "Tensao": 0.6,
+      "Energia": 0.4,
+      "Euforia": 0.1,
+      "Valencia": 0.25,
+      "Dominancia": 0.5,
+      "Melancolia": 0.75,
+      "Introspeccao": 0.95,
+      "ConexaoSocial": 0.7,
+      "Empoderamento": 0.45,
+      "Vulnerabilidade": 0.7
+    },
+    "dominantSentiment": "Melancolia"
+  },
+  {
+    "id": "5175e4c0-7ee1-485f-a186-acff7a9688c5",
+    "genre": "Reggae",
+    "music": "True Love",
+    "artist": "SOJA",
+    "img_url": "https://i.scdn.co/image/ab67616d00004851cbac497bf7296dd111b9533e",
+    "coreAxes": {
+      "ativacao": 0.09600000000000009,
+      "quadrante": "PositivoAtivo",
+      "polaridade": 0.33999999999999986
+    },
+    "subgenre": "Roots Reggae",
+    "moodScore": 0.6604537139791783,
+    "reasoning": "Mensagem de amor e união, ritmo relaxante e vocal otimista.",
+    "emotionalVector": {
+      "Tensao": 0.2,
+      "Energia": 0.6,
+      "Euforia": 0.5,
+      "Valencia": 0.85,
+      "Dominancia": 0.5,
+      "Melancolia": 0.1,
+      "Introspeccao": 0.5,
+      "ConexaoSocial": 0.9,
+      "Empoderamento": 0.7,
+      "Vulnerabilidade": 0.3
+    },
+    "dominantSentiment": "Celebracao"
+  },
+  {
+    "id": "f9922f62-9b86-45d6-9391-414720ec06fe",
+    "genre": "Rock",
+    "music": "O que sobrou do céu",
+    "artist": "O Rappa",
+    "img_url": "https://i.scdn.co/image/ab67616d000048517c33a0320b19db0e14ecdc5f",
+    "coreAxes": {
+      "ativacao": 0.008000000000000007,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.5949999999999998
+    },
+    "subgenre": "Reggae Rock",
+    "moodScore": 0.2474378082258937,
+    "reasoning": "Crítica social e existencial com energia crescente e vocal engajado.",
+    "emotionalVector": {
+      "Tensao": 0.7,
+      "Energia": 0.7,
+      "Euforia": 0.2,
+      "Valencia": 0.35,
+      "Dominancia": 0.6,
+      "Melancolia": 0.55,
+      "Introspeccao": 0.8,
+      "ConexaoSocial": 0.75,
+      "Empoderamento": 0.5,
+      "Vulnerabilidade": 0.6
+    },
+    "dominantSentiment": "Frustracao"
+  },
+  {
+    "id": "6cdad30e-5dcb-427d-aad5-a14c76f93f94",
+    "genre": "Reggae",
+    "music": "Criminalidade",
+    "artist": "Edson Gomes",
+    "img_url": "https://i.scdn.co/image/ab67616d0000485106d804f561621842373287a4",
+    "coreAxes": {
+      "ativacao": 0.14400000000000013,
+      "quadrante": "NegativoAtivo",
+      "polaridade": -0.7049999999999998
+    },
+    "subgenre": "Roots Reggae",
+    "moodScore": 0.21718200708938717,
+    "reasoning": "Retrato cru da realidade social com ritmo forte e vocal contundente.",
+    "emotionalVector": {
+      "Tensao": 0.75,
+      "Energia": 0.75,
+      "Euforia": 0.25,
+      "Valencia": 0.1,
+      "Dominancia": 0.7,
+      "Melancolia": 0.5,
+      "Introspeccao": 0.6,
+      "ConexaoSocial": 0.5,
+      "Empoderamento": 0.4,
+      "Vulnerabilidade": 0.5
+    },
+    "dominantSentiment": "Tensao"
+  },
+  {
+    "id": "4a4b094c-4e52-489f-b599-972bc15915a9",
+    "genre": "MPB",
+    "music": "Batendo na Porta do Céu (Knockin' on Heaven's Door)",
+    "artist": "Zé Ramalho",
+    "img_url": "https://i.scdn.co/image/ab67616d000048515dfbbbc79653956f3d0a73a2",
+    "coreAxes": {
+      "ativacao": -0.6192,
+      "quadrante": "NegativoCalmo",
+      "polaridade": -0.8799999999999999
+    },
+    "subgenre": "Folk",
+    "moodScore": 0.17980039129574815,
+    "reasoning": "Reflexão sobre a vida e a morte, melodia sombria e vocal emotivo.",
+    "emotionalVector": {
+      "Tensao": 0.35,
+      "Energia": 0.2,
+      "Euforia": 0.1,
+      "Valencia": 0.4,
+      "Dominancia": 0.3,
+      "Melancolia": 0.7,
+      "Introspeccao": 0.85,
+      "ConexaoSocial": 0.4,
+      "Empoderamento": 0.3,
+      "Vulnerabilidade": 0.75
+    },
+    "dominantSentiment": "Melancolia"
+  }
+]
