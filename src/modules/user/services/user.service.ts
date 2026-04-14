@@ -142,7 +142,7 @@ export class UserService {
             if (count > maxGenreCount) { maxGenreCount = count; topGenre = g; }
         }
 
-        let mostListenedSong: { name: string, artist: string, img_url: string } | undefined;
+        let mostListenedSong: { id: string, name: string, artist: string, img_url: string } | undefined;
         let mostListenedGenre: string | undefined;
 
         if (topGenre) mostListenedGenre = topGenre;
@@ -151,6 +151,7 @@ export class UserService {
             const topTrack = tracks.find(t => (t.id === topSongId) || (t.spotifyId === topSongId));
             if (topTrack) {
                 mostListenedSong = {
+                    id: topTrack.id || topTrack.spotifyId || topSongId,
                     name: topTrack.music || topTrack.title || "",
                     artist: topTrack.artist || "",
                     img_url: topTrack.img_url || ""
@@ -487,5 +488,18 @@ export class UserService {
     async updateStudioPreference(id: string, studioId: string) {
         await this.userRepository.updateStudioPreference(id, studioId);
         return { message: 'Preferência de estúdio atualizada com sucesso' };
+    }
+
+    async addTrackToQueue(id: string, trackId: string): Promise<void> {
+        const user = await this.userRepository.getUserById(id);
+        if (!user) throw new NotFoundException('Usuario não encontrado');
+        if (user.provider !== 'spotify') throw new BadRequestException('Disponível apenas para usuários do Spotify');
+        
+        const providerMusic = this.providerMusic.getProvider(user.provider);
+        if (!providerMusic.addToQueue) {
+            throw new BadRequestException('Ação não suportada por este provedor');
+        }
+
+        await providerMusic.addToQueue(user.refreshToken!, trackId);
     }
 }

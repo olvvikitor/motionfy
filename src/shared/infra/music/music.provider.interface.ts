@@ -21,4 +21,5 @@ export  interface MusicProviderInterface{
     getLastRecentlyPlayed(accessToken:string):Promise<TrackInput[]>
     getListeningNow(access_token:string):Promise<TrackInput>
     refreshToken(access_token:string):Promise<any>
+    addToQueue?(accessToken: string, trackId: string): Promise<void>;
 }

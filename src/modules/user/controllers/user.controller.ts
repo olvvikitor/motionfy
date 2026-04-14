@@ -140,4 +140,12 @@ export class UserController {
         const safeLimit = parsedLimit && !isNaN(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : undefined;
         return await this.userService.testMoodAlgorithm(req.user!.id, safeLimit);
     }
+
+    @Post('queue')
+    @UseGuards(JwtAuthGuard)
+    async addToQueue(@Req() req: MRequest, @Body('trackId') trackId: string) {
+        if (!trackId) throw new BadRequestException('ID da música não informado');
+        await this.userService.addTrackToQueue(req.user!.id, trackId);
+        return { message: 'Música adicionada à fila com sucesso' };
+    }
 }
