@@ -23,25 +23,27 @@ export type HybridPromptInput = {
     emotions?: any;
     faceReferencePath?: string | null;
     studioId?: string;
+    topGenre?: string;
+    currentSong?: string;
 };
 
 // ── Quadrantes emocionais ─────────────────────────────────────────────────────
 type Quadrant = "PositivoAtivo" | "PositivoCalmo" | "NegativoAtivo" | "NegativoCalmo" | "Centro";
 
 const MOOD_TO_QUADRANT: Record<string, Quadrant> = {
-    Euforia:    "PositivoAtivo",
+    Euforia: "PositivoAtivo",
     Celebracao: "PositivoAtivo",
-    Confianca:  "PositivoAtivo",
-    Energia:    "PositivoAtivo",
-    Amor:       "PositivoCalmo",
-    Paz:        "PositivoCalmo",
-    Reflexao:   "PositivoCalmo",
-    Tensao:     "NegativoAtivo",
-    Revolta:    "NegativoAtivo",
+    Confianca: "PositivoAtivo",
+    Energia: "PositivoAtivo",
+    Amor: "PositivoCalmo",
+    Paz: "PositivoCalmo",
+    Reflexao: "PositivoCalmo",
+    Tensao: "NegativoAtivo",
+    Revolta: "NegativoAtivo",
     Frustracao: "NegativoAtivo",
     Melancolia: "NegativoCalmo",
-    Tristeza:   "NegativoCalmo",
-    Vazio:      "NegativoCalmo",
+    Tristeza: "NegativoCalmo",
+    Vazio: "NegativoCalmo",
     Ambivalente: "Centro",
 };
 
@@ -257,29 +259,29 @@ const STUDIO_SCENE_DNA: Record<string, Record<Quadrant, SceneDNA[]>> = {
 type MoodNuance = { palette: string; atmosphere: string; symbol: string };
 
 const MOOD_NUANCE: Record<string, MoodNuance> = {
-    Euforia:     { palette: "amarelo elétrico e âmbar sobre sombra profunda, bloom luminoso", atmosphere: "tempo suspenso em seu momento mais vivo", symbol: "fogos de artifício em plena explosão" },
-    Celebracao:  { palette: "coral vívido e ouro quente com luz de celebração saturada", atmosphere: "alegria compartilhada, eletricidade de pertencer à multidão", symbol: "multidão de amigos em silhueta contra fogos, confete e luz" },
-    Confianca:   { palette: "azul aço frio e lima sobre quase-preto", atmosphere: "autoridade silenciosa que não precisa de anúncio", symbol: "cidade refletida em lentes, sombras geométricas alinhadas" },
-    Energia:     { palette: "laranja industrial e ciano bruto sobre asfalto preto", atmosphere: "física no limite humano, potencial cinético", symbol: "linhas de rachadura a partir de ponto de impacto" },
-    Amor:        { palette: "rosa corado e marfim em difusão suave de manhã", atmosphere: "tempo no ritmo de um batimento cardíaco", symbol: "flores prensadas e vela suave" },
-    Paz:         { palette: "verde-espuma e azul celeste pálido sobre luz creme", atmosphere: "silêncio antes de o mundo acordar", symbol: "pena flutuando no ar parado" },
-    Reflexao:    { palette: "índigo profundo e lavanda com brilho estelar", atmosphere: "pergunta sem resposta, memória e presente se misturando", symbol: "estrelas espelhadas em poça parada" },
-    Tensao:      { palette: "verde-amarelo fluorescente sobre sombra fria", atmosphere: "pavor de algo não dito e inevitável", symbol: "espelho rachado em banheiro escuro" },
-    Revolta:     { palette: "vermelho-sangue e obsidiana com rim light agressiva", atmosphere: "raiva rompida, destruição como linguagem", symbol: "concreto estilhaçado com vergalhão exposto" },
-    Frustracao:  { palette: "âmbar enlameado e carvão com luz agressiva de cima", atmosphere: "atrito entre o que deveria ser e o que é", symbol: "relógio cujos ponteiros se recusam a mover" },
-    Melancolia:  { palette: "azul-aço suave e lavanda em luz de neblina", atmosphere: "nostalgia desgastada pelo tempo, agridoce", symbol: "guarda-chuva esquecido num banco na chuva" },
-    Tristeza:    { palette: "ardósia profunda e estanho sobre quase-preto", atmosphere: "luto que se acomodou e não vai embora", symbol: "cadeira vazia em mesa posta" },
-    Vazio:       { palette: "cinza-concreto e branco desbotado, sem calor", atmosphere: "estática entre estações, sinal perdido", symbol: "tela em branco refletindo um rosto" },
+    Euforia: { palette: "amarelo elétrico e âmbar sobre sombra profunda, bloom luminoso", atmosphere: "tempo suspenso em seu momento mais vivo", symbol: "fogos de artifício em plena explosão" },
+    Celebracao: { palette: "coral vívido e ouro quente com luz de celebração saturada", atmosphere: "alegria compartilhada, eletricidade de pertencer à multidão", symbol: "multidão de amigos em silhueta contra fogos, confete e luz" },
+    Confianca: { palette: "azul aço frio e lima sobre quase-preto", atmosphere: "autoridade silenciosa que não precisa de anúncio", symbol: "cidade refletida em lentes, sombras geométricas alinhadas" },
+    Energia: { palette: "laranja industrial e ciano bruto sobre asfalto preto", atmosphere: "física no limite humano, potencial cinético", symbol: "linhas de rachadura a partir de ponto de impacto" },
+    Amor: { palette: "rosa corado e marfim em difusão suave de manhã", atmosphere: "tempo no ritmo de um batimento cardíaco", symbol: "flores prensadas e vela suave" },
+    Paz: { palette: "verde-espuma e azul celeste pálido sobre luz creme", atmosphere: "silêncio antes de o mundo acordar", symbol: "pena flutuando no ar parado" },
+    Reflexao: { palette: "índigo profundo e lavanda com brilho estelar", atmosphere: "pergunta sem resposta, memória e presente se misturando", symbol: "estrelas espelhadas em poça parada" },
+    Tensao: { palette: "verde-amarelo fluorescente sobre sombra fria", atmosphere: "pavor de algo não dito e inevitável", symbol: "espelho rachado em banheiro escuro" },
+    Revolta: { palette: "vermelho-sangue e obsidiana com rim light agressiva", atmosphere: "raiva rompida, destruição como linguagem", symbol: "concreto estilhaçado com vergalhão exposto" },
+    Frustracao: { palette: "âmbar enlameado e carvão com luz agressiva de cima", atmosphere: "atrito entre o que deveria ser e o que é", symbol: "relógio cujos ponteiros se recusam a mover" },
+    Melancolia: { palette: "azul-aço suave e lavanda em luz de neblina", atmosphere: "nostalgia desgastada pelo tempo, agridoce", symbol: "guarda-chuva esquecido num banco na chuva" },
+    Tristeza: { palette: "ardósia profunda e estanho sobre quase-preto", atmosphere: "luto que se acomodou e não vai embora", symbol: "cadeira vazia em mesa posta" },
+    Vazio: { palette: "cinza-concreto e branco desbotado, sem calor", atmosphere: "estática entre estações, sinal perdido", symbol: "tela em branco refletindo um rosto" },
     Ambivalente: { palette: "bicolor: âmbar quente de um lado, azul frio do outro", atmosphere: "momento suspenso entre dois futuros diferentes", symbol: "porta entreaberta com luz diferente de cada lado" },
 };
 
 // ── Modificador de ativação (condensado) ─────────────────────────────────────
 function activationModifier(ativacao: number): string {
-    if (ativacao >  0.6) return "ENERGIA ALTA: motion blur, ângulos dinâmicos, tempo comprimido.";
-    if (ativacao >  0.2) return "ENERGIA MODERADA: ambiente em movimento, personagem engajada.";
+    if (ativacao > 0.6) return "ENERGIA ALTA: motion blur, ângulos dinâmicos, tempo comprimido.";
+    if (ativacao > 0.2) return "ENERGIA MODERADA: ambiente em movimento, personagem engajada.";
     if (ativacao > -0.2) return "ENERGIA EQUILIBRADA: movimentos sutis, personagem composta.";
     if (ativacao > -0.6) return "ENERGIA BAIXA: lento e contemplativo, personagem absorvida.";
-    return                      "QUASE ESTÁTICO: imóvel. Poeira num feixe de luz. Quietude é o tema.";
+    return "QUASE ESTÁTICO: imóvel. Poeira num feixe de luz. Quietude é o tema.";
 }
 
 // ── Estilos dos estúdios (descrições condensadas) ────────────────────────────
@@ -338,26 +340,38 @@ const STUDIO_STYLES: StudioStyle[] = [
 export class ImagePromptService {
 
     build(data: HybridPromptInput) {
-        const studio   = this.getStudioStyle(data.studioId);
+        const studio = this.getStudioStyle(data.studioId);
         const refAnime = this.random(studio.referenceAnimes);
-        const moodKey  = this.normalizeMoodKey(data.sentiment);
+        const moodKey = this.normalizeMoodKey(data.sentiment);
         const quadrant = MOOD_TO_QUADRANT[moodKey] ?? "Centro";
-        const dnaList  = STUDIO_SCENE_DNA[studio.id]?.[quadrant];
-        const dna      = dnaList ? this.random(dnaList) : null;
+        const dnaList = STUDIO_SCENE_DNA[studio.id]?.[quadrant];
+        const dna = dnaList ? this.random(dnaList) : null;
         // const nuance   = MOOD_NUANCE[moodKey];
-        const actMod   = activationModifier(data.ativacao ?? 0);
+        const actMod = activationModifier(data.ativacao ?? 0);
 
-        const scenario  = dna    ? dna.scenario       : "ambiente evocativo";
-        const motion    = dna    ? dna.motion         : "pose emocional deliberada";
-        const camera    = dna    ? dna.camera         : "plano médio deliberado";
+        const scenario = dna ? dna.scenario : "ambiente evocativo";
+        const motion = dna ? dna.motion : "pose emocional deliberada";
+        const camera = dna ? dna.camera : "plano médio deliberado";
         // const palette   = nuance ? nuance.palette     : "gradação cinematográfica rica";
         // const atmosphere= nuance ? nuance.atmosphere  : "carregado de emoção não dita";
         // const symbol    = nuance ? nuance.symbol      : "detalhe visual significativo";
 
-        const isCelebration = moodKey === "Celebracao" || (data.sentiment && data.sentiment.toLowerCase().includes("conex"));
-        const celebrationRule = isCelebration
-            ? "\n\nREGRA MÁXIMA: O tema central é CONEXÃO e CELEBRAÇÃO! A cena DEVE OBRIGATORIAMENTE retratar um intuito comemorativo com amigos. O personagem protagonista NÃO está sozinho; ele está rodeado de amigos/companheiros em um momento de união, alegria compartilhada, comemorando, rindo juntos ou em forte laço de amizade. A energia da imagem vibra festa, conexão e companhia."
-            : "";
+        // Múltiplas variações para cenas de celebração não ficarem genéricas
+        const celebrationVariations = [
+            "A cena DEVE retratar um grupo em uma viagem de carro/ônibus, com janelas abertas, vento batendo no rosto, ouvindo música e rindo.",
+            "A cena DEVE ser uma festa casual e descontraída em casa, com amigos esparramados no chão ou no sofá, rindo soltos com petiscos ao redor.",
+            "A cena DEVE retratar um momento vibrante como um show ou festival, abraçado com amigos ou no meio do agito, sentindo a música pulsar.",
+            "A cena DEVE ser um lual ou encontro noturno ao redor do fogo sob as estrelas, pessoas conversando e se divertindo com muita intimidade e aconchego.",
+            "A cena DEVE mostrar amigos caminhando juntos à noite pela cidade iluminada, brincando uns com os outros em calçadas chuvosas de neon ou becos agitados.",
+            "A cena DEVE focar nos amigos brindando em um bar animado, izakaya ou diner, com bebidas e comida farta, celebrando efusivamente a união.",
+            "A cena DEVE retratar um pôr do sol no topo de um telhado, escadaria ou campo aberto, todos lado a lado aproveitando a companhia mútua em paz e alegria expansiva."
+        ];
+        
+        let celebrationRule = "";
+        if (moodKey === "Celebracao" || (data.sentiment && data.sentiment.toLowerCase().includes("conex"))) {
+            const randomCelebration = this.random(celebrationVariations);
+            celebrationRule = `\n\nREGRA MÁXIMA DE CONEXÃO/CELEBRAÇÃO: O tema central é a alegria compartilhada! ${randomCelebration} O protagonista NUNCA está sozinho. A cena vibra festa, amizade e cumplicidade visual.`;
+        }
 
         const faceRef = data.faceReferencePath
             ? "Traduzir identidade facial da referência para o estilo do estúdio. Sem fotorrealismo."
@@ -365,11 +379,15 @@ export class ImagePromptService {
 
         const copyrightRule = "\n\nREGRA ESTRITA DE COPYRIGHT: TODOS os personagens (protagonista e qualquer pessoa no fundo) DEVEM ser 100% originais e genéricos (OCs). É EXPRESSAMENTE PROIBIDO desenhar personagens que se pareçam com personagens existentes de animes para evitar direitos autorais. O anime de referência serve APENAS para guiar o estilo de coloração, luz e traço, nunca o design dos personagens.";
 
+        const genreMusicRule = (data.topGenre || data.currentSong)
+            ? `\n\nREFERÊNCIA MUSICAL (Integrar detalhes/vibecore sutilmente na cena e no estilo do personagem): Gênero predominante: "${data.topGenre || 'Não especificado'}". Música de inspiração: "${data.currentSong || 'Não especificada'}". Use isso como tempero visual na composição.`
+            : "";
+
         return `Ilustração 2D anime orginal. Tema: "${data.sentiment}". (Inspirar-se APENAS no estilo de arte de: ${studio.name}, especialmente ${refAnime}).
 
 ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionStyle}. ${studio.renderingNotes}.
 
-CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}
+CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}
 
 
 PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}

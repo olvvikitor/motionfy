@@ -339,6 +339,8 @@ export class UserService {
             emotions: response.emotionalVector,
             faceReferencePath: user.face_photo_path,
             studioId: resolvedStudioId,
+            topGenre: response.mostListenedGenre,
+            currentSong: response.mostListenedSong ? `${response.mostListenedSong.name} - ${response.mostListenedSong.artist}` : undefined,
         });
 
         const imageBuffer = await this.aiImageService.generateImage(
