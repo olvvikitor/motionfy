@@ -383,11 +383,13 @@ export class ImagePromptService {
             ? `\n\nREFERÊNCIA MUSICAL (Integrar detalhes/vibecore sutilmente na cena e no estilo do personagem): Gênero predominante: "${data.topGenre || 'Não especificado'}". Música de inspiração: "${data.currentSong || 'Não especificada'}". Use isso como tempero visual na composição.`
             : "";
 
+        const noFiltersRule = "\n\nREGRA DE CORES E ILUMINAÇÃO: NÃO aplique filtros de cores artificiais, sobreposições (overlays) monocromáticas ou banhos de cor que pintem a imagem inteira de um único tom (como tudo muito azul, verde, vermelho, sépia, etc). A paleta de cores deve ser limpa, rica e natural, preservando as cores reais dos personagens e elementos do ambiente sob a luz, sem parecer ter um efeito de correção de cor exagerado.";
+
         return `Ilustração 2D anime orginal. Tema: "${data.sentiment}". (Inspirar-se APENAS no estilo de arte de: ${studio.name}, especialmente ${refAnime}).
 
 ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionStyle}. ${studio.renderingNotes}.
 
-CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}
+CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}${noFiltersRule}
 
 
 PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}
