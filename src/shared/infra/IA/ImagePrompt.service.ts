@@ -329,10 +329,10 @@ const STUDIO_STYLES: StudioStyle[] = [
     {
         id: "trigger", name: "Studio Trigger", company: "Studio Trigger", logoKey: "trigger",
         referenceAnimes: ["Kill la Kill", "Promare", "Cyberpunk Edgerunners", "Gurren Lagann"],
-        visualLanguage: "linework ousado, cor saturada ao máximo, proporções exageradas, design expressivo extremo",
+        visualLanguage: "linework ousado, cores vibrantes mas equilibradas, proporções exageradas, design expressivo marcante",
         cinematography: "cortes rápidos, zooms extremos, enquadramento dinâmico impossível, alta energia",
         motionStyle: "hipercinética, smear frames, deformação expressiva — caos intencional legível",
-        renderingNotes: "silhuetas fortes, contraste máximo, deformação expressiva sobre realismo",
+        renderingNotes: "silhuetas fortes, contraste equilibrado, deformação expressiva sobre realismo",
     },
 ];
 
@@ -352,9 +352,10 @@ export class ImagePromptService {
         const scenario = dna ? dna.scenario : "ambiente evocativo";
         const motion = dna ? dna.motion : "pose emocional deliberada";
         const camera = dna ? dna.camera : "plano médio deliberado";
-        // const palette   = nuance ? nuance.palette     : "gradação cinematográfica rica";
-        // const atmosphere= nuance ? nuance.atmosphere  : "carregado de emoção não dita";
-        // const symbol    = nuance ? nuance.symbol      : "detalhe visual significativo";
+        const nuance = MOOD_NUANCE[moodKey];
+        const palette = nuance ? nuance.palette : "gradação cromática natural e equilibrada";
+        const atmosphere = nuance ? nuance.atmosphere : "carregado de emoção não dita";
+        const symbol = nuance ? nuance.symbol : "detalhe visual significativo";
 
         // Múltiplas variações para cenas de celebração não ficarem genéricas
         const celebrationVariations = [
@@ -383,13 +384,15 @@ export class ImagePromptService {
             ? `\n\nREFERÊNCIA MUSICAL (Integrar detalhes/vibecore sutilmente na cena e no estilo do personagem): Gênero predominante: "${data.topGenre || 'Não especificado'}". Música de inspiração: "${data.currentSong || 'Não especificada'}". Use isso como tempero visual na composição.`
             : "";
 
-        const noFiltersRule = "\n\nREGRA DE CORES E ILUMINAÇÃO: NÃO aplique filtros de cores artificiais, sobreposições (overlays) monocromáticas ou banhos de cor que pintem a imagem inteira de um único tom (como tudo muito azul, verde, vermelho, sépia, etc). A paleta de cores deve ser limpa, rica e natural, preservando as cores reais dos personagens e elementos do ambiente sob a luz, sem parecer ter um efeito de correção de cor exagerado.";
+        const noFiltersRule = "\n\nREGRA DE CORES E ILUMINAÇÃO: NÃO aplique filtros de cores artificiais, sobreposições (overlays) monocromáticas ou banhos de cor que pintem a imagem inteira de um único tom (como tudo muito azul, verde, vermelho, sépia, etc). EVITE saturação excessiva e cores neon artificiais. A paleta de cores deve ser natural e equilibrada, preservando as cores reais dos personagens e elementos do ambiente sob a luz, sem parecer ter um efeito de correção de cor exagerado. Use contraste com moderação, priorizando a harmonia cromática.";
+
+        const moodContext = `\n\nPALETA DO HUMOR: ${palette}.\nATMOSFERA: ${atmosphere}.\nSÍMBOLO-CHAVE: ${symbol}.\nENERGIA DA CENA: ${actMod}`;
 
         return `Ilustração 2D anime orginal. Tema: "${data.sentiment}". (Inspirar-se APENAS no estilo de arte de: ${studio.name}, especialmente ${refAnime}).
 
 ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionStyle}. ${studio.renderingNotes}.
 
-CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}${noFiltersRule}
+CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}${noFiltersRule}${moodContext}
 
 
 PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}
