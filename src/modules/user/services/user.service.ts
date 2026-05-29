@@ -117,17 +117,17 @@ export class UserService {
         ) as EmotionalVector;
     }
 
-    private computeMostListened(tracks: any[]): { mostListenedGenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
+    private computeMostListened(tracks: any[]): { mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
         if (!tracks || !tracks.length) return {};
         const trackCounts = new Map<string, number>();
-        const genreCounts = new Map<string, number>();
+        const subgenreCounts = new Map<string, number>();
 
         tracks.forEach(t => {
             const songKey = t.id || t.spotifyId;
             if (songKey) trackCounts.set(songKey, (trackCounts.get(songKey) || 0) + 1);
-            
-            let g = t.genre;
-            if (g) genreCounts.set(g, (genreCounts.get(g) || 0) + 1);
+
+            const sg = t.subgenre || t.subGenre || t.sub_genero;
+            if (sg) subgenreCounts.set(sg, (subgenreCounts.get(sg) || 0) + 1);
         });
 
         let topSongId = "";
@@ -136,17 +136,17 @@ export class UserService {
             if (count > maxSongCount) { maxSongCount = count; topSongId = id; }
         }
 
-        let topGenre = "";
-        let maxGenreCount = 0;
-        for (const [g, count] of genreCounts.entries()) {
-            if (count > maxGenreCount) { maxGenreCount = count; topGenre = g; }
+        let topSubgenre = "";
+        let maxSubgenreCount = 0;
+        for (const [sg, count] of subgenreCounts.entries()) {
+            if (count > maxSubgenreCount) { maxSubgenreCount = count; topSubgenre = sg; }
         }
 
         let mostListenedSong: { id: string, name: string, artist: string, img_url: string } | undefined;
-        let mostListenedGenre: string | undefined;
+        let mostListenedSubgenre: string | undefined;
 
-        if (topGenre) mostListenedGenre = topGenre;
-        
+        if (topSubgenre) mostListenedSubgenre = topSubgenre;
+
         if (topSongId) {
             const topTrack = tracks.find(t => (t.id === topSongId) || (t.spotifyId === topSongId));
             if (topTrack) {
@@ -159,8 +159,8 @@ export class UserService {
             }
         }
 
-        console.log("DEBUG mostListened computed:", { mostListenedGenre, mostListenedSong: mostListenedSong?.name });
-        return { mostListenedGenre, mostListenedSong };
+        console.log("DEBUG mostListened computed:", { mostListenedSubgenre, mostListenedSong: mostListenedSong?.name });
+        return { mostListenedSubgenre, mostListenedSong };
     }
 
     private buildMoodFromStoredAnalyses(tracks: Track[], analyses: TrackAnalysisReadItem[]): ResponseAi | null {
@@ -204,7 +204,7 @@ export class UserService {
             coreAxes: classification.coreAxes,
             image_mood: "",
             tracks: mergedTracks,
-            mostListenedGenre: mostListened.mostListenedGenre,
+            mostListenedSubgenre: mostListened.mostListenedSubgenre,
             mostListenedSong: mostListened.mostListenedSong,
         };
     }
@@ -239,7 +239,7 @@ export class UserService {
         return this.prompt_imageService.getAvailableStudios();
     }
 
-    async RefreshMoodUserToday(id: string, studioId?: string): Promise<ResponseAi> {
+    async RefreshMoodUserToday(id: string, studioId?: string, animeId?: string, nostalgic?: boolean): Promise<ResponseAi> {
         const now = new Date();
 
         const user = await this.userRepository.getUserById(id);
@@ -339,7 +339,9 @@ export class UserService {
             emotions: response.emotionalVector,
             faceReferencePath: user.face_photo_path,
             studioId: resolvedStudioId,
-            topGenre: response.mostListenedGenre,
+            animeId,
+            nostalgic,
+            topGenre: response.mostListenedSubgenre,
             currentSong: response.mostListenedSong ? `${response.mostListenedSong.name} - ${response.mostListenedSong.artist}` : undefined,
         });
 
@@ -411,8 +413,24 @@ export class UserService {
             img_url: currentTrack.img_url,
             createdAt: currentTrack.createdAt ?? new Date(),
         };
-        const analysis = await this.aiTextService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
-        return { isPlaying: true, ...analysis };
+        try {
+            const analysis = await this.aiTextService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
+            return { isPlaying: true, ...analysis };
+        } catch (error) {
+            console.error("Erro ao analisar faixa atual:", error);
+            const fallbackVector = this.emotionAnalysis.buildFallbackVector();
+            const fallbackEmotion = this.emotionAnalysis.classifyEmotion(fallbackVector);
+            return {
+                isPlaying: true,
+                moodScore: fallbackEmotion.moodScore,
+                dominantSentiment: fallbackEmotion.dominantSentiment,
+                emotionalVector: fallbackVector,
+                coreAxes: fallbackEmotion.coreAxes,
+                reasoning: '',
+                image_mood: '',
+                tracks: [],
+            };
+        }
     }
 
     async getMoodHistory(id: string, limit = 1) {

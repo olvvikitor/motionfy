@@ -23,6 +23,8 @@ export type HybridPromptInput = {
     emotions?: any;
     faceReferencePath?: string | null;
     studioId?: string;
+    animeId?: string;
+    nostalgic?: boolean;
     topGenre?: string;
     currentSong?: string;
 };
@@ -357,34 +359,49 @@ export class ImagePromptService {
         const atmosphere = nuance ? nuance.atmosphere : "carregado de emoção não dita";
         const symbol = nuance ? nuance.symbol : "detalhe visual significativo";
 
-        // Múltiplas variações para cenas de celebração não ficarem genéricas
-        const celebrationVariations = [
-            "A cena DEVE retratar um grupo em uma viagem de carro/ônibus, com janelas abertas, vento batendo no rosto, ouvindo música e rindo.",
-            "A cena DEVE ser uma festa casual e descontraída em casa, com amigos esparramados no chão ou no sofá, rindo soltos com petiscos ao redor.",
-            "A cena DEVE retratar um momento vibrante como um show ou festival, abraçado com amigos ou no meio do agito, sentindo a música pulsar.",
-            "A cena DEVE ser um lual ou encontro noturno ao redor do fogo sob as estrelas, pessoas conversando e se divertindo com muita intimidade e aconchego.",
-            "A cena DEVE mostrar amigos caminhando juntos à noite pela cidade iluminada, brincando uns com os outros em calçadas chuvosas de neon ou becos agitados.",
-            "A cena DEVE focar nos amigos brindando em um bar animado, izakaya ou diner, com bebidas e comida farta, celebrando efusivamente a união.",
-            "A cena DEVE retratar um pôr do sol no topo de um telhado, escadaria ou campo aberto, todos lado a lado aproveitando a companhia mútua em paz e alegria expansiva."
+        // ── Detecção de humor social/grupo ──
+        const socialMoods = ["Celebracao", "Euforia", "Energia", "Amor", "Confianca", "Paz"];
+        const conexaoSocial = data.emotions?.ConexaoSocial;
+        const isGroupMood =
+            socialMoods.includes(moodKey) ||
+            (typeof conexaoSocial === "number" && conexaoSocial > 0.5) ||
+            (data.sentiment && data.sentiment.toLowerCase().includes("conex"));
+
+        const groupScenes = [
+            "grupo de amigos em viagem de carro com janelas abertas, vento no cabelo, todos rindo e cantando juntos — ninguém está sozinho, a cena inteira vibra companheirismo",
+            "festa descontraída em casa, amigos espalhados pelo sofá e chão, petiscos, risadas soltas, clima de pertencimento total — cada pessoa no quadro importa",
+            "show ou festival ao vivo, multidão pulsando junta, braços levantados, a música conectando desconhecidos como se fossem velhos amigos",
+            "luau noturno ao redor do fogo na praia, rostos iluminados pela chama, conversas íntimas e risadas ecoando sob as estrelas — grupo unido e acolhedor",
+            "grupo caminhando junto pela cidade iluminada à noite, ruas de neon refletindo na chuva fina, braços nos ombros uns dos outros, cumplicidade visual absoluta",
+            "amigos brindando em um bar animado ou izakaya, copos se encontrando no ar, expressões de alegria genuína e celebração coletiva",
+            "pôr do sol no topo de um telhado ou escadaria, grupo lado a lado em silêncio confortável, aproveitando a companhia mútua em paz expansiva",
+            "grupo de amigos deitados na grama de um parque à tarde, olhando as nuvens passarem, conversa solta e risadas ocasionais — conexão tranquila e verdadeira",
+            "sala de estar aconchegante, amigos jogando videogame ou cartas, gritos de competição amigável, todos torcendo e rindo juntos — caos caseiro e feliz",
+            "grupo dançando junto em uma sala escura com luzes coloridas, sem se importar com passos, apenas se movendo juntos na mesma energia contagiante",
         ];
-        
-        let celebrationRule = "";
-        if (moodKey === "Celebracao" || (data.sentiment && data.sentiment.toLowerCase().includes("conex"))) {
-            const randomCelebration = this.random(celebrationVariations);
-            celebrationRule = `\n\nREGRA MÁXIMA DE CONEXÃO/CELEBRAÇÃO: O tema central é a alegria compartilhada! ${randomCelebration} O protagonista NUNCA está sozinho. A cena vibra festa, amizade e cumplicidade visual.`;
+
+        let groupRule = "";
+        if (isGroupMood) {
+            groupRule = `\n\nREGRA DE GRUPO: O humor detectado é SOCIAL e COLETIVO. ${this.random(groupScenes)} A cena DEVE conter múltiplas pessoas interagindo genuinamente — o foco NÃO é um indivíduo, mas a conexão entre eles. Expressões, posturas e olhares devem comunicar pertencimento.`;
         }
 
         const faceRef = data.faceReferencePath
-            ? "Traduzir identidade facial da referência para o estilo do estúdio. Sem fotorrealismo."
-            : "Personagem jovem adulto(a) original.";
+            ? `Traduzir a identidade facial da pessoa de referência para o estilo do estúdio${isGroupMood ? ', posicionando-a em meio ao grupo como parte integrante da cena coletiva' : ''}. Sem fotorrealismo.`
+            : isGroupMood
+                ? "Grupo de jovens adultos originais, diversos em aparência mas unidos pelo mesmo momento. Cada pessoa deve ter características físicas distintas (altura, cabelo, tom de pele)."
+                : "Personagem jovem adulto(a) original.";
 
         const copyrightRule = "\n\nREGRA ESTRITA DE COPYRIGHT: TODOS os personagens (protagonista e qualquer pessoa no fundo) DEVEM ser 100% originais e genéricos (OCs). É EXPRESSAMENTE PROIBIDO desenhar personagens que se pareçam com personagens existentes de animes para evitar direitos autorais. O anime de referência serve APENAS para guiar o estilo de coloração, luz e traço, nunca o design dos personagens.";
 
         const genreMusicRule = (data.topGenre || data.currentSong)
-            ? `\n\nREFERÊNCIA MUSICAL (Integrar detalhes/vibecore sutilmente na cena e no estilo do personagem): Gênero predominante: "${data.topGenre || 'Não especificado'}". Música de inspiração: "${data.currentSong || 'Não especificada'}". Use isso como tempero visual na composição.`
+            ? `\n\nREFERÊNCIA MUSICAL (Integrar detalhes/vibecore sutilmente na cena e no estilo do personagem): Subgênero predominante: "${data.topGenre || 'Não especificado'}". Música de inspiração: "${data.currentSong || 'Não especificada'}". Use isso como tempero visual na composição.`
             : "";
 
         const noFiltersRule = "\n\nREGRA DE CORES E ILUMINAÇÃO: NÃO aplique filtros de cores artificiais, sobreposições (overlays) monocromáticas ou banhos de cor que pintem a imagem inteira de um único tom (como tudo muito azul, verde, vermelho, sépia, etc). EVITE saturação excessiva e cores neon artificiais. A paleta de cores deve ser natural e equilibrada, preservando as cores reais dos personagens e elementos do ambiente sob a luz, sem parecer ter um efeito de correção de cor exagerado. Use contraste com moderação, priorizando a harmonia cromática.";
+
+        const nostalgicRule = data.nostalgic
+            ? "\n\nESTILO VISUAL RETRÔ: Ilustração com estética de anime dos anos 90 e começo dos anos 2000. Características OBRIGATÓRIAS: cel-shading tradicional (não digital moderno), paleta de cores levemente dessaturada e quente (tons terrosos, azuis acinzentados, vermelhos queimados), iluminação suave sem glow digital, lineart com leve variação de espessura (efeito caneta/g-pen), textura granulada sutil de filme analógico, sombras pintadas à mão (não gradientes suaves), olhos com brilho pintado manualmente (não digital), atmosfera nostálgica e melancólica. PROIBIDO: iluminação bloom moderna, gradientes ultra-suaves, lineart perfeitamente uniforme, saturação vibrante digital. Referências visuais: Cowboy Bebop, Evangelion, Sailor Moon, Yu Yu Hakusho, Inuyasha, Samurai Champloo, Trigun, Wolf's Rain."
+            : "";
 
         const moodContext = `\n\nPALETA DO HUMOR: ${palette}.\nATMOSFERA: ${atmosphere}.\nSÍMBOLO-CHAVE: ${symbol}.\nENERGIA DA CENA: ${actMod}`;
 
@@ -392,7 +409,7 @@ export class ImagePromptService {
 
 ESTÚDIO: ${studio.visualLanguage}. ${studio.cinematography}. ${studio.motionStyle}. ${studio.renderingNotes}.
 
-CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${celebrationRule}${genreMusicRule}${noFiltersRule}${moodContext}
+CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${groupRule}${nostalgicRule}${genreMusicRule}${noFiltersRule}${moodContext}
 
 
 PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}

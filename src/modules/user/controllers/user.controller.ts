@@ -111,8 +111,8 @@ export class UserController {
 
     @Get('refreshMood')
     @UseGuards(JwtAuthGuard)
-    async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string) {
-        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId);
+    async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string, @Query('animeId') animeId?: string, @Query('nostalgic') nostalgic?: string) {
+        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId, animeId, nostalgic === '1');
     }
 
     @Get('refreshMood/studios')

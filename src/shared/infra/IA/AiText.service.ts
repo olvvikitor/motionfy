@@ -11,7 +11,7 @@ export type ResponseAi = {
 
   coreAxes: CoreAxes;
   image_mood: string
-  mostListenedGenre?: string;
+  mostListenedSubgenre?: string;
   mostListenedSong?: {
     name: string;
     artist: string;
