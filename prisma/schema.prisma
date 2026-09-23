@@ -81,6 +81,10 @@ model Track {
   artist    String
   album     String?
   img_url   String?
+  isrc        String?
+  explicit    Boolean?
+  releaseDate String?
+  durationMs  Int?
   createdAt DateTime           @default(now())
   histories ListeningHistory[]
 }

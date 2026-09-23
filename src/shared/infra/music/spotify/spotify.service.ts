@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { MusicProviderInterface, ProviderUserProfile } from "../music.provider.interface";
+import { MusicProviderInterface, ProviderUserProfile, QueueResult } from "../music.provider.interface";
 import axios, { AxiosError } from "axios";
 import { mapSpotifyHistoryToPrisma } from "src/modules/tracks/mappers/spotifyToPrisma";
 import { TrackInput } from "src/shared/types/TrackInput";
@@ -40,6 +40,10 @@ export class SpotifyProvider implements MusicProviderInterface {
                 artist: track.artists?.map((artist: { name: string }) => artist.name).join(', ') ?? 'Unknown',
                 album: track.album?.name ?? '',
                 img_url: track.album?.images?.[0]?.url ?? '',
+                isrc: track.external_ids?.isrc ?? null,
+                explicit: track.explicit ?? null,
+                releaseDate: track.album?.release_date ?? null,
+                durationMs: track.duration_ms ?? null,
                 createdAt: new Date(),
             };
         } catch (err) {
@@ -130,6 +134,57 @@ export class SpotifyProvider implements MusicProviderInterface {
             throw new HttpException(`${message}: ${detail}`, status);
         }
         throw new HttpException(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    async searchTracks(accessToken: string, query: string): Promise<TrackInput[]> {
+        try {
+            // Limite máximo aceito hoje pela busca é 10; market=from_token garante faixas tocáveis para o usuário.
+            const response = await axios.get('https://api.spotify.com/v1/search', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                params: { q: query, type: 'track', limit: 10, market: 'from_token' },
+            });
+
+            return (response.data.tracks?.items ?? [])
+                .filter((track: any) => track?.id)
+                .map((track: any) => ({
+                    spotifyId: track.id,
+                    title: track.name,
+                    artist: track.artists?.map((artist: { name: string }) => artist.name).join(', ') ?? 'Unknown',
+                    album: track.album?.name ?? '',
+                    img_url: track.album?.images?.[0]?.url ?? '',
+                    isrc: track.external_ids?.isrc ?? null,
+                    explicit: track.explicit ?? null,
+                    releaseDate: track.album?.release_date ?? null,
+                    durationMs: track.duration_ms ?? null,
+                    createdAt: new Date(),
+                }));
+        } catch (err) {
+            this.handleAxiosError(err, 'Erro ao buscar músicas no Spotify');
+        }
+    }
+
+    async addTracksToQueue(accessToken: string, trackIds: string[]): Promise<QueueResult> {
+        let queued = 0;
+        // Em sequência: o Spotify só aceita uma faixa por chamada e a ordem da fila importa.
+        for (const trackId of trackIds) {
+            try {
+                await axios.post('https://api.spotify.com/v1/me/player/queue', null, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    params: { uri: `spotify:track:${trackId}` },
+                });
+                queued++;
+            } catch (err) {
+                const status = err instanceof AxiosError ? err.response?.status : undefined;
+                const detail = err instanceof AxiosError ? err.response?.data?.error?.message ?? err.message : String(err);
+                return {
+                    queued,
+                    error: status === 404
+                        ? 'Nenhum dispositivo do Spotify ativo. Abra o Spotify e dê play em algo para usar a fila.'
+                        : `Falha ao adicionar à fila do Spotify: ${detail}`,
+                };
+            }
+        }
+        return { queued };
     }
 
     async addToQueue(accessToken: string, trackId: string): Promise<void> {

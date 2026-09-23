@@ -5,4 +5,8 @@ export interface TrackInput {
   album: string;
   img_url:string
   createdAt: Date;
+  isrc?: string | null;
+  explicit?: boolean | null;
+  releaseDate?: string | null;
+  durationMs?: number | null;
 }

@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { MusicProviderModule } from './shared/infra/music/music.provider.module';
 import { FriendshipModule } from './modules/friendship/friendship.module';
 import { CreditModule } from './modules/credits/credit.module';
+import { PlaylistModule } from './modules/playlist/playlist.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { CreditModule } from './modules/credits/credit.module';
         TracksModule,
         FriendshipModule,
         CreditModule,
+        PlaylistModule,
     ],
     controllers: [],
     providers: [],

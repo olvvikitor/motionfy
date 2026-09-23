@@ -411,6 +411,10 @@ export class UserService {
             artist: currentTrack.artist,
             album: currentTrack.album,
             img_url: currentTrack.img_url,
+            isrc: currentTrack.isrc ?? null,
+            explicit: currentTrack.explicit ?? null,
+            releaseDate: currentTrack.releaseDate ?? null,
+            durationMs: currentTrack.durationMs ?? null,
             createdAt: currentTrack.createdAt ?? new Date(),
         };
         try {

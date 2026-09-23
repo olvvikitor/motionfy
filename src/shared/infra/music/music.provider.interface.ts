@@ -22,4 +22,13 @@ export  interface MusicProviderInterface{
     getListeningNow(access_token:string):Promise<TrackInput>
     refreshToken(access_token:string):Promise<any>
     addToQueue?(accessToken: string, trackId: string): Promise<void>;
+    // Recebem access token já renovado (uma renovação por fluxo, não por chamada).
+    searchTracks?(accessToken: string, query: string): Promise<TrackInput[]>;
+    addTracksToQueue?(accessToken: string, trackIds: string[]): Promise<QueueResult>;
+}
+
+export interface QueueResult {
+  queued: number;
+  // Motivo quando nada/parte não entrou (ex.: nenhum dispositivo ativo).
+  error?: string;
 }

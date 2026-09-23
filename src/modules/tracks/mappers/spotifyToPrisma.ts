@@ -9,6 +9,10 @@ export const mapSpotifyHistoryToPrisma = (items: SpotifyRecentlyPlayedItem[]): T
     artist: item.track.artists.map((a) => a.name).join(", "),
     album: item.track.album.name,
     img_url: item.track.album.images[2].url,
+    isrc: item.track.external_ids?.isrc ?? null,
+    explicit: item.track.explicit ?? null,
+    releaseDate: item.track.album.release_date ?? null,
+    durationMs: item.track.duration_ms ?? null,
 
 
     // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
@@ -23,6 +27,10 @@ export const mapSpotifySavedTracksToPrisma = (items: SpotifySavedTracksItem[]): 
     artist: item.track.artists.map((a) => a.name).join(", "),
     album: item.track.album.name,
     img_url: item.track.album.images[2].url,
+    isrc: item.track.external_ids?.isrc ?? null,
+    explicit: item.track.explicit ?? null,
+    releaseDate: item.track.album.release_date ?? null,
+    durationMs: item.track.duration_ms ?? null,
 
     // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
     createdAt: new Date(item.added_at as string),

@@ -96,6 +96,12 @@ const CLUSTER_PROFILES_10D: Record<string, { vector: EmotionalVector, sigma: num
     },
 };
 
+export const EMOTION_CLUSTERS = Object.keys(CLUSTER_PROFILES_10D);
+
+export function getClusterVector(label: string): EmotionalVector | undefined {
+    return CLUSTER_PROFILES_10D[label]?.vector;
+}
+
 @Injectable()
 export class EmotionAnalysisService {
     private static readonly ACTIVATION_MIN = -0.25;
@@ -228,6 +234,28 @@ export class EmotionAnalysisService {
         return {
             dominantSentiment: dominant.label,
             moodScore,
+            coreAxes,
+            emotionProbabilities,
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // Classificação vinda do Jev (Choice): o sentimento dominante e as
+    // probabilidades vêm do modelo; eixos e moodScore seguem derivados do vetor.
+    // -------------------------------------------------------------------------
+    classifyFromProbabilities(vector: EmotionalVector, probabilities: Record<string, number>): EmotionClassification {
+        const safeVector = this.sanitizeVector(vector);
+        const coreAxes = this.calculateCoreAxes(safeVector);
+
+        const emotionProbabilities = Object.entries(probabilities)
+            .map(([label, probability]) => ({ label, probability }))
+            .sort((a, b) => b.probability - a.probability);
+
+        if (!emotionProbabilities.length) return this.classifyEmotion(safeVector);
+
+        return {
+            dominantSentiment: emotionProbabilities[0].label,
+            moodScore: this.polaridadeToMoodScore(coreAxes.polaridade),
             coreAxes,
             emotionProbabilities,
         };
