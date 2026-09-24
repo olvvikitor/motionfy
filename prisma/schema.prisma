@@ -26,6 +26,7 @@ model User {
   savedTracks  SavedTrack[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
+  creditPurchases CreditPurchase[]
   reactions    MoodReaction[]
   comments     MoodComment[]
 
@@ -44,6 +45,25 @@ model CreditLog {
   createdAt DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+// Compra de créditos pelo Stripe Checkout. Uma linha por sessão: é o que impede creditar
+// duas vezes (webhook repetido ou webhook + confirmação na volta do checkout).
+model CreditPurchase {
+  id              String    @id @default(uuid())
+  userId          String
+  stripeSessionId String    @unique
+  packageId       String
+  credits         Int
+  amountCents     Int
+  currency        String
+  status          String    @default("pending") // pending | paid | expired
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 enum CreditLogType {

@@ -69,4 +69,60 @@ export class CreditRepository {
         });
         return rows.reverse().slice(0, limit);
     }
+
+    // ── Compras (Stripe) ──────────────────────────────────────────────────────
+
+    async createPurchase(data: {
+        userId: string;
+        stripeSessionId: string;
+        packageId: string;
+        credits: number;
+        amountCents: number;
+        currency: string;
+    }) {
+        return this.prisma.creditPurchase.create({ data });
+    }
+
+    async getPurchaseBySession(stripeSessionId: string) {
+        return this.prisma.creditPurchase.findUnique({ where: { stripeSessionId } });
+    }
+
+    // Marca como paga e credita, numa transação. Só a primeira chamada credita: as
+    // seguintes (webhook repetido, confirmação na volta) não acham mais linha pendente.
+    // Retorna o saldo novo, ou null se já tinha sido creditada / não existe.
+    async fulfillPurchase(stripeSessionId: string): Promise<number | null> {
+        return this.prisma.$transaction(async (tx) => {
+            const purchase = await tx.creditPurchase.findUnique({ where: { stripeSessionId } });
+            if (!purchase) return null;
+
+            const { count } = await tx.creditPurchase.updateMany({
+                where: { stripeSessionId, status: { not: "paid" } },
+                data: { status: "paid", paidAt: new Date() },
+            });
+            if (count === 0) return null;
+
+            const user = await tx.user.update({
+                where: { id: purchase.userId },
+                data: {
+                    image_credits: { increment: purchase.credits },
+                    creditLogs: {
+                        create: {
+                            type: CreditLogType.PURCHASE,
+                            amount: purchase.credits,
+                            note: `Compra: ${purchase.credits} crédito(s) | stripe ${stripeSessionId}`,
+                        },
+                    },
+                },
+                select: { image_credits: true },
+            });
+            return user.image_credits;
+        });
+    }
+
+    async markPurchaseExpired(stripeSessionId: string) {
+        await this.prisma.creditPurchase.updateMany({
+            where: { stripeSessionId, status: "pending" },
+            data: { status: "expired" },
+        });
+    }
 }

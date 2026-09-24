@@ -31,6 +31,8 @@ function isAllowedOrigin(origin?: string): boolean {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Corpo cru disponível em req.rawBody: o webhook do Stripe verifica a assinatura sobre ele.
+    rawBody: true,
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 

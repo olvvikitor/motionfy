@@ -67,21 +67,6 @@ export class CreditService {
         return { balance };
     }
 
-    // Simula compra (sem gateway real por ora — retorna sucesso direto)
-    async purchasePackage(userId: string, packageId: string, source = 'unknown'): Promise<{ balance: number }> {
-        const pkg = PACKAGES.find(p => p.id === packageId);
-        if (!pkg) throw new BadRequestException('Pacote inválido.');
-
-        const balance = await this.repo.add(
-            userId,
-            pkg.credits,
-            CreditLogType.PURCHASE,
-            `Compra: ${pkg.label} | source: ${source}`,
-        );
-
-        return { balance };
-    }
-
     async addBonus(userId: string, amount: number, note = 'Bônus'): Promise<{ balance: number }> {
         const balance = await this.repo.add(userId, amount, CreditLogType.BONUS, note);
         return { balance };
