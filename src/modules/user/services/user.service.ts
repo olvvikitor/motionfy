@@ -13,17 +13,12 @@ import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackReposi
 import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import { CreditService } from "src/modules/credits/credit.service";
 
-const SAVED_TRACKS_LIMIT = 300;
-const SAVED_TRACKS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // no máximo uma sincronização a cada 6h por usuário
-
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
     | { isPlaying: false };
 
 @Injectable()
 export class UserService {
-    private readonly savedTracksSync = new Map<string, number>(); // userId → início da última sincronização
-
     constructor(
         private userRepository: UserRepository,
         private providerMusic: MusicProviderFactory,
@@ -237,25 +232,8 @@ export class UserService {
         const providerMusic = this.providerMusic.getProvider(user.provider);
         const tracks = await providerMusic.getLastRecentlyPlayed(user.refreshToken!);
         await this.saveTrackService.saveMusicsHistoryLine(tracks, user.id);
-        this.startSavedTracksSync(user.id, user.provider, user.refreshToken!);
-    }
-
-    // Em segundo plano (não segura a resposta): importa as curtidas e analisa as novas com o Jev.
-    private startSavedTracksSync(userId: string, provider: string, refreshToken: string): void {
-        const lastStart = this.savedTracksSync.get(userId);
-        if (lastStart && Date.now() - lastStart < SAVED_TRACKS_SYNC_INTERVAL_MS) return;
-
-        const providerMusic = this.providerMusic.getProvider(provider);
-        if (!providerMusic.getSavedTracks) return;
-
-        this.savedTracksSync.set(userId, Date.now());
-        providerMusic.getSavedTracks(refreshToken, SAVED_TRACKS_LIMIT)
-            .then((saved) => this.saveTrackService.syncSavedTracks(userId, saved))
-            .then(() => console.log(`[SavedTracks] user=${userId} sincronização concluída`))
-            .catch((error) => {
-                this.savedTracksSync.delete(userId); // permite tentar de novo na próxima chamada
-                console.error(`[SavedTracks] user=${userId} falhou:`, error?.message ?? error);
-            });
+        // A biblioteca (curtidas/playlists) não é mais puxada aqui: o usuário escolhe o que
+        // entra pela tela de biblioteca (módulo library).
     }
 
     // Recalcula o humor. Não gera imagem (ver generateMoodImage).

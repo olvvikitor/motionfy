@@ -24,7 +24,7 @@ export class JourneyPlaylistDto {
     @Max(90, { message: 'A duração máxima é 90 minutos.' })
     durationMin!: number;
 
-    // all = acervo + busca automática; saved = só músicas curtidas; custom = o que o usuário pedir em `request`.
+    // all = acervo + busca automática; saved = só a biblioteca do usuário (SavedTrack); custom = o que o usuário pedir em `request`.
     @IsOptional()
     @IsIn(JOURNEY_SOURCES, { message: 'Origem inválida. Use all, saved ou custom.' })
     source: JourneySource = 'all';

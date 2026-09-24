@@ -1,5 +1,5 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { MusicProviderInterface, ProviderUserProfile, QueueResult } from "../music.provider.interface";
+import { LibraryPlaylist, LibrarySources, MusicProviderInterface, ProviderUserProfile, QueueResult } from "../music.provider.interface";
 import axios, { AxiosError } from "axios";
 import { mapSpotifyHistoryToPrisma } from "src/modules/tracks/mappers/spotifyToPrisma";
 import { TrackInput } from "src/shared/types/TrackInput";
@@ -153,15 +153,14 @@ export class SpotifyProvider implements MusicProviderInterface {
     }
 
     // "Músicas Curtidas", da mais recente para a mais antiga. createdAt = data em que foi curtida.
-    async getSavedTracks(refreshToken: string, max: number): Promise<TrackInput[]> {
+    async getSavedTracks(accessToken: string, max: number): Promise<TrackInput[]> {
         const PAGE_SIZE = 50; // máximo por página no endpoint
         try {
-            const token = await this.refreshToken(refreshToken);
             const tracks: TrackInput[] = [];
 
             for (let offset = 0; offset < max; offset += PAGE_SIZE) {
                 const response = await axios.get('https://api.spotify.com/v1/me/tracks', {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${accessToken}` },
                     params: { limit: Math.min(PAGE_SIZE, max - offset), offset },
                 });
 
@@ -175,6 +174,79 @@ export class SpotifyProvider implements MusicProviderInterface {
             return tracks;
         } catch (err) {
             this.handleAxiosError(err, 'Erro ao buscar músicas curtidas do Spotify');
+        }
+    }
+
+    // Total de curtidas + playlists do usuário. Desde fev/2026 o Spotify só entrega as músicas
+    // de playlists que o usuário criou ou colabora; as seguidas entram só na contagem.
+    async getLibrarySources(accessToken: string): Promise<LibrarySources> {
+        const PAGE_SIZE = 50;
+        const MAX_PLAYLISTS = 200;
+        const headers = { Authorization: `Bearer ${accessToken}` };
+        try {
+            const [me, liked] = await Promise.all([
+                axios.get('https://api.spotify.com/v1/me', { headers }),
+                axios.get('https://api.spotify.com/v1/me/tracks', { headers, params: { limit: 1 } }),
+            ]);
+
+            const playlists: LibraryPlaylist[] = [];
+            let hiddenPlaylists = 0;
+            for (let offset = 0; offset < MAX_PLAYLISTS; offset += PAGE_SIZE) {
+                const response = await axios.get('https://api.spotify.com/v1/me/playlists', {
+                    headers,
+                    params: { limit: PAGE_SIZE, offset },
+                });
+
+                for (const playlist of response.data.items ?? []) {
+                    if (!playlist?.id) continue;
+                    const readable = playlist.owner?.id === me.data.id || playlist.collaborative;
+                    if (!readable) { hiddenPlaylists++; continue; }
+                    playlists.push({
+                        id: playlist.id,
+                        name: playlist.name ?? '',
+                        imageUrl: playlist.images?.[playlist.images.length - 1]?.url ?? playlist.images?.[0]?.url ?? '',
+                        // `items` a partir de fev/2026; `tracks` nas respostas antigas.
+                        total: playlist.items?.total ?? playlist.tracks?.total ?? 0,
+                    });
+                }
+                if (!response.data.next) break;
+            }
+
+            return { likedTotal: liked.data.total ?? 0, playlists, hiddenPlaylists };
+        } catch (err) {
+            this.handleAxiosError(err, 'Erro ao buscar suas playlists no Spotify');
+        }
+    }
+
+    // Músicas de uma playlist do usuário, na ordem da playlist. createdAt = data em que entrou nela.
+    async getPlaylistTracks(accessToken: string, playlistId: string, max: number): Promise<TrackInput[]> {
+        const PAGE_SIZE = 50;
+        try {
+            const tracks: TrackInput[] = [];
+
+            for (let offset = 0; offset < max; offset += PAGE_SIZE) {
+                const response = await axios.get(`https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items`, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    params: { limit: Math.min(PAGE_SIZE, max - offset), offset, additional_types: 'track' },
+                });
+
+                for (const entry of response.data.items ?? []) {
+                    const track = entry.item ?? entry.track;
+                    if (!track?.id || entry.is_local || (track.type && track.type !== 'track')) continue;
+                    tracks.push(this.toTrackInput(track, entry.added_at ? new Date(entry.added_at) : new Date()));
+                }
+                if (!response.data.next) break;
+            }
+
+            return tracks;
+        } catch (err) {
+            if (err instanceof AxiosError && err.response?.status === 403) {
+                throw new HttpException(
+                    'O Spotify não liberou esta playlist. Entre de novo com o Spotify para dar acesso às suas playlists.',
+                    HttpStatus.FORBIDDEN,
+                );
+            }
+            this.handleAxiosError(err, 'Erro ao buscar músicas da playlist no Spotify');
         }
     }
 

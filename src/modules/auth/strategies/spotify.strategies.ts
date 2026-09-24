@@ -53,6 +53,8 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
                 'user-read-private',
                 'user-read-recently-played',
                 'user-library-read',
+                'playlist-read-private',
+                'playlist-read-collaborative',
                 'user-read-playback-state',
                 'user-read-currently-playing',
                 'user-modify-playback-state'

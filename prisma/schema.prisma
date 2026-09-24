@@ -118,7 +118,7 @@ model MoodAnalysis {
   comments        MoodComment[]
 }
 
-// Músicas curtidas pelo usuário no provedor (ex.: "Músicas Curtidas" do Spotify).
+// Biblioteca do usuário: músicas que ele escolheu das curtidas/playlists do provedor (módulo library).
 model SavedTrack {
   id      String   @id @default(uuid())
   userId  String
