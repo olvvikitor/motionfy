@@ -9,6 +9,7 @@ import {
     stopCountForDuration,
     totalDurationMs,
     Vector,
+    waypointsAlong,
 } from './journey-path';
 
 const FROM: Vector = { a: 0, b: 1 };
@@ -65,6 +66,16 @@ describe('journey-path', () => {
         expect(new Set(picks.map(p => p.candidate.spotifyId)).size).toBe(5);
     });
 
+    it('pickAlongPath não repete a mesma música vinda de outro lançamento (id diferente)', () => {
+        const pool = [
+            candidate('single', FROM, { title: 'The Aftermath', artist: 'Da Youngsta\'s' }),
+            candidate('album', { a: 0.1, b: 0.9 }, { title: 'The Aftermath', artist: 'Da Youngsta\'s' }),
+            candidate('other', { a: 0.3, b: 0.7 }),
+        ];
+        const picks = pickAlongPath(buildPath(FROM, FROM, 2), pool);
+        expect(picks.map(p => p.candidate.spotifyId)).toEqual(['single', 'other']);
+    });
+
     it('pickAlongPath evita o mesmo artista em sequência quando há alternativa', () => {
         const pool = [
             candidate('a1', FROM, { artist: 'Same' }),
@@ -91,6 +102,26 @@ describe('journey-path', () => {
         expect(pickAlongPath([FROM], pool)[0].candidate.spotifyId).toBe('mine');
     });
 
+    it('pickAlongPath com randomTopK sorteia entre as mais próximas dentro do raio', () => {
+        const pool = [
+            candidate('n1', { a: 0, b: 1 }),
+            candidate('n2', { a: 0.05, b: 0.95 }),
+            candidate('n3', { a: 0.1, b: 0.9 }),
+            candidate('far', { a: 5, b: 5 }),
+        ];
+        const pickWith = (value: number) => pickAlongPath([FROM], pool, { randomTopK: 3, rng: () => value })[0].candidate.spotifyId;
+        expect(pickWith(0)).toBe('n1');
+        expect(pickWith(0.5)).toBe('n2');
+        expect(pickWith(0.99)).toBe('n3');
+    });
+
+    it('pickAlongPath com randomTopK cai na mais próxima quando nada está no raio', () => {
+        const pool = [candidate('far1', { a: 5, b: 5 }), candidate('far2', { a: 6, b: 6 })];
+        const [pick] = pickAlongPath([FROM], pool, { randomTopK: 3, rng: () => 0.99 });
+        expect(pick.candidate.spotifyId).toBe('far1');
+        expect(pick.approximate).toBe(true);
+    });
+
     it('buildJourney fecha perto da duração pedida', () => {
         const picks = buildJourney(FROM, TO, 30, lineCandidates(40));
         expect(Math.abs(totalDurationMs(picks) - 30 * 60_000)).toBeLessThanOrEqual(120_000);
@@ -101,5 +132,31 @@ describe('journey-path', () => {
     it('buildJourney usa o que tiver quando faltam músicas', () => {
         const picks = buildJourney(FROM, TO, 60, lineCandidates(4));
         expect(picks).toHaveLength(4);
+    });
+});
+
+describe('waypointsAlong', () => {
+    const clusters: Record<string, Vector> = {
+        A: { x: 0, y: 0 },
+        B: { x: 1, y: 0 },
+        C: { x: 2, y: 0 },
+        D: { x: 3, y: 0 },
+        Far: { x: 1.5, y: 5 },
+    };
+
+    it('passa pelos sentimentos no meio do caminho, em ordem', () => {
+        expect(waypointsAlong('A', 'D', clusters)).toEqual(['A', 'B', 'C', 'D']);
+    });
+
+    it('não inclui sentimentos longe da linha', () => {
+        expect(waypointsAlong('A', 'D', clusters)).not.toContain('Far');
+    });
+
+    it('vizinhos diretos não têm paradas no meio', () => {
+        expect(waypointsAlong('A', 'B', clusters)).toEqual(['A', 'B']);
+    });
+
+    it('sentimento desconhecido volta só as pontas', () => {
+        expect(waypointsAlong('A', 'Nope', clusters)).toEqual(['A', 'Nope']);
     });
 });

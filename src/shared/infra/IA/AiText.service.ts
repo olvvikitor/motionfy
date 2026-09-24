@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TypeSafeClient, type Questions, type ChoiceResponse, type ScoreResponse, type JsonValue } from "@typesafe-ai/sdk";
+import { TypeSafeClient, type Questions, type ChoiceResponse, type ScoreResponse, type NoulResponse, type JsonValue } from "@typesafe-ai/sdk";
 import { Track } from '@prisma/client';
 import { CoreAxes, EMOTION_CLUSTERS, EMOTIONAL_DIMENSIONS, EmotionalVector, EmotionAnalysisService } from './emotion-analysis.service';
 import { TrackEnrichmentService } from './track-enrichment.service';
@@ -31,6 +31,15 @@ export type ResponseAi = {
     subgenre: string;
     coreAxes: CoreAxes;
   }[];
+};
+
+export type JourneyRequestInterpretation = {
+  isMusic: boolean;
+  to: string; // sentimento em que a playlist deve deixar o usuário
+  statedFrom: string | null; // como o usuário diz que está, se o pedido disser
+  guessedFrom: string; // palpite do Jev quando o pedido não diz
+  hasStyle: boolean; // o pedido diz QUE música tocar (artista, gênero, época, estilo)?
+  genre: string | null; // gênero citado, se o Jev reconhecer um da lista de subgêneros
 };
 
 type Dimension = typeof EMOTIONAL_DIMENSIONS[number];
@@ -326,6 +335,87 @@ export class AiTextService {
       }
     }
     return Object.fromEntries(Object.entries(sums).map(([k, v]) => [k, v / records.length]));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pedido livre do usuário na playlist de jornada ("bossa nova", "Coldplay"...)
+  // ---------------------------------------------------------------------------
+
+  // Um pedido livre ("to com raiva e quero me acalmar", "bossa nova") vira jornada:
+  // é música? para qual sentimento levar? o usuário disse como está agora?
+  async interpretJourneyRequest(request: string): Promise<JourneyRequestInterpretation> {
+    const feelings = Object.fromEntries(EMOTION_CLUSTERS.map(label => [label, SENTIMENT_CRITERIA[label] ?? null]));
+    const { answers } = await this.jev.systemOne({
+      state: { request },
+      questions: {
+        verdict: {
+          type: "choice",
+          instructions: "Is `request` a request for music (artist, genre, era, style, mood or activity)?",
+          criteria: {
+            music: "A request for music, possibly mentioning how the user feels or what they want to feel",
+            not_music: "Not about music: random text, unrelated question or instruction, or offensive content",
+          },
+        },
+        to: {
+          type: "choice",
+          instructions: "Which feeling should a playlist for `request` leave the listener in at the end? Consider both the music asked for and any goal the user states.",
+          criteria: feelings,
+        },
+        from_stated: { type: "noul", instructions: "Does `request` say how the user feels right now?" },
+        has_style: {
+          type: "noul",
+          instructions: "Does `request` say what kind of music to play: a specific artist, band, genre, era or musical style? Feelings, moods, goals or activities alone do not count.",
+        },
+        genre: {
+          type: "choice",
+          instructions: "Which music genre does `request` explicitly ask for?",
+          criteria: {
+            ...Object.fromEntries(Object.keys(SUBGENRE_TO_GENRE).map(sg => [sg, null])),
+            none: "No genre is named (only an artist, an era, feelings or an activity)",
+          },
+        },
+        from: { type: "choice", instructions: "How does the user feel right now, according to `request`?", criteria: feelings },
+      },
+    });
+
+    const from = (answers.from as ChoiceResponse).choice;
+    return {
+      isMusic: (answers.verdict as ChoiceResponse).choice === "music",
+      to: (answers.to as ChoiceResponse).choice,
+      statedFrom: (answers.from_stated as NoulResponse).noul >= 0.5 ? from : null,
+      guessedFrom: from,
+      hasStyle: (answers.has_style as NoulResponse).noul >= 0.5,
+      genre: this.confidentGenre(answers.genre as ChoiceResponse),
+    };
+  }
+
+  private confidentGenre(answer: ChoiceResponse): string | null {
+    const probability = answer.probabilities[answer.choice] ?? 0;
+    return answer.choice !== "none" && probability >= 0.5 ? answer.choice : null;
+  }
+
+  // Probabilidade (0..1) de cada música combinar com o pedido. Uma pergunta Noul
+  // por música, várias por chamada (o Jev avalia todas em paralelo).
+  async matchSongsToRequest(request: string, songs: { id: string; title: string; artist: string }[]): Promise<Map<string, number>> {
+    const PER_CALL = 50;
+    const scores = new Map<string, number>();
+
+    const chunks = Array.from({ length: Math.ceil(songs.length / PER_CALL) }, (_, i) => songs.slice(i * PER_CALL, (i + 1) * PER_CALL));
+    await Promise.all(chunks.map(async (chunk) => {
+      const state = Object.fromEntries(chunk.map((song, i) => [`s${i}`, `${song.title} - ${song.artist}`]));
+      const questions: Questions = Object.fromEntries(chunk.map((_, i) => [
+        `s${i}`,
+        {
+          type: "noul",
+          instructions: `Does the song \`songs.s${i}\` fit the kind of music asked for in \`request\` (artist, band, genre, era or style)? Ignore any feelings or goals mentioned in the request.`,
+        },
+      ]));
+
+      const { answers } = await this.jev.systemOne({ state: { request, songs: state }, questions });
+      chunk.forEach((song, i) => scores.set(song.id, (answers[`s${i}`] as NoulResponse).noul));
+    }));
+
+    return scores;
   }
 
   // Sentimento que mais se repete entre as faixas; empate decidido pela probabilidade média do Jev.

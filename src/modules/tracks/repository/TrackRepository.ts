@@ -60,6 +60,14 @@ export class TrackRepository {
             }
         })
     }
+    async saveSavedTracks(userId: string, entries: { trackId: string; addedAt: Date }[]): Promise<void> {
+        if (!entries.length) return;
+        await this.prisma.savedTrack.createMany({
+            data: entries.map((entry) => ({ userId, trackId: entry.trackId, addedAt: entry.addedAt })),
+            skipDuplicates: true,
+        });
+    }
+
     async findAnalyzedByMusicId(musiId: string[]): Promise<Array<{ spotifyid: string }>> {
         if (!musiId.length) return [];
 

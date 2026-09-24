@@ -14,18 +14,20 @@ export class CreditRepository {
         return user?.image_credits ?? 0;
     }
 
-    async consume(userId: string): Promise<number> {
-        const user = await this.prisma.user.update({
-            where: { id: userId },
-            data: {
-                image_credits: { decrement: 1 },
-                creditLogs: {
-                    create: { type: CreditLogType.CONSUME, amount: -1, note: 'Geração de imagem' },
-                },
-            },
-            select: { image_credits: true },
+    // Debita 1 crédito só se houver saldo, numa única operação (duas gerações ao mesmo
+    // tempo não deixam o saldo negativo). Retorna null quando não há crédito.
+    async consume(userId: string, note = 'Geração de imagem'): Promise<number | null> {
+        return this.prisma.$transaction(async (tx) => {
+            const { count } = await tx.user.updateMany({
+                where: { id: userId, image_credits: { gt: 0 } },
+                data: { image_credits: { decrement: 1 } },
+            });
+            if (count === 0) return null;
+
+            await tx.creditLog.create({ data: { userId, type: CreditLogType.CONSUME, amount: -1, note } });
+            const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { image_credits: true } });
+            return user.image_credits;
         });
-        return user.image_credits;
     }
 
     async add(userId: string, amount: number, type: CreditLogType, note?: string): Promise<number> {

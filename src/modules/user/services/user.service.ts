@@ -7,11 +7,14 @@ import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
 import { AiTextService, ResponseAi } from "src/shared/infra/IA/AiText.service";
 import { AiImageService } from "src/shared/infra/IA/AiImage.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
-import { ImagePromptService, StudioStyleOption } from "src/shared/infra/IA/ImagePrompt.service";
-import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { ImagePromptService } from "src/shared/infra/IA/ImagePrompt.service";
+import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
 import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import { CreditService } from "src/modules/credits/credit.service";
+
+const SAVED_TRACKS_LIMIT = 300;
+const SAVED_TRACKS_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // no máximo uma sincronização a cada 6h por usuário
 
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
@@ -19,6 +22,8 @@ export type ListeningNowResponse =
 
 @Injectable()
 export class UserService {
+    private readonly savedTracksSync = new Map<string, number>(); // userId → início da última sincronização
+
     constructor(
         private userRepository: UserRepository,
         private providerMusic: MusicProviderFactory,
@@ -223,7 +228,6 @@ export class UserService {
             img_profile: user.img_profile,
             face_photo_path: user.face_photo_path,
             provider: user.provider,
-            preferredStudioId: (user as any).preferredStudioId, // Handle TS delay for new Prisma schema
         };
     }
 
@@ -233,19 +237,33 @@ export class UserService {
         const providerMusic = this.providerMusic.getProvider(user.provider);
         const tracks = await providerMusic.getLastRecentlyPlayed(user.refreshToken!);
         await this.saveTrackService.saveMusicsHistoryLine(tracks, user.id);
+        this.startSavedTracksSync(user.id, user.provider, user.refreshToken!);
     }
 
-    async getRefreshMoodStudios(): Promise<StudioStyleOption[]> {
-        return this.prompt_imageService.getAvailableStudios();
+    // Em segundo plano (não segura a resposta): importa as curtidas e analisa as novas com o Jev.
+    private startSavedTracksSync(userId: string, provider: string, refreshToken: string): void {
+        const lastStart = this.savedTracksSync.get(userId);
+        if (lastStart && Date.now() - lastStart < SAVED_TRACKS_SYNC_INTERVAL_MS) return;
+
+        const providerMusic = this.providerMusic.getProvider(provider);
+        if (!providerMusic.getSavedTracks) return;
+
+        this.savedTracksSync.set(userId, Date.now());
+        providerMusic.getSavedTracks(refreshToken, SAVED_TRACKS_LIMIT)
+            .then((saved) => this.saveTrackService.syncSavedTracks(userId, saved))
+            .then(() => console.log(`[SavedTracks] user=${userId} sincronização concluída`))
+            .catch((error) => {
+                this.savedTracksSync.delete(userId); // permite tentar de novo na próxima chamada
+                console.error(`[SavedTracks] user=${userId} falhou:`, error?.message ?? error);
+            });
     }
 
-    async RefreshMoodUserToday(id: string, studioId?: string, animeId?: string, nostalgic?: boolean): Promise<ResponseAi> {
+    // Recalcula o humor. Não gera imagem (ver generateMoodImage).
+    async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
         const now = new Date();
 
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
-
-        const resolvedStudioId = studioId ?? user.preferredStudioId ?? undefined;
 
         let useTodayOnly = false;
 
@@ -318,65 +336,56 @@ export class UserService {
             tracks: response.tracks,
         };
 
-        const isSameSentimentAsLast = lastMood && lastMood.sentiment === response.dominantSentiment && lastMood.image_mood;
-
-        if (isSameSentimentAsLast) {
-            response.image_mood = lastMood.image_mood as string;
-            const finalMood = {
-                ...moodDataStore,
-                image_mood: lastMood.image_mood as string,
-            };
-            await this.userRepository.SaveMood(id, finalMood);
-            return response;
-        }
-
-        // ── Gera imagem ──
-        const imagePrompt = await this.aiImageService.buildHybridImagePrompt({
-            ativacao: response.coreAxes.ativacao,
-            moodScore: response.moodScore,
-            coreAxes: response.coreAxes,
-            sentiment: response.dominantSentiment,
-            emotions: response.emotionalVector,
-            faceReferencePath: user.face_photo_path,
-            studioId: resolvedStudioId,
-            animeId,
-            nostalgic,
-            topGenre: response.mostListenedSubgenre,
-            currentSong: response.mostListenedSong ? `${response.mostListenedSong.name} - ${response.mostListenedSong.artist}` : undefined,
-        });
-
-        const imageBuffer = await this.aiImageService.generateImage(
-            imagePrompt,
-            user.face_photo_path ?? undefined
-        );
-
-        // Upload em background
-        setImmediate(async () => {
-            try {
-                const file: UploadFile = {
-                    buffer: imageBuffer,
-                    originalname: 'mood.png',
-                    mimetype: 'image/png',
-                };
-
-                const imgUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
-
-                const finalMood = {
-                    ...moodDataStore,
-                    image_mood: imgUrl,
-                };
-
-                await this.userRepository.SaveMood(id, finalMood);
-            } catch (err) {
-                console.error('Erro ao fazer upload e salvar mood no background:', err);
-            }
-        });
-
-        // Se quiser retornar base64 pro front:
-        const base64 = imageBuffer.toString('base64');
-        response.image_mood = `data:image/png;base64,${base64}`;
+        // Imagem nunca é gerada aqui (esse fluxo roda automaticamente): se o sentimento
+        // não mudou, reaproveita a imagem anterior; senão o humor fica sem imagem até o
+        // usuário pedir uma nova pagando crédito (generateMoodImage).
+        const reusedImage = lastMood && lastMood.sentiment === response.dominantSentiment ? lastMood.image_mood : null;
+        response.image_mood = reusedImage ?? "";
+        await this.userRepository.SaveMood(id, { ...moodDataStore, image_mood: reusedImage });
 
         return response;
+    }
+
+    // Gera a imagem do humor mais recente. Toda imagem nova custa 1 crédito: debita
+    // antes de chamar a IA e estorna se a geração ou o upload falhar.
+    async generateMoodImage(id: string) {
+        const user = await this.userRepository.getUserById(id);
+        if (!user) throw new NotFoundException('Usuario não encontrado');
+
+        const mood = await this.userRepository.getMoodUser(id);
+        if (!mood) throw new BadRequestException('Gere seu humor antes de criar a imagem.');
+
+        const { remaining } = await this.creditService.consumeCredit(id, `Imagem do humor ${mood.sentiment}`);
+
+        try {
+            const coreAxes = mood.coreAxes as unknown as CoreAxes;
+            const tracks = typeof mood.tracksAnalyzeds === 'string' ? JSON.parse(mood.tracksAnalyzeds) : mood.tracksAnalyzeds;
+            const { mostListenedSubgenre, mostListenedSong } = this.computeMostListened(Array.isArray(tracks) ? tracks : []);
+
+            const imagePrompt = await this.aiImageService.buildHybridImagePrompt({
+                ativacao: coreAxes.ativacao,
+                moodScore: mood.moodScore,
+                coreAxes,
+                sentiment: mood.sentiment,
+                emotions: mood.emotions as unknown as EmotionalVector,
+                faceReferencePath: user.face_photo_path,
+                topGenre: mostListenedSubgenre,
+                currentSong: mostListenedSong ? `${mostListenedSong.name} - ${mostListenedSong.artist}` : undefined,
+            });
+
+            const imageBuffer = await this.aiImageService.generateImage(imagePrompt, user.face_photo_path ?? undefined);
+            const file: UploadFile = { buffer: imageBuffer, originalname: 'mood.png', mimetype: 'image/png' };
+            const imageUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
+            await this.userRepository.setMoodImage(mood.id, imageUrl);
+
+            return { image_mood: imageUrl, remainingCredits: remaining };
+        } catch (error) {
+            await this.creditService.refundCredit(id).catch((refundError) =>
+                console.error(`[Credits] falha ao estornar crédito do usuário ${id}:`, refundError),
+            );
+            console.error('Erro ao gerar imagem do humor:', error);
+            throw new BadRequestException('Não foi possível gerar a imagem agora. Seu crédito foi devolvido.');
+        }
     }
     async getMoodUserToday(id: string): Promise<any> {
         const mood = await this.userRepository.getMoodUser(id);
@@ -435,6 +444,17 @@ export class UserService {
                 tracks: [],
             };
         }
+    }
+
+    // Imagens que o usuário já tem, para alternar no card do humor. Sem repetir a mesma URL.
+    async getMoodImages(id: string, limit = 30): Promise<{ id: string; image_mood: string; analyzedAt: Date }[]> {
+        const rows = await this.userRepository.getMoodImages(id, limit);
+        const seen = new Set<string>();
+        return rows.flatMap((row) => {
+            if (!row.image_mood || seen.has(row.image_mood)) return [];
+            seen.add(row.image_mood);
+            return [{ id: row.id, image_mood: row.image_mood, analyzedAt: row.analyzedAt }];
+        });
     }
 
     async getMoodHistory(id: string, limit = 1) {
@@ -507,11 +527,6 @@ export class UserService {
         const response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
 
         return response?.tracks ?? [];
-    }
-
-    async updateStudioPreference(id: string, studioId: string) {
-        await this.userRepository.updateStudioPreference(id, studioId);
-        return { message: 'Preferência de estúdio atualizada com sucesso' };
     }
 
     async addTrackToQueue(id: string, trackId: string): Promise<void> {

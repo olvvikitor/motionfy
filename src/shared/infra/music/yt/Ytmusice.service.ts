@@ -5,8 +5,9 @@ import axios, { AxiosError } from 'axios';
 
 @Injectable()
 export class YtMusicService implements MusicProviderInterface {
-    getListeningNow(access_token: string): Promise<TrackInput> {
-        throw new Error('Method not implemented.');
+    // YouTube Music não expõe "tocando agora"; tratar como nada tocando em vez de 500.
+    async getListeningNow(_access_token: string): Promise<TrackInput | null> {
+        return null;
     }
     private readonly pythonServiceUrl =
         process.env.YTMUSIC_SERVICE_URL ?? 'http://localhost:3003';

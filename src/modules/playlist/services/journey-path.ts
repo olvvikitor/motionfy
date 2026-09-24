@@ -14,7 +14,7 @@ export interface JourneyCandidate {
     durationMs: number | null;
     vector: Vector;
     dominantSentiment: string;
-    fromUserHistory: boolean;
+    fromUserHistory: boolean; // ouvida ou curtida pelo usuário
 }
 
 export interface JourneyPick {
@@ -66,26 +66,43 @@ export function trackDuration(candidate: JourneyCandidate): number {
     return candidate.durationMs ?? DEFAULT_TRACK_MS;
 }
 
+// A mesma música pode existir em vários lançamentos (single, álbum, ao vivo…) com ids diferentes.
+function songKey(candidate: JourneyCandidate): string {
+    return `${candidate.title}|${candidate.artist}`.toLowerCase().trim();
+}
+
+export type PickOptions = {
+    // 1 = sempre a mais próxima. >1 = sorteia entre as N mais próximas dentro do raio.
+    randomTopK?: number;
+    rng?: () => number;
+};
+
 // Escolhe, em ordem, a candidata mais próxima de cada parada: sem repetir música
 // e evitando o mesmo artista em sequência (a menos que não haja outra opção).
-export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[]): JourneyPick[] {
+export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], options: PickOptions = {}): JourneyPick[] {
+    const topK = Math.max(1, options.randomTopK ?? 1);
+    const rng = options.rng ?? Math.random;
     const used = new Set<string>();
     const picks: JourneyPick[] = [];
 
     path.forEach((point, stop) => {
         const previousArtist = picks[picks.length - 1]?.candidate.artist;
         const ranked = candidates
-            .filter(c => !used.has(c.spotifyId))
+            .filter(c => !used.has(c.spotifyId) && !used.has(songKey(c)))
             .map(c => {
                 const d = distance(point, c.vector);
                 return { candidate: c, distance: d, score: d - (c.fromUserHistory ? HISTORY_BONUS : 0) };
             })
             .sort((a, b) => a.score - b.score);
 
-        const best = ranked.find(r => r.candidate.artist !== previousArtist) ?? ranked[0];
+        const otherArtist = ranked.filter(r => r.candidate.artist !== previousArtist);
+        const options = otherArtist.length ? otherArtist : ranked;
+        const near = options.filter(r => r.distance <= NEAR_RADIUS).slice(0, topK);
+        const best = topK > 1 && near.length ? near[Math.floor(rng() * near.length)] : options[0];
         if (!best) return;
 
         used.add(best.candidate.spotifyId);
+        used.add(songKey(best.candidate));
         picks.push({ candidate: best.candidate, stop, distance: best.distance, approximate: best.distance > NEAR_RADIUS });
     });
 
@@ -97,7 +114,13 @@ export function totalDurationMs(picks: JourneyPick[]): number {
 }
 
 // Ajusta o número de paradas até a soma das durações reais ficar perto do alvo.
-export function buildJourney(from: Vector, to: Vector, durationMin: number, candidates: JourneyCandidate[]): JourneyPick[] {
+export function buildJourney(
+    from: Vector,
+    to: Vector,
+    durationMin: number,
+    candidates: JourneyCandidate[],
+    options: PickOptions = {},
+): JourneyPick[] {
     const targetMs = durationMin * 60_000;
     let stops = stopCountForDuration(durationMin);
     let best: JourneyPick[] = [];
@@ -105,7 +128,7 @@ export function buildJourney(from: Vector, to: Vector, durationMin: number, cand
 
     while (!tried.has(stops) && stops >= MIN_STOPS && stops <= MAX_STOPS) {
         tried.add(stops);
-        const picks = pickAlongPath(buildPath(from, to, stops), candidates);
+        const picks = pickAlongPath(buildPath(from, to, stops), candidates, options);
         const diff = totalDurationMs(picks) - targetMs;
 
         if (!best.length || Math.abs(diff) < Math.abs(totalDurationMs(best) - targetMs)) best = picks;
@@ -115,4 +138,30 @@ export function buildJourney(from: Vector, to: Vector, durationMin: number, cand
     }
 
     return best;
+}
+
+// Sentimentos por onde a linha reta de `from` a `to` passa (o sentimento mais próximo de cada
+// ponto amostrado), na ordem. Começa em `fromLabel` e termina em `toLabel`. É o mesmo caminho
+// que a playlist percorre, resumido em sentimentos (usado para desenhar o trajeto na UI).
+export function waypointsAlong(
+    fromLabel: string,
+    toLabel: string,
+    clusters: Record<string, Vector>,
+    samples = 24,
+): string[] {
+    const from = clusters[fromLabel];
+    const to = clusters[toLabel];
+    if (!from || !to) return [fromLabel, toLabel];
+
+    const labels = Object.keys(clusters);
+    const nearest = (point: Vector) =>
+        labels.reduce((best, label) => (distance(point, clusters[label]) < distance(point, clusters[best]) ? label : best), labels[0]);
+
+    const sequence: string[] = [fromLabel];
+    for (const point of buildPath(from, to, samples).slice(1, -1)) {
+        const label = nearest(point);
+        if (label !== fromLabel && label !== toLabel && label !== sequence[sequence.length - 1]) sequence.push(label);
+    }
+    sequence.push(toLabel);
+    return sequence;
 }

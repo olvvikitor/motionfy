@@ -105,6 +105,34 @@ export class FriendshipService {
 
     // ─── Funcionalidades sociais ─────────────────────────────────────────────
 
+    // Feed agregado: evita o front fazer 1 + 2N requisições (amigos, mood e tocando-agora de cada um).
+    // Falha de um amigo (token do Spotify expirado etc.) não derruba o feed inteiro.
+    async getFeed(userId: string) {
+        const friends = await this.getFriends(userId);
+
+        const posts = await Promise.all(
+            friends.map(async (friend) => {
+                const [moodResult, listeningResult] = await Promise.allSettled([
+                    this.userService.getMoodUserToday(friend.id),
+                    this.userService.listeningNow(friend.id),
+                ]);
+
+                const mood = moodResult.status === 'fulfilled' ? moodResult.value ?? null : null;
+                const listening = listeningResult.status === 'fulfilled' ? listeningResult.value : null;
+                const isPlaying = !!listening?.isPlaying;
+                const track = isPlaying && listening && 'tracks' in listening ? listening.tracks?.[0] : undefined;
+
+                return { ...friend, isPlaying, track, mood };
+            }),
+        );
+
+        // Quem está ouvindo agora primeiro, depois por mood score.
+        return posts.sort((a, b) => {
+            if (a.isPlaying !== b.isPlaying) return a.isPlaying ? -1 : 1;
+            return (b.mood?.moodScore ?? 0) - (a.mood?.moodScore ?? 0);
+        });
+    }
+
     async getFriendMood(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
         return this.userService.getMoodUserToday(friendId);

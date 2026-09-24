@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Track } from "@prisma/client";
 import { TrackAnalysisWriteInput, TrackRepository } from "../repository/TrackRepository";
-import { SpotifySavedTracksItem } from "src/shared/types/TrackResponseSpotify";
-import { mapSpotifySavedTracksToPrisma } from "../mappers/spotifyToPrisma";
 import { TrackInput } from "src/shared/types/TrackInput";
 import { AiTextService } from "src/shared/infra/IA/AiText.service";
 
@@ -105,22 +103,27 @@ export default class SaveTracks {
         await this.trackRepository.saveTrackAnalysesBulk(Array.from(analysesMap.values()));
     }
 
-    async saveMusicsSaved(tracks: SpotifySavedTracksItem[]): Promise<void> {
-        const tracksProcessed = mapSpotifySavedTracksToPrisma(tracks);
+    // Salva as "Músicas Curtidas" do usuário e analisa com o Jev as que ainda não têm análise.
+    async syncSavedTracks(idUser: string, tracks: TrackInput[]): Promise<void> {
+        const saved: Track[] = [];
 
-        // Usamos um for...of para processar uma por uma e evitar 503/P2002
-        for (const trackData of tracksProcessed) {
-            try {
-                // 1. Cria ou recupera a track (use Upsert no Repository para evitar duplicados)
-                await this.trackRepository.createNewTrack(trackData);
-
-            } catch (error) {
-                console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);
-                // Continua para a próxima música mesmo se uma falhar
-                continue;
-            }
+        for (const chunk of this.chunkArray(tracks, 10)) {
+            const results = await Promise.allSettled(chunk.map((trackData) => this.trackRepository.createNewTrack(trackData)));
+            results.forEach((result, i) => {
+                if (result.status === "fulfilled") saved.push(result.value);
+                else console.error(`Erro ao salvar a faixa curtida ${chunk[i].title}:`, result.reason?.message);
+            });
         }
+
+        const addedAtById = new Map(tracks.map((t) => [t.spotifyId, t.createdAt]));
+        await this.trackRepository.saveSavedTracks(
+            idUser,
+            saved.map((track) => ({ trackId: track.spotifyId!, addedAt: addedAtById.get(track.spotifyId!) ?? new Date() })),
+        );
+
+        await this.analyzeMissingTracks(idUser, saved, "saved");
     }
+
     async saveMusicsHistoryLine(tracks: TrackInput[], idUser: string): Promise<void> {
 
         // Otimização: Paraleliza as inserções das músicas e do histórico individual pra não somar latência sequencial
@@ -160,7 +163,11 @@ export default class SaveTracks {
             uniqueBySpotifyId.set(spotifyId, item.track);
         }
 
-        const uniqueTracks = Array.from(uniqueBySpotifyId.values());
+        await this.analyzeMissingTracks(idUser, Array.from(uniqueBySpotifyId.values()), "recent");
+    }
+
+    // Manda ao Jev, em lotes de 10, as faixas que ainda não têm análise salva.
+    private async analyzeMissingTracks(idUser: string, uniqueTracks: Track[], source: string): Promise<void> {
         if (!uniqueTracks.length) return;
 
         const spotifyIds = uniqueTracks
@@ -175,7 +182,7 @@ export default class SaveTracks {
         });
 
         console.log(
-            `[TrackAnalysis] user=${idUser} recent=${uniqueTracks.length} analyzed=${analyzedSet.size} missing=${missingTracks.length}`,
+            `[TrackAnalysis] user=${idUser} ${source}=${uniqueTracks.length} analyzed=${analyzedSet.size} missing=${missingTracks.length}`,
         );
 
         if (!missingTracks.length) return;

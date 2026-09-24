@@ -6,7 +6,9 @@ import { JourneyCandidate, Vector } from "../services/journey-path";
 const POOL_LIMIT = 5000;
 
 export type UserTaste = {
-    historyIds: Set<string>;
+    // Faixas que o usuário ouviu ou curtiu — recebem preferência na jornada.
+    tasteIds: Set<string>;
+    savedIds: Set<string>;
     topArtists: string[];
     topSubgenres: string[];
 };
@@ -22,28 +24,45 @@ export class PlaylistRepository {
         });
     }
 
+    // Sentimento da análise de humor mais recente do usuário, se houver.
+    async getCurrentMood(userId: string): Promise<string | null> {
+        const latest = await this.prisma.moodAnalysis.findFirst({
+            where: { userId },
+            orderBy: { analyzedAt: 'desc' },
+            select: { sentiment: true },
+        });
+        return latest?.sentiment ?? null;
+    }
+
     async getUserTaste(userId: string): Promise<UserTaste> {
         const history = await this.prisma.listeningHistory.findMany({
             where: { userId },
             select: { track: { select: { spotifyId: true, artist: true } } },
         });
 
-        const historyIds = new Set(history.map(h => h.track.spotifyId).filter((id): id is string => Boolean(id)));
+        const saved = await this.prisma.savedTrack.findMany({
+            where: { userId },
+            select: { track: { select: { spotifyId: true, artist: true } } },
+        });
+
+        const tasteTracks = [...history, ...saved].map(item => item.track);
+        const tasteIds = new Set(tasteTracks.map(t => t.spotifyId).filter((id): id is string => Boolean(id)));
 
         const analyses = await this.prisma.tracksAnalysis.findMany({
-            where: { spotifyid: { in: [...historyIds] } },
+            where: { spotifyid: { in: [...tasteIds] } },
             select: { subgenre: true },
         });
 
         return {
-            historyIds,
-            topArtists: this.rankByCount(history.map(h => h.track.artist.split(', ')[0])),
+            tasteIds,
+            savedIds: new Set(saved.map(s => s.track.spotifyId).filter((id): id is string => Boolean(id))),
+            topArtists: this.rankByCount(tasteTracks.map(t => t.artist.split(', ')[0])),
             topSubgenres: this.rankByCount(analyses.map(a => a.subgenre).filter(sg => sg && sg !== 'Unknown')),
         };
     }
 
     // Todo o acervo analisado (de todos os usuários), já no formato de candidata.
-    async getAnalyzedPool(historyIds: Set<string>): Promise<JourneyCandidate[]> {
+    async getAnalyzedPool(tasteIds: Set<string>): Promise<JourneyCandidate[]> {
         const analyses = await this.prisma.tracksAnalysis.findMany({
             select: { spotifyid: true, emotionalVector: true, dominantSentiment: true },
             orderBy: { analyzedAt: 'desc' },
@@ -69,7 +88,7 @@ export class PlaylistRepository {
                 durationMs: track.durationMs,
                 vector,
                 dominantSentiment: analysis.dominantSentiment,
-                fromUserHistory: historyIds.has(analysis.spotifyid),
+                fromUserHistory: tasteIds.has(analysis.spotifyid),
             }];
         });
     }

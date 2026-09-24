@@ -30,6 +30,12 @@ export class FriendshipController {
         return this.friendshipService.getFriends(req.user!.id);
     }
 
+    // Precisa vir antes das rotas ':friendId/...'.
+    @Get('feed')
+    async getFeed(@Req() req: MRequest) {
+        return this.friendshipService.getFeed(req.user!.id);
+    }
+
     @Get('requests')
     async getPendingRequests(@Req() req: MRequest) {
         return this.friendshipService.getPendingRequests(req.user!.id);

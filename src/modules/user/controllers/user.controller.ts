@@ -48,6 +48,13 @@ export class UserController {
         return await this.userService.getMoodHistory(req.user!.id, isNaN(parsedLimit) ? 20 : parsedLimit);
     }
 
+    // Imagens de humor já geradas, para alternar no card principal.
+    @Get('mood-images')
+    @UseGuards(JwtAuthGuard)
+    async getMoodImages(@Req() req: MRequest) {
+        return await this.userService.getMoodImages(req.user!.id);
+    }
+
     @Get('mood-week')
     @UseGuards(JwtAuthGuard)
     async getMoodWeek(@Req() req: MRequest) {
@@ -102,24 +109,19 @@ export class UserController {
         return await this.createUser.uploadFacePhoto(req.user!.id, file);
     }
 
-    @Put('studio-preference')
-    @UseGuards(JwtAuthGuard)
-    async updateStudioPreference(@Body() body: { studioId: string }, @Req() req: MRequest) {
-        if (!body.studioId) throw new BadRequestException('ID do estúdio não fornecido');
-        return await this.userService.updateStudioPreference(req.user!.id, body.studioId);
-    }
-
     @Get('refreshMood')
     @UseGuards(JwtAuthGuard)
-    async RefreshMoodUser(@Req() req: MRequest, @Query('studioId') studioId?: string, @Query('animeId') animeId?: string, @Query('nostalgic') nostalgic?: string) {
-        return await this.userService.RefreshMoodUserToday(req.user!.id, studioId, animeId, nostalgic === '1');
+    async RefreshMoodUser(@Req() req: MRequest) {
+        return await this.userService.RefreshMoodUserToday(req.user!.id);
     }
 
-    @Get('refreshMood/studios')
+    // Imagem do humor atual: sempre paga (1 crédito). Único caminho que gera imagem nova.
+    @Post('mood-image')
     @UseGuards(JwtAuthGuard)
-    async listRefreshMoodStudios() {
-        return await this.userService.getRefreshMoodStudios();
+    async generateMoodImage(@Req() req: MRequest) {
+        return await this.userService.generateMoodImage(req.user!.id);
     }
+
 
     @Get('musicListeningNow')
     @UseGuards(JwtAuthGuard)

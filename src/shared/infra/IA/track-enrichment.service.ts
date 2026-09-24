@@ -12,7 +12,7 @@ type EnrichableTrack = Pick<Track, 'title' | 'artist' | 'isrc'>;
 const MUSICBRAINZ_URL = 'https://musicbrainz.org/ws/2';
 const DEEZER_URL = 'https://api.deezer.com';
 // MusicBrainz exige User-Agent identificável e no máximo 1 requisição por segundo.
-const MUSICBRAINZ_USER_AGENT = process.env.MUSICBRAINZ_USER_AGENT ?? 'Motionfy/1.0';
+const MUSICBRAINZ_USER_AGENT = process.env.MUSICBRAINZ_USER_AGENT ?? 'Mofy/1.0';
 const MUSICBRAINZ_INTERVAL_MS = 1100;
 const REQUEST_TIMEOUT_MS = 5000;
 const MAX_GENRES = 8;

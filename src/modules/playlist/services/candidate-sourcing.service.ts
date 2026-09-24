@@ -11,6 +11,23 @@ const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por play
 const PER_QUERY = 5; // novas por busca, para espalhar o orçamento entre as paradas
 const JEV_CONCURRENCY = 5;
 const ARTIST_QUERIES = 3;
+const REQUEST_PAGES = 3; // páginas de 10 por termo buscado a partir do pedido
+const MAX_REQUEST_RESULTS = 60;
+const RANDOM_PAGE_SPREAD = 3; // a busca começa numa página sorteada entre as 3 primeiras
+export const REQUEST_MATCH_THRESHOLD = 0.5;
+
+function shuffle<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
+function randomPage(): number {
+    return Math.floor(Math.random() * RANDOM_PAGE_SPREAD);
+}
 
 export type SourcingContext = {
     provider: MusicProviderInterface;
@@ -55,6 +72,104 @@ export class CandidateSourcingService {
         }
 
         return found;
+    }
+
+    // Modo "Eu escolho" com estilo: só busca no Spotify (o acervo do usuário não é
+    // consultado), o Jev confere quais músicas são do estilo pedido e uma amostra
+    // aleatória delas vira candidata. Músicas já analisadas reaproveitam a análise.
+    async fromRequest(
+        request: string,
+        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        analyzed: JourneyCandidate[],
+        genre: string | null = null,
+    ): Promise<{ candidates: JourneyCandidate[]; checked: number }> {
+        const analyzedById = new Map(analyzed.map(c => [c.spotifyId, c]));
+        const found = new Map<string, TrackInput>();
+
+        for (const query of shuffle(this.requestQueries(request, genre))) {
+            if (found.size >= MAX_REQUEST_RESULTS) break;
+            for (const track of await this.searchPages(query, ctx)) found.set(track.spotifyId, track);
+        }
+
+        const toCheck = [...found.values()].map(t => ({ id: t.spotifyId, title: t.title, artist: t.artist }));
+        if (!toCheck.length) return { candidates: [], checked: 0 };
+
+        const scores = await this.aiText.matchSongsToRequest(request, toCheck);
+        const matching = shuffle([...found.values()].filter(t => (scores.get(t.spotifyId) ?? 0) >= REQUEST_MATCH_THRESHOLD));
+
+        const reused = matching.filter(t => analyzedById.has(t.spotifyId)).map(t => analyzedById.get(t.spotifyId)!);
+        const toClassify = matching.filter(t => !analyzedById.has(t.spotifyId)).slice(0, MAX_NEW_CANDIDATES);
+
+        const classified = await this.classifyAndSave(toClassify);
+        return { candidates: [...reused, ...classified], checked: toCheck.length };
+    }
+
+    // Modo "Eu escolho" sem estilo ("to com raiva e quero me acalmar"): busca no
+    // Spotify por gêneros ligados ao sentimento de CADA parada, em ordem e página
+    // aleatórias. Não usa artistas nem gêneros do usuário.
+    async searchForJourney(
+        stops: Vector[],
+        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        analyzed: JourneyCandidate[],
+    ): Promise<JourneyCandidate[]> {
+        const analyzedById = new Map(analyzed.map(c => [c.spotifyId, c]));
+        const found = new Map<string, JourneyCandidate>();
+        let classifiedCount = 0;
+
+        for (const stop of stops) {
+            if ([...found.values()].some(c => distance(stop, c.vector) <= NEAR_RADIUS)) continue;
+
+            for (const query of shuffle(SENTIMENT_SEARCH_TERMS[this.nearestSentiment(stop)] ?? [])) {
+                const results = shuffle(await this.searchPages(query, ctx, 1)).filter(t => !found.has(t.spotifyId));
+
+                results.filter(t => analyzedById.has(t.spotifyId)).forEach(t => found.set(t.spotifyId, analyzedById.get(t.spotifyId)!));
+
+                const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - classifiedCount);
+                const toClassify = results.filter(t => !analyzedById.has(t.spotifyId)).slice(0, Math.max(0, budget));
+                const classified = await this.classifyAndSave(toClassify);
+                classifiedCount += toClassify.length;
+                classified.forEach(c => found.set(c.spotifyId, c));
+
+                if ([...found.values()].some(c => distance(stop, c.vector) <= NEAR_RADIUS)) break;
+                if (classifiedCount >= MAX_NEW_CANDIDATES) break;
+            }
+        }
+
+        return [...found.values()];
+    }
+
+    // Busca `pages` páginas a partir de uma página sorteada; se ela vier vazia
+    // (poucos resultados para o termo), recomeça da primeira.
+    private async searchPages(
+        query: string,
+        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        pages = REQUEST_PAGES,
+        start = randomPage(),
+    ): Promise<TrackInput[]> {
+        const tracks: TrackInput[] = [];
+
+        for (let page = start; page < start + pages; page++) {
+            const results = await ctx.provider.searchTracks!(ctx.accessToken, query, page * 10).catch((): TrackInput[] => []);
+            if (!results.length && page === start && start > 0) return this.searchPages(query, ctx, pages, 0);
+            tracks.push(...results);
+            if (results.length < 10) break;
+        }
+        return tracks;
+    }
+
+    // O gênero reconhecido pelo Jev (se houver), o pedido inteiro e, se tiver
+    // várias partes ("bossa nova e mpb", "rock, blues"), cada parte.
+    private requestQueries(request: string, genre: string | null): string[] {
+        const parts = request
+            .split(/,|;|\+|\s+e\s+|\s+and\s+/i)
+            .map(p => p.trim())
+            .filter(p => p.length > 1);
+        const genreQueries = genre ? [`genre:"${this.plain(genre)}"`, this.plain(genre)] : [];
+        return [...new Set([...genreQueries, request.trim(), ...(parts.length > 1 ? parts : [])])];
+    }
+
+    private plain(text: string): string {
+        return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     }
 
     // Primeiro artistas que o usuário ouve; depois gêneros ligados ao sentimento

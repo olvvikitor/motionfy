@@ -6,5 +6,4 @@ export type UserResponseDto = {
     face_photo_path?: string | null
     display_name: string
     country: string
-    preferredStudioId?: string | null
 }

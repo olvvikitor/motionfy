@@ -8,7 +8,7 @@ import { TrackInput } from "src/shared/types/TrackInput";
 export class SpotifyProvider implements MusicProviderInterface {
     constructor() { }
 
-    async getListeningNow(accessToken: string): Promise<TrackInput> {
+    async getListeningNow(accessToken: string): Promise<TrackInput | null> {
         try {
             const token = await this.refreshToken(accessToken);
 
@@ -22,14 +22,14 @@ export class SpotifyProvider implements MusicProviderInterface {
                 },
             );
 
-            // 204 No Content → usuário não está ouvindo nada agora
-            if (response.status === 204 || !response.data || !response.data.item) {
-                throw new HttpException('No track currently playing', HttpStatus.NOT_FOUND);
-            }
-
             // 400 / 401 / 403 → problema de autenticação ou requisição inválida
             if (response.status >= 400) {
                 throw new HttpException('Failed to fetch currently playing track', response.status);
+            }
+
+            // 204 No Content (ou anúncio/podcast sem item) → nada tocando; não é erro.
+            if (response.status === 204 || !response.data || !response.data.item) {
+                return null;
             }
 
             const track = response.data.item;
@@ -136,31 +136,61 @@ export class SpotifyProvider implements MusicProviderInterface {
         throw new HttpException(message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    async searchTracks(accessToken: string, query: string): Promise<TrackInput[]> {
+    async searchTracks(accessToken: string, query: string, offset = 0): Promise<TrackInput[]> {
         try {
             // Limite máximo aceito hoje pela busca é 10; market=from_token garante faixas tocáveis para o usuário.
             const response = await axios.get('https://api.spotify.com/v1/search', {
                 headers: { Authorization: `Bearer ${accessToken}` },
-                params: { q: query, type: 'track', limit: 10, market: 'from_token' },
+                params: { q: query, type: 'track', limit: 10, offset, market: 'from_token' },
             });
 
             return (response.data.tracks?.items ?? [])
                 .filter((track: any) => track?.id)
-                .map((track: any) => ({
-                    spotifyId: track.id,
-                    title: track.name,
-                    artist: track.artists?.map((artist: { name: string }) => artist.name).join(', ') ?? 'Unknown',
-                    album: track.album?.name ?? '',
-                    img_url: track.album?.images?.[0]?.url ?? '',
-                    isrc: track.external_ids?.isrc ?? null,
-                    explicit: track.explicit ?? null,
-                    releaseDate: track.album?.release_date ?? null,
-                    durationMs: track.duration_ms ?? null,
-                    createdAt: new Date(),
-                }));
+                .map((track: any) => this.toTrackInput(track, new Date()));
         } catch (err) {
             this.handleAxiosError(err, 'Erro ao buscar músicas no Spotify');
         }
+    }
+
+    // "Músicas Curtidas", da mais recente para a mais antiga. createdAt = data em que foi curtida.
+    async getSavedTracks(refreshToken: string, max: number): Promise<TrackInput[]> {
+        const PAGE_SIZE = 50; // máximo por página no endpoint
+        try {
+            const token = await this.refreshToken(refreshToken);
+            const tracks: TrackInput[] = [];
+
+            for (let offset = 0; offset < max; offset += PAGE_SIZE) {
+                const response = await axios.get('https://api.spotify.com/v1/me/tracks', {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { limit: Math.min(PAGE_SIZE, max - offset), offset },
+                });
+
+                const items: any[] = response.data.items ?? [];
+                for (const item of items) {
+                    if (item.track?.id && !item.track.is_local) tracks.push(this.toTrackInput(item.track, new Date(item.added_at)));
+                }
+                if (!response.data.next) break;
+            }
+
+            return tracks;
+        } catch (err) {
+            this.handleAxiosError(err, 'Erro ao buscar músicas curtidas do Spotify');
+        }
+    }
+
+    private toTrackInput(track: any, createdAt: Date): TrackInput {
+        return {
+            spotifyId: track.id,
+            title: track.name,
+            artist: track.artists?.map((artist: { name: string }) => artist.name).join(', ') ?? 'Unknown',
+            album: track.album?.name ?? '',
+            img_url: track.album?.images?.[0]?.url ?? '',
+            isrc: track.external_ids?.isrc ?? null,
+            explicit: track.explicit ?? null,
+            releaseDate: track.album?.release_date ?? null,
+            durationMs: track.duration_ms ?? null,
+            createdAt,
+        };
     }
 
     async addTracksToQueue(accessToken: string, trackIds: string[]): Promise<QueueResult> {

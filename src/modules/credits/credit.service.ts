@@ -53,13 +53,18 @@ export class CreditService {
         return { balance, logs, images, packages: PACKAGES };
     }
 
-    async consumeCredit(userId: string): Promise<{ remaining: number }> {
-        const balance = await this.repo.getBalance(userId);
-        if (balance <= 0) {
+    async consumeCredit(userId: string, note?: string): Promise<{ remaining: number }> {
+        const remaining = await this.repo.consume(userId, note);
+        if (remaining === null) {
             throw new BadRequestException('Sem créditos disponíveis.');
         }
-        const remaining = await this.repo.consume(userId);
         return { remaining };
+    }
+
+    // Devolve o crédito quando a geração paga falha depois do débito.
+    async refundCredit(userId: string, note = 'Estorno: falha na geração de imagem'): Promise<{ balance: number }> {
+        const balance = await this.repo.add(userId, 1, CreditLogType.REFUND, note);
+        return { balance };
     }
 
     // Simula compra (sem gateway real por ora — retorna sucesso direto)

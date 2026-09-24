@@ -17,13 +17,13 @@ model User {
   display_name    String
   img_profile       String
   face_photo_path   String?
-  preferredStudioId String?
   image_credits     Int     @default(1)
   notificateEmail Boolean @default(false)
   notificatePush  Boolean @default(false)
   notificateWeek  Boolean @default(false)
 
   histories    ListeningHistory[]
+  savedTracks  SavedTrack[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
   reactions    MoodReaction[]
@@ -87,6 +87,7 @@ model Track {
   durationMs  Int?
   createdAt DateTime           @default(now())
   histories ListeningHistory[]
+  savedBy   SavedTrack[]
 }
 
 model TracksAnalysis {
@@ -115,6 +116,18 @@ model MoodAnalysis {
   user            User           @relation(fields: [userId], references: [id])
   reactions       MoodReaction[]
   comments        MoodComment[]
+}
+
+// Músicas curtidas pelo usuário no provedor (ex.: "Músicas Curtidas" do Spotify).
+model SavedTrack {
+  id      String   @id @default(uuid())
+  userId  String
+  trackId String
+  addedAt DateTime
+  user    User     @relation(fields: [userId], references: [id])
+  track   Track    @relation(fields: [trackId], references: [spotifyId])
+
+  @@unique([userId, trackId])
 }
 
 model ListeningHistory {
