@@ -98,13 +98,25 @@ export class UserRepository {
     // ─── Histórico de moods ────────────────────────────────────────────────────
 
     // Imagens de humor já geradas pelo usuário (mais recentes primeiro).
+    // Uma linha por imagem: a imagem passa para os humores seguintes, então pega o registro
+    // em que ela foi gerada (o mais antigo com aquela URL). Mais recentes primeiro.
     async getMoodImages(userId: string, limit: number) {
-        return this.prisma.moodAnalysis.findMany({
+        const rows = await this.prisma.moodAnalysis.findMany({
             where: { userId, image_mood: { not: null } },
-            orderBy: { analyzedAt: "desc" },
-            take: limit,
+            orderBy: { analyzedAt: "asc" },
+            distinct: ["image_mood"],
             select: { id: true, image_mood: true, analyzedAt: true },
         });
+        return rows.reverse().slice(0, limit);
+    }
+
+    async getLatestMoodImage(userId: string): Promise<string | null> {
+        const row = await this.prisma.moodAnalysis.findFirst({
+            where: { userId, image_mood: { not: null } },
+            orderBy: { analyzedAt: "desc" },
+            select: { image_mood: true },
+        });
+        return row?.image_mood ?? null;
     }
 
     async getMoodHistory(userId: string, limit) {

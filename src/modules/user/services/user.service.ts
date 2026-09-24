@@ -13,6 +13,14 @@ import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackReposi
 import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import { CreditService } from "src/modules/credits/credit.service";
 
+// O humor pode ser recalculado de hora em hora, com as músicas das últimas 3h.
+const MOOD_REFRESH_MS = 60 * 60 * 1000;
+const MOOD_WINDOW_HOURS = 3;
+
+export function canRefreshMood(lastAnalyzedAt: Date | null, now: Date): boolean {
+    return !lastAnalyzedAt || now.getTime() - lastAnalyzedAt.getTime() >= MOOD_REFRESH_MS;
+}
+
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
     | { isPlaying: false };
@@ -238,50 +246,38 @@ export class UserService {
 
     // Recalcula o humor. Não gera imagem (ver generateMoodImage).
     async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
-        const now = new Date();
-
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
 
-        let useTodayOnly = false;
-
         const lastMood = await this.userRepository.getMoodUser(id);
-        if (lastMood) {
-            const moodDate = new Date(lastMood.analyzedAt);
-            const msIn24h = 24 * 60 * 60 * 1000;
-            const isWithin24h = (now.getTime() - moodDate.getTime()) <= msIn24h;
-
-            if (isWithin24h) {
-                const isNowPast19h = now.getHours() >= 19;
-
-                const isMoodFromToday =
-                    moodDate.getDate() === now.getDate() &&
-                    moodDate.getMonth() === now.getMonth() &&
-                    moodDate.getFullYear() === now.getFullYear();
-
-                const isMoodBefore19hToday = isMoodFromToday && moodDate.getHours() < 19;
-
-                if (isNowPast19h && isMoodBefore19hToday) {
-                    // Update triggered by 19h rule: usa apenas tracks do dia atual
-                    
-                    useTodayOnly = true;
-                } else if (isNowPast19h && !isMoodFromToday) {
-                    // Update triggered by 19h rule (old mood foi ontem): usa apenas tracks do dia atual
-                    useTodayOnly = true;
-                } else {
-                    throw new BadRequestException('Seu mood já foi gerado recentemente. Volte após as 19h ou aguarde 24h.');
-                }
-            } else {
-                // Passou de 24h: usa o bloco móvel de ultimas 24h
-                useTodayOnly = false;
-            }
+        if (!canRefreshMood(lastMood ? new Date(lastMood.analyzedAt) : null, new Date())) {
+            throw new BadRequestException('Seu mood já foi gerado há menos de 1 hora.');
         }
+        await this.lastTracks(id);
+        return this.recomputeMood(id, lastMood);
+    }
+
+    // Chamado sozinho pelo app (ao abrir e ao voltar para a aba). Recalcula se já passou
+    // 1 hora e houve música nova desde o último humor; senão responde sem erro. Sem música
+    // nova não cria outro humor igual (ele entraria na linha do tempo e nas contagens).
+    async autoRefreshMood(id: string): Promise<{ updated: boolean }> {
+        const lastMood = await this.userRepository.getMoodUser(id);
+        const lastAt = lastMood ? new Date(lastMood.analyzedAt) : null;
+        if (!canRefreshMood(lastAt, new Date())) return { updated: false };
 
         await this.lastTracks(id);
+        if (lastAt && !(await this.trackRepository.hasListenedSince(id, lastAt))) return { updated: false };
 
-        const historyMusic = useTodayOnly
-            ? await this.trackRepository.getListenedToday(id)
-            : await this.trackRepository.getListenedLast24Hours(id);
+        await this.recomputeMood(id, lastMood);
+        return { updated: true };
+    }
+
+    // Espera o histórico já sincronizado com o Spotify (lastTracks).
+    private async recomputeMood(
+        id: string,
+        lastMood: Awaited<ReturnType<UserRepository["getMoodUser"]>>,
+    ): Promise<ResponseAi> {
+        const historyMusic = await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
 
         const tracks = historyMusic
             .map((entry) => entry.track)
@@ -299,7 +295,7 @@ export class UserService {
                 moodScore: fallbackClassification.moodScore,
                 dominantSentiment: fallbackClassification.dominantSentiment,
                 emotionalVector: fallbackVector,
-                reasoning: 'Sem análises suficientes para compor o mood agora — nenhuma música ouvida hoje.',
+                reasoning: `Sem análises suficientes para compor o mood agora — nenhuma música ouvida nas últimas ${MOOD_WINDOW_HOURS}h.`,
                 coreAxes: fallbackClassification.coreAxes,
                 image_mood: "",
                 tracks: [],
@@ -314,10 +310,9 @@ export class UserService {
             tracks: response.tracks,
         };
 
-        // Imagem nunca é gerada aqui (esse fluxo roda automaticamente): se o sentimento
-        // não mudou, reaproveita a imagem anterior; senão o humor fica sem imagem até o
-        // usuário pedir uma nova pagando crédito (generateMoodImage).
-        const reusedImage = lastMood && lastMood.sentiment === response.dominantSentiment ? lastMood.image_mood : null;
+        // Imagem nunca é gerada aqui (esse fluxo roda automaticamente): o humor novo fica com
+        // a última imagem gerada, mesmo se o sentimento mudou. Imagem nova só com crédito.
+        const reusedImage = lastMood?.image_mood ?? await this.userRepository.getLatestMoodImage(id);
         response.image_mood = reusedImage ?? "";
         await this.userRepository.SaveMood(id, { ...moodDataStore, image_mood: reusedImage });
 

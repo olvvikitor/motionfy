@@ -52,12 +52,13 @@ export class CreditRepository {
         });
     }
 
-    // Últimas imagens geradas pelo usuário
+    // Últimas imagens geradas pelo usuário. A imagem passa para os humores seguintes, então
+    // pega uma linha por imagem: a do humor em que ela foi gerada.
     async getGeneratedImages(userId: string, limit = 6) {
-        return this.prisma.moodAnalysis.findMany({
+        const rows = await this.prisma.moodAnalysis.findMany({
             where: { userId, image_mood: { not: null } },
-            orderBy: { analyzedAt: 'desc' },
-            take: limit,
+            orderBy: { analyzedAt: 'asc' },
+            distinct: ['image_mood'],
             select: {
                 id: true,
                 image_mood: true,
@@ -66,5 +67,6 @@ export class CreditRepository {
                 analyzedAt: true,
             },
         });
+        return rows.reverse().slice(0, limit);
     }
 }

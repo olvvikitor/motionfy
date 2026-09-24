@@ -188,39 +188,27 @@ export class TrackRepository {
         return records;
     }
 
-    async getListenedToday(userId: string) {
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-        const records = await this.prisma.listeningHistory.findMany({
-            where: {
-                userId,
-                playedAt: {
-                    gte: startOfDay,
-                    lte: endOfDay,
-                },
-            },
-            include: {
-                track: true,
-            },
-            orderBy: {
-                playedAt: "desc",
-            },
+    async hasListenedSince(userId: string, since: Date): Promise<boolean> {
+        const record = await this.prisma.listeningHistory.findFirst({
+            where: { userId, playedAt: { gt: since } },
+            select: { id: true },
         });
-
-        return records;
+        return Boolean(record);
     }
 
     async getListenedLast24Hours(userId: string) {
+        return this.getListenedLastHours(userId, 24);
+    }
+
+    async getListenedLastHours(userId: string, hours: number) {
         const now = new Date();
-        const startOf24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const start = new Date(now.getTime() - hours * 60 * 60 * 1000);
 
         const records = await this.prisma.listeningHistory.findMany({
             where: {
                 userId,
                 playedAt: {
-                    gte: startOf24h,
+                    gte: start,
                     lte: now,
                 },
             },

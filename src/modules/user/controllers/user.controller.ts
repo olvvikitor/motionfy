@@ -115,6 +115,13 @@ export class UserController {
         return await this.userService.RefreshMoodUserToday(req.user!.id);
     }
 
+    // Atualização automática: o app chama de tempos em tempos; recalcula a cada 1 hora se houve música nova.
+    @Post('mood/auto-refresh')
+    @UseGuards(JwtAuthGuard)
+    async autoRefreshMood(@Req() req: MRequest) {
+        return await this.userService.autoRefreshMood(req.user!.id);
+    }
+
     // Imagem do humor atual: sempre paga (1 crédito). Único caminho que gera imagem nova.
     @Post('mood-image')
     @UseGuards(JwtAuthGuard)
