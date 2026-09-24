@@ -31,6 +31,9 @@ export type JourneyPlaylistResponse = {
     }[];
 };
 
+// Janela em que uma música sugerida é evitada nas próximas playlists.
+const RECENT_SUGGESTION_DAYS = 7;
+
 export type JourneyFromOrigin = 'request' | 'current_mood' | 'jev_guess';
 
 export type JourneyQueueResponse = {
@@ -74,12 +77,17 @@ export class JourneyPlaylistService {
 
         const taste = await this.repository.getUserTaste(userId);
         const pool = await this.repository.getAnalyzedPool(taste.tasteIds);
+        const since = new Date(Date.now() - RECENT_SUGGESTION_DAYS * 86_400_000);
+        const recentIds = await this.repository.getRecentSuggestionIds(userId, since);
 
-        const { candidates, newTracksAnalyzed } = await this.collectCandidates(dto, journey, { from, to, pool, taste, provider, accessToken });
+        const { candidates, newTracksAnalyzed } = await this.collectCandidates(dto, journey, { from, to, pool, taste, provider, accessToken, recentIds });
 
-        // "Eu escolho" sorteia entre as 3 mais próximas de cada parada: o mesmo pedido gera playlists diferentes.
-        const picks = buildJourney(from, to, dto.durationMin, candidates, { randomTopK: dto.source === 'custom' ? 3 : 1 });
+        // Sorteia entre as 3 mais próximas de cada parada e rebaixa as já sugeridas nos últimos
+        // dias: o mesmo pedido gera playlists diferentes em vez de repetir as mesmas músicas.
+        const picks = buildJourney(from, to, dto.durationMin, candidates, { randomTopK: 3, recentIds });
         if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto));
+
+        await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
 
         const lastStop = Math.max(1, picks[picks.length - 1].stop);
 
@@ -164,6 +172,7 @@ export class JourneyPlaylistService {
         taste: UserTaste;
         provider: MusicProviderInterface;
         accessToken: string;
+        recentIds: Set<string>;
     }): Promise<{ candidates: JourneyCandidate[]; newTracksAnalyzed: number }> {
         switch (dto.source) {
             // Só as curtidas já analisadas; nada de busca externa.
@@ -184,10 +193,12 @@ export class JourneyPlaylistService {
                 };
             }
 
-            // Acervo inteiro + busca automática onde faltar música.
+            // Acervo inteiro + busca automática onde faltar música. Músicas sugeridas
+            // há pouco não contam como cobertura: a parada busca novidade no Spotify.
             default: {
                 const path = buildPath(ctx.from, ctx.to, stopCountForDuration(dto.durationMin));
-                const gapStops = findGaps(path, ctx.pool).map(index => path[index]);
+                const unseen = ctx.pool.filter(c => !ctx.recentIds.has(c.spotifyId));
+                const gapStops = findGaps(path, unseen).map(index => path[index]);
                 const fresh = gapStops.length
                     ? await this.sourcing.fillGaps(gapStops, {
                         provider: ctx.provider,

@@ -34,6 +34,24 @@ export class PlaylistRepository {
         return latest?.sentiment ?? null;
     }
 
+    // Músicas sugeridas ao usuário em playlists de jornada desde `since`.
+    async getRecentSuggestionIds(userId: string, since: Date): Promise<Set<string>> {
+        const rows = await this.prisma.playlistSuggestion.findMany({
+            where: { userId, suggestedAt: { gte: since } },
+            select: { spotifyId: true },
+            distinct: ['spotifyId'],
+        });
+        return new Set(rows.map(r => r.spotifyId));
+    }
+
+    // Grava a sugestão nova e apaga as que já saíram da janela (não servem mais para nada).
+    async saveSuggestions(userId: string, spotifyIds: string[], pruneBefore: Date): Promise<void> {
+        await this.prisma.$transaction([
+            this.prisma.playlistSuggestion.deleteMany({ where: { userId, suggestedAt: { lt: pruneBefore } } }),
+            this.prisma.playlistSuggestion.createMany({ data: spotifyIds.map(spotifyId => ({ userId, spotifyId })) }),
+        ]);
+    }
+
     async getUserTaste(userId: string): Promise<UserTaste> {
         const history = await this.prisma.listeningHistory.findMany({
             where: { userId },

@@ -122,6 +122,24 @@ describe('journey-path', () => {
         expect(pick.approximate).toBe(true);
     });
 
+    it('pickAlongPath evita música sugerida há pouco quando há outra razoável', () => {
+        const pool = [
+            candidate('old', { a: 0, b: 1 }),
+            candidate('fresh', { a: 0.2, b: 0.8 }),
+        ];
+        const pick = pickAlongPath([FROM], pool, { recentIds: new Set(['old']) })[0];
+        expect(pick.candidate.spotifyId).toBe('fresh');
+    });
+
+    it('pickAlongPath repete a sugerida há pouco se a alternativa está longe demais', () => {
+        const pool = [
+            candidate('old', { a: 0, b: 1 }),
+            candidate('far', { a: 5, b: 5 }),
+        ];
+        const pick = pickAlongPath([FROM], pool, { recentIds: new Set(['old']) })[0];
+        expect(pick.candidate.spotifyId).toBe('old');
+    });
+
     it('buildJourney fecha perto da duração pedida', () => {
         const picks = buildJourney(FROM, TO, 30, lineCandidates(40));
         expect(Math.abs(totalDurationMs(picks) - 30 * 60_000)).toBeLessThanOrEqual(120_000);

@@ -28,6 +28,7 @@ export const DEFAULT_TRACK_MS = 210_000; // 3,5 min, usado quando a faixa não t
 export const NEAR_RADIUS = 0.6; // mesmo raio (sigma) dos perfis de sentimento
 export const MIN_STOPS = 3;
 const HISTORY_BONUS = 0.05; // leve preferência por músicas que o usuário já ouve
+const RECENT_PENALTY = NEAR_RADIUS / 2; // já sugerida há pouco: só volta se não houver outra razoável
 const DURATION_TOLERANCE_MS = 120_000;
 const MAX_STOPS = 40;
 
@@ -75,6 +76,8 @@ export type PickOptions = {
     // 1 = sempre a mais próxima. >1 = sorteia entre as N mais próximas dentro do raio.
     randomTopK?: number;
     rng?: () => number;
+    // Ids sugeridos em playlists recentes: perdem posição para não repetir sempre as mesmas.
+    recentIds?: Set<string>;
 };
 
 // Escolhe, em ordem, a candidata mais próxima de cada parada: sem repetir música
@@ -82,6 +85,7 @@ export type PickOptions = {
 export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], options: PickOptions = {}): JourneyPick[] {
     const topK = Math.max(1, options.randomTopK ?? 1);
     const rng = options.rng ?? Math.random;
+    const recentIds = options.recentIds ?? new Set<string>();
     const used = new Set<string>();
     const picks: JourneyPick[] = [];
 
@@ -91,7 +95,8 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
             .filter(c => !used.has(c.spotifyId) && !used.has(songKey(c)))
             .map(c => {
                 const d = distance(point, c.vector);
-                return { candidate: c, distance: d, score: d - (c.fromUserHistory ? HISTORY_BONUS : 0) };
+                const score = d - (c.fromUserHistory ? HISTORY_BONUS : 0) + (recentIds.has(c.spotifyId) ? RECENT_PENALTY : 0);
+                return { candidate: c, distance: d, score };
             })
             .sort((a, b) => a.score - b.score);
 

@@ -24,6 +24,7 @@ model User {
 
   histories    ListeningHistory[]
   savedTracks  SavedTrack[]
+  playlistSuggestions PlaylistSuggestion[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
   creditPurchases CreditPurchase[]
@@ -148,6 +149,17 @@ model SavedTrack {
   track   Track    @relation(fields: [trackId], references: [spotifyId])
 
   @@unique([userId, trackId])
+}
+
+// Músicas já sugeridas em playlists de jornada: as próximas evitam repetir.
+model PlaylistSuggestion {
+  id          String   @id @default(uuid())
+  userId      String
+  spotifyId   String
+  suggestedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, suggestedAt])
 }
 
 model ListeningHistory {
