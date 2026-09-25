@@ -10,6 +10,7 @@ import { defaultFeatured, showcaseStats, ShowcaseStats } from "./playlist-showca
 const DAILY_LIMIT = 10; // por usuário: a conta do Mofy é uma só para todos
 const KEEP_DAYS = 30; // depois disso a playlist sai do perfil do Mofy (quem salvou continua com ela)
 const PRUNE_BATCH = 20;
+const REUSE_WINDOW_MS = 10 * 60_000; // só protege contra clique repetido
 export const FEATURED_LIMIT = 5;
 const DESCRIPTION = 'Montada pelo Mofy a partir do humor das suas músicas.';
 
@@ -48,9 +49,10 @@ export class MofyPlaylistService {
             throw new HttpException('Criar playlist no Spotify ainda não está disponível.', HttpStatus.SERVICE_UNAVAILABLE);
         }
 
-        // Mesma lista na mesma ordem: devolve o link que já existe (clicar de novo não cria outra).
+        // Clique repetido (mesma lista, na mesma ordem, há poucos minutos): devolve a que acabou de ser
+        // criada. Fora dessa janela cada criação é uma playlist nova, com id próprio.
         const tracksHash = createHash('sha1').update(dto.trackIds.join(',')).digest('hex');
-        const existing = await this.repository.findMofyPlaylist(userId, tracksHash);
+        const existing = await this.repository.findRecentMofyPlaylist(userId, tracksHash, new Date(Date.now() - REUSE_WINDOW_MS));
         if (existing) return { url: existing.url, playlistId: existing.spotifyPlaylistId, reused: true };
 
         const since = new Date(Date.now() - 24 * 60 * 60_000);

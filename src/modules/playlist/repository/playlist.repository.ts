@@ -52,8 +52,13 @@ export class PlaylistRepository {
         ]);
     }
 
-    async findMofyPlaylist(userId: string, tracksHash: string) {
-        return this.prisma.mofyPlaylist.findFirst({ where: { userId, tracksHash, removedAt: null }, orderBy: { createdAt: 'desc' } });
+    // Mesma lista criada há pouco (clique repetido). Só dentro de `since`: depois disso, lista
+    // igual vira playlist nova, senão título, humor e capa da antiga seriam sobrescritos.
+    async findRecentMofyPlaylist(userId: string, tracksHash: string, since: Date) {
+        return this.prisma.mofyPlaylist.findFirst({
+            where: { userId, tracksHash, removedAt: null, createdAt: { gte: since } },
+            orderBy: { createdAt: 'desc' },
+        });
     }
 
     // Só quem criou a playlist pode mudar a capa dela.

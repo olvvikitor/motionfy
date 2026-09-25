@@ -8,6 +8,9 @@ async function noisyPng(width: number, height: number): Promise<Buffer> {
     return sharp(pixels, { raw: { width, height, channels: 3 } }).png().toBuffer();
 }
 
+// Montar a imagem de ruído (4,7 mi de pixels) é o que demora, não a conversão (~0,1–0,6 s).
+jest.setTimeout(30_000);
+
 describe('toSpotifyCover', () => {
     it('devolve JPEG quadrado 640×640 dentro do limite de 256 KB do Spotify', async () => {
         const base64 = await toSpotifyCover(await noisyPng(1024, 1536));
