@@ -12,6 +12,8 @@ import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackReposi
 // O humor pode ser recalculado de hora em hora, com as músicas das últimas 3h.
 const MOOD_REFRESH_MS = 60 * 60 * 1000;
 const MOOD_WINDOW_HOURS = 3;
+// Histórico sincronizado há menos que isso é reaproveitado (a tela abre várias consultas juntas).
+const HISTORY_SYNC_TTL_MS = 2 * 60 * 1000;
 
 export function canRefreshMood(lastAnalyzedAt: Date | null, now: Date): boolean {
     return !lastAnalyzedAt || now.getTime() - lastAnalyzedAt.getTime() >= MOOD_REFRESH_MS;
@@ -163,31 +165,33 @@ export class UserService {
         return { mostListenedSubgenre, mostListenedSong };
     }
 
+    private toAnalyzedTrack(track: Track, analysis: TrackAnalysisReadItem | undefined) {
+        if (!analysis) return null;
+        const vector = this.toEmotionalVector(analysis.emotionalVector);
+        if (!vector) return null;
+        const coreAxes = analysis.coreAxes;
+        if (!coreAxes || typeof coreAxes !== "object" || Array.isArray(coreAxes)) return null;
+        return {
+            id: track.id,
+            music: track.title,
+            artist: track.artist,
+            img_url: track.img_url ?? "",
+            emotionalVector: vector,
+            dominantSentiment: analysis.dominantSentiment,
+            reasoning: analysis.reasoning,
+            genre: analysis.genre,
+            subgenre: analysis.subgenre,
+            moodScore: analysis.moodScore,
+            coreAxes: coreAxes as any,
+        };
+    }
+
     private buildMoodFromStoredAnalyses(tracks: Track[], analyses: TrackAnalysisReadItem[]): ResponseAi | null {
         if (!tracks.length || !analyses.length) return null;
         const analysisBySpotifyId = new Map(analyses.map((a) => [a.spotifyid, a]));
-        const mergedTracks = tracks.map((track) => {
-            if (!track.spotifyId) return null;
-            const analysis = analysisBySpotifyId.get(track.spotifyId);
-            if (!analysis) return null;
-            const vector = this.toEmotionalVector(analysis.emotionalVector);
-            if (!vector) return null;
-            const coreAxes = analysis.coreAxes;
-            if (!coreAxes || typeof coreAxes !== "object" || Array.isArray(coreAxes)) return null;
-            return {
-                id: track.id,
-                music: track.title,
-                artist: track.artist,
-                img_url: track.img_url ?? "",
-                emotionalVector: vector,
-                dominantSentiment: analysis.dominantSentiment,
-                reasoning: analysis.reasoning,
-                genre: analysis.genre,
-                subgenre: analysis.subgenre,
-                moodScore: analysis.moodScore,
-                coreAxes: coreAxes as any,
-            };
-        }).filter((item) => item !== null);
+        const mergedTracks = tracks
+            .map((track) => this.toAnalyzedTrack(track, track.spotifyId ? analysisBySpotifyId.get(track.spotifyId) : undefined))
+            .filter((item) => item !== null);
 
         if (!mergedTracks.length) return null;
 
@@ -226,14 +230,45 @@ export class UserService {
         };
     }
 
+    // Sincroniza o histórico e espera as análises (o cálculo do humor precisa delas).
     async lastTracks(id: string): Promise<void> {
-        const user = await this.userRepository.getUserById(id);
-        if (!user) throw new NotFoundException('Usuario não encontrado');
-        const providerMusic = this.providerMusic.getProvider(user.provider);
-        const tracks = await providerMusic.getLastRecentlyPlayed(user.refreshToken!);
-        await this.saveTrackService.saveMusicsHistoryLine(tracks, user.id);
+        await this.syncHistory(id);
+        await this.analyzeHistory(id);
         // A biblioteca (curtidas/playlists) não é mais puxada aqui: o usuário escolhe o que
         // entra pela tela de biblioteca (módulo library).
+    }
+
+    // Uma sincronização por usuário: quem chega enquanto uma roda espera a mesma, e a de menos de
+    // HISTORY_SYNC_TTL_MS é reaproveitada. Antes, a lista de faixas e o auto-refresh do humor
+    // buscavam o mesmo histórico em paralelo (trabalho e chamadas ao Spotify em dobro).
+    private readonly historySyncs = new Map<string, { at: number; run: Promise<void> }>();
+    private readonly analysisRuns = new Map<string, Promise<void>>();
+
+    private syncHistory(id: string): Promise<void> {
+        const current = this.historySyncs.get(id);
+        if (current && Date.now() - current.at < HISTORY_SYNC_TTL_MS) return current.run;
+
+        const run = (async () => {
+            const user = await this.userRepository.getUserById(id);
+            if (!user) throw new NotFoundException('Usuario não encontrado');
+            const providerMusic = this.providerMusic.getProvider(user.provider);
+            const tracks = await providerMusic.getLastRecentlyPlayed(user.refreshToken!);
+            await this.saveTrackService.saveMusicsHistoryLine(tracks, user.id);
+        })();
+        this.historySyncs.set(id, { at: Date.now(), run });
+        run.catch(() => this.historySyncs.delete(id)); // falhou: a próxima tenta de novo
+        return run;
+    }
+
+    // Análise (Jev) das faixas recentes sem análise: uma por usuário por vez.
+    private analyzeHistory(id: string): Promise<void> {
+        const running = this.analysisRuns.get(id);
+        if (running) return running;
+        const run = this.saveTrackService.ensureTrackAnalysesUpToDate(id, 100)
+            .catch((error) => console.error(`[TrackAnalysis] user=${id} análise falhou:`, error?.message ?? error))
+            .finally(() => this.analysisRuns.delete(id));
+        this.analysisRuns.set(id, run);
+        return run;
     }
 
     // Recalcula o humor (sem imagem).
@@ -437,18 +472,23 @@ export class UserService {
         };
     }
 
+    // Últimas faixas: sincroniza o histórico e responde logo — não espera a IA. As que ainda não
+    // têm análise vão com pending: true (a tela mostra "analisando…" e busca de novo em seguida).
     async getTodayTracksAnalyzed(id: string): Promise<any[]> {
-        await this.lastTracks(id);
+        await this.syncHistory(id);
+        void this.analyzeHistory(id);
+
         const historyMusic = await this.trackRepository.getListenedLast24Hours(id);
         const tracks = historyMusic
             .map((entry) => entry.track)
             .filter((track): track is Track => Boolean(track?.spotifyId));
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
-        const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-        const response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
+        const analyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
+        const bySpotifyId = new Map(analyses.map((a) => [a.spotifyid, a]));
 
-        return response?.tracks ?? [];
+        return tracks.map((track) => this.toAnalyzedTrack(track, bySpotifyId.get(track.spotifyId!))
+            ?? { id: track.id, music: track.title, artist: track.artist, img_url: track.img_url ?? "", pending: true });
     }
 
     async addTrackToQueue(id: string, trackId: string): Promise<void> {

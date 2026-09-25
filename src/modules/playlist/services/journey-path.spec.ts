@@ -122,6 +122,29 @@ describe('journey-path', () => {
         expect(pick.approximate).toBe(true);
     });
 
+    it('Descobrir: música de fora que não se encaixa no humor fica de fora (a do usuário pode ser aproximada)', () => {
+        const pool = [
+            candidate('fora-longe', { a: 3, b: 3 }),
+            candidate('minha-longe', { a: 4, b: 4 }, { fromUserHistory: true }),
+        ];
+        const picks = pickAlongPath([FROM], pool, { othersMustFit: true });
+        expect(picks.map(p => p.candidate.spotifyId)).toEqual(['minha-longe']);
+        expect(picks[0].approximate).toBe(true);
+    });
+
+    it('Descobrir: sem nenhuma que se encaixe, a parada fica vazia em vez de usar música de fora qualquer', () => {
+        const picks = pickAlongPath([FROM], [candidate('fora-longe', { a: 3, b: 3 })], { othersMustFit: true });
+        expect(picks).toEqual([]);
+    });
+
+    it('prefere a música do usuário a uma de fora um pouco mais perto', () => {
+        const pool = [
+            candidate('fora', { a: 0, b: 1 }),
+            candidate('minha', { a: 0.12, b: 0.88 }, { fromUserHistory: true }),
+        ];
+        expect(pickAlongPath([FROM], pool)[0].candidate.spotifyId).toBe('minha');
+    });
+
     it('pickAlongPath evita música sugerida há pouco quando há outra razoável', () => {
         const pool = [
             candidate('old', { a: 0, b: 1 }),

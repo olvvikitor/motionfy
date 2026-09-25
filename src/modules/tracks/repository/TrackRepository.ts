@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Prisma, Track } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
+import { TrackInput } from "src/shared/types/TrackInput";
 
 export type TrackAnalysisWriteInput = {
     spotifyid: string;
@@ -45,21 +46,31 @@ export class TrackRepository {
             }
         })
     }
-    async saveHistoryListen(userId: string, trackId: string, playedAt: Date): Promise<any> {
-        await this.prisma.listeningHistory.upsert({
-            where: {
-                userId_trackId_playedAt: {
-                    playedAt: playedAt, trackId: trackId, userId: userId
-                }
-            },
-            update: {},
-            create: {
-                userId,
-                trackId,
-                playedAt
-            }
-        })
+    // Faixas + histórico em 2 consultas (antes eram 2 por faixa; com o banco longe, ~230 ms cada).
+    // Faixa que já existe fica como está; ouvida repetida (mesmo usuário, faixa e hora) é ignorada.
+    async saveTracksAndHistory(userId: string, tracks: TrackInput[]): Promise<void> {
+        if (!tracks.length) return;
+        const unique = [...new Map(tracks.map((t) => [t.spotifyId, t])).values()];
+        await this.prisma.track.createMany({
+            data: unique.map((t) => ({
+                spotifyId: t.spotifyId,
+                title: t.title,
+                artist: t.artist,
+                album: t.album,
+                img_url: t.img_url,
+                isrc: t.isrc ?? null,
+                explicit: t.explicit ?? null,
+                releaseDate: t.releaseDate ?? null,
+                durationMs: t.durationMs ?? null,
+            })),
+            skipDuplicates: true,
+        });
+        await this.prisma.listeningHistory.createMany({
+            data: tracks.map((t) => ({ userId, trackId: t.spotifyId, playedAt: t.createdAt })),
+            skipDuplicates: true,
+        });
     }
+
     async saveSavedTracks(userId: string, entries: { trackId: string; addedAt: Date }[]): Promise<void> {
         if (!entries.length) return;
         await this.prisma.savedTrack.createMany({

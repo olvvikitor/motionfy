@@ -7,8 +7,9 @@ describe('SpotifyCatalogService — limite de chamadas', () => {
     const known = { spotifyId: 'id-conhecida', title: 'Elephant', artist: 'Tame Impala', album: '', img_url: '', isrc: null, explicit: null, releaseDate: null, durationMs: null };
     const prisma = {
         track: {
-            findMany: jest.fn(async ({ where }: { where: { title: { equals: string } } }) =>
-                where.title.equals.toLowerCase() === 'elephant' ? [known] : []),
+            // Uma consulta para o lote: where.OR com um título por música.
+            findMany: jest.fn(async ({ where }: { where: { OR: { title: { equals: string } }[] } }) =>
+                where.OR.some((c) => c.title.equals.toLowerCase() === 'elephant') ? [known] : []),
         },
     };
 

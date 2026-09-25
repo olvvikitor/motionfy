@@ -42,10 +42,12 @@ export class SpotifyCatalogService {
     // Com o Spotify bloqueado, só resolve pelo banco (as já conhecidas) e deixa o resto de fora.
     async resolveSongs(songs: SongRef[]): Promise<(TrackInput | null)[]> {
         const results: (TrackInput | null)[] = new Array(songs.length).fill(null);
+        // Uma consulta ao banco para o lote todo (o banco fica longe: ~230 ms por consulta).
+        const known = await this.findKnownMany(songs.filter((song) => !this.resolved.has(songKey(song))));
         let blockedSkips = 0;
         for (let i = 0; i < songs.length; i += RESOLVE_CONCURRENCY) {
             await Promise.all(songs.slice(i, i + RESOLVE_CONCURRENCY).map(async (song, j) => {
-                results[i + j] = await this.resolveSong(song).catch((err) => {
+                results[i + j] = await this.resolveSong(song, known).catch((err) => {
                     if (err instanceof CatalogBlockedError) { blockedSkips++; return null; }
                     console.error(`[SpotifyCatalog] falha ao buscar "${song.title}" de ${song.artist}:`, err?.message ?? err);
                     return null;
@@ -58,13 +60,13 @@ export class SpotifyCatalogService {
         return results;
     }
 
-    private async resolveSong(song: SongRef): Promise<TrackInput | null> {
-        const key = `${normalize(song.artist)}|${normalize(song.title)}`;
+    private async resolveSong(song: SongRef, known: Map<string, TrackInput>): Promise<TrackInput | null> {
+        const key = songKey(song);
         if (this.resolved.has(key)) return this.resolved.get(key)!;
 
         // 1) Banco: faixas já resolvidas antes (sobrevive a reinício da API, sem chamar o Spotify).
-        const known = await this.findKnown(song);
-        if (known) { this.remember(key, known); return known; }
+        const fromDb = known.get(key);
+        if (fromDb) { this.remember(key, fromDb); return fromDb; }
 
         // 2) Spotify: busca exata; a solta só se a exata não trouxer nada.
         const title = song.title.replace(/"/g, '');
@@ -85,27 +87,35 @@ export class SpotifyCatalogService {
         this.resolved.set(key, value);
     }
 
-    // Mesma música já salva (título igual, sem diferenciar maiúsculas; artista conferido por sameSong).
-    private async findKnown(song: SongRef): Promise<TrackInput | null> {
+    // Músicas já salvas, do lote todo numa consulta: título igual (sem diferenciar maiúsculas),
+    // artista conferido por sameSong. Chave = songKey da música pedida.
+    private async findKnownMany(songs: SongRef[]): Promise<Map<string, TrackInput>> {
+        const found = new Map<string, TrackInput>();
+        const titles = [...new Set(songs.map((song) => song.title.trim()).filter(Boolean))];
+        if (!titles.length) return found;
+
         const rows = await this.prisma.track.findMany({
-            where: { title: { equals: song.title.trim(), mode: 'insensitive' }, spotifyId: { not: null } },
+            where: { spotifyId: { not: null }, OR: titles.map((title) => ({ title: { equals: title, mode: 'insensitive' as const } })) },
             select: { spotifyId: true, title: true, artist: true, album: true, img_url: true, isrc: true, explicit: true, releaseDate: true, durationMs: true },
-            take: 10,
         });
-        const row = rows.find(r => sameSong(song, r));
-        if (!row?.spotifyId) return null;
-        return {
-            spotifyId: row.spotifyId,
-            title: row.title,
-            artist: row.artist,
-            album: row.album ?? '',
-            img_url: row.img_url ?? '',
-            isrc: row.isrc,
-            explicit: row.explicit,
-            releaseDate: row.releaseDate,
-            durationMs: row.durationMs,
-            createdAt: new Date(),
-        };
+
+        for (const song of songs) {
+            const row = rows.find((r) => r.title.trim().toLowerCase() === song.title.trim().toLowerCase() && sameSong(song, r));
+            if (!row?.spotifyId) continue;
+            found.set(songKey(song), {
+                spotifyId: row.spotifyId,
+                title: row.title,
+                artist: row.artist,
+                album: row.album ?? '',
+                img_url: row.img_url ?? '',
+                isrc: row.isrc,
+                explicit: row.explicit,
+                releaseDate: row.releaseDate,
+                durationMs: row.durationMs,
+                createdAt: new Date(),
+            });
+        }
+        return found;
     }
 
     private async get(url: string, params: Record<string, unknown>, retried = false): Promise<any> {
@@ -169,6 +179,8 @@ function toTrackInput(track: any): TrackInput {
         createdAt: new Date(),
     };
 }
+
+const songKey = (song: SongRef) => `${normalize(song.artist)}|${normalize(song.title)}`;
 
 // Minúsculas, sem acento e só letras/números.
 export function normalize(text: string): string {

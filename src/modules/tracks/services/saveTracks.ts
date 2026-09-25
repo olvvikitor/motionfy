@@ -130,29 +130,10 @@ export default class SaveTracks {
         await this.analyzeMissingTracks(idUser, tracks, "library");
     }
 
+    // Só salva faixas e histórico. A análise roda à parte (UserService.analyzeHistory).
     async saveMusicsHistoryLine(tracks: TrackInput[], idUser: string): Promise<void> {
 
-        // Otimização: Paraleliza as inserções das músicas e do histórico individual pra não somar latência sequencial
-        const CHUNK_SIZE = 10;
-        for (let i = 0; i < tracks.length; i += CHUNK_SIZE) {
-            const chunk = tracks.slice(i, i + CHUNK_SIZE);
-            await Promise.all(
-                chunk.map(async (trackData) => {
-                    try {
-                        await this.trackRepository.createNewTrack(trackData);
-                        await this.trackRepository.saveHistoryListen(idUser, trackData.spotifyId, trackData.createdAt);
-                    } catch (error) {
-                        console.error(`Erro ao processar a faixa ${trackData.title}:`, error.message);
-                    }
-                })
-            );
-        }
-
-        try {
-            await this.ensureTrackAnalysesUpToDate(idUser, 100);
-        } catch (error) {
-            console.error("Erro no fluxo de atualização de análises por faixa:", error.message);
-        }
+        await this.trackRepository.saveTracksAndHistory(idUser, tracks);
     }
 
     async ensureTrackAnalysesUpToDate(idUser: string, limit = 100): Promise<void> {

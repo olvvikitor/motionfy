@@ -85,7 +85,9 @@ export class JourneyPlaylistService {
 
         // Sorteia entre as 3 mais próximas de cada parada e rebaixa as já sugeridas nos últimos
         // dias: o mesmo pedido gera playlists diferentes em vez de repetir as mesmas músicas.
-        const picks = buildJourney(from, to, dto.durationMin, candidates, { randomTopK: 3, recentIds });
+        // "Descobrir": músicas de outros usuários/novidades só se se encaixarem no humor da parada.
+        // "Minha biblioteca" já só tem as do usuário; o pedido em texto só busca no Spotify.
+        const picks = buildJourney(from, to, dto.durationMin, candidates, { randomTopK: 3, recentIds, othersMustFit: dto.source === 'all' });
         if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto));
 
         await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
