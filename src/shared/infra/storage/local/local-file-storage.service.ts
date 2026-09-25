@@ -9,7 +9,7 @@ export class LocalFileStorageService implements FileStorageService {
     private readonly uploadsDir = join(process.cwd(), "uploads", "faces");
     private readonly publicPrefix = "/api/uploads/faces/";
 
-    async uploadMoodPhoto(file: UploadFile, userId: any): Promise<string> {
+    private async saveFile(file: UploadFile, userId: string): Promise<string> {
         await fs.mkdir(this.uploadsDir, { recursive: true });
 
         const safeExt = extname(file.originalname || "").toLowerCase() || ".jpg";
@@ -22,7 +22,7 @@ export class LocalFileStorageService implements FileStorageService {
     }
 
     async uploadPlaylistCover(file: UploadFile, userId: string): Promise<string> {
-        return this.uploadMoodPhoto({ ...file, originalname: "cover.jpg" }, `cover-${userId}`);
+        return this.saveFile({ ...file, originalname: "cover.jpg" }, `cover-${userId}`);
     }
 
     async uploadFacePhoto(file: UploadFile, userId: string): Promise<string> {

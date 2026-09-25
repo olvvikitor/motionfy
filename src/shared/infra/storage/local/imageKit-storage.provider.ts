@@ -34,18 +34,6 @@ export class ImageKitProvider implements FileStorageService {
         // Como hoje armazenamos apenas a URL, fazemos no-op para não quebrar o fluxo.
         return;
     }
-    async uploadMoodPhoto(file: UploadFile, userId: any): Promise<string> {
-        const safeExt = extname(file.originalname || "").toLowerCase() || ".jpg";
-        const fileName = `${randomUUID()}${safeExt}`;
-        const result = await this.imageKit.upload({
-            file: file.buffer, // buffer da imagem
-            fileName: fileName,
-            folder: "/moods",
-        });
-
-        return result.url
-    }
-
     // Capa das playlists criadas na conta do Mofy (destaque do perfil).
     async uploadPlaylistCover(file: UploadFile, _userId: string): Promise<string> {
         const result = await this.imageKit.upload({

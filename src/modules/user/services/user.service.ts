@@ -5,13 +5,9 @@ import { UserResponseDto } from "../dto/UserResponseDto";
 import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
 import { AiTextService, ResponseAi } from "src/shared/infra/IA/AiText.service";
-import { AiImageService } from "src/shared/infra/IA/AiImage.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
-import { ImagePromptService } from "src/shared/infra/IA/ImagePrompt.service";
-import { CoreAxes, EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
-import { FILE_STORAGE, UploadFile, type FileStorageService } from "src/shared/infra/storage/interfaces/file-storage.interface";
-import { CreditService } from "src/modules/credits/credit.service";
 
 // O humor pode ser recalculado de hora em hora, com as músicas das últimas 3h.
 const MOOD_REFRESH_MS = 60 * 60 * 1000;
@@ -33,11 +29,7 @@ export class UserService {
         private saveTrackService: SaveTracks,
         private trackRepository: TrackRepository,
         private aiTextService: AiTextService,
-        private aiImageService: AiImageService,
-        private prompt_imageService: ImagePromptService,
         private emotionAnalysis: EmotionAnalysisService,
-        private creditService: CreditService,
-        @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
     ) { }
 
     private toEmotionalVector(value: unknown): EmotionalVector | null {
@@ -244,7 +236,7 @@ export class UserService {
         // entra pela tela de biblioteca (módulo library).
     }
 
-    // Recalcula o humor. Não gera imagem (ver generateMoodImage).
+    // Recalcula o humor (sem imagem).
     async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
@@ -310,56 +302,13 @@ export class UserService {
             tracks: response.tracks,
         };
 
-        // Imagem nunca é gerada aqui (esse fluxo roda automaticamente): o humor novo fica com
-        // a última imagem gerada, mesmo se o sentimento mudou. Imagem nova só com crédito.
-        const reusedImage = lastMood?.image_mood ?? await this.userRepository.getLatestMoodImage(id);
-        response.image_mood = reusedImage ?? "";
-        await this.userRepository.SaveMood(id, { ...moodDataStore, image_mood: reusedImage });
+        // O humor não tem imagem (as artes são as capas das playlists).
+        response.image_mood = "";
+        await this.userRepository.SaveMood(id, { ...moodDataStore, image_mood: null });
 
         return response;
     }
 
-    // Gera a imagem do humor mais recente. Toda imagem nova custa 1 crédito: debita
-    // antes de chamar a IA e estorna se a geração ou o upload falhar.
-    async generateMoodImage(id: string) {
-        const user = await this.userRepository.getUserById(id);
-        if (!user) throw new NotFoundException('Usuario não encontrado');
-
-        const mood = await this.userRepository.getMoodUser(id);
-        if (!mood) throw new BadRequestException('Gere seu humor antes de criar a imagem.');
-
-        const { remaining } = await this.creditService.consumeCredit(id, `Imagem do humor ${mood.sentiment}`);
-
-        try {
-            const coreAxes = mood.coreAxes as unknown as CoreAxes;
-            const tracks = typeof mood.tracksAnalyzeds === 'string' ? JSON.parse(mood.tracksAnalyzeds) : mood.tracksAnalyzeds;
-            const { mostListenedSubgenre, mostListenedSong } = this.computeMostListened(Array.isArray(tracks) ? tracks : []);
-
-            const imagePrompt = await this.aiImageService.buildHybridImagePrompt({
-                ativacao: coreAxes.ativacao,
-                moodScore: mood.moodScore,
-                coreAxes,
-                sentiment: mood.sentiment,
-                emotions: mood.emotions as unknown as EmotionalVector,
-                faceReferencePath: user.face_photo_path,
-                topGenre: mostListenedSubgenre,
-                currentSong: mostListenedSong ? `${mostListenedSong.name} - ${mostListenedSong.artist}` : undefined,
-            });
-
-            const imageBuffer = await this.aiImageService.generateImage(imagePrompt, user.face_photo_path ?? undefined);
-            const file: UploadFile = { buffer: imageBuffer, originalname: 'mood.png', mimetype: 'image/png' };
-            const imageUrl = await this.fileStorage.uploadMoodPhoto(file, user.id);
-            await this.userRepository.setMoodImage(mood.id, imageUrl);
-
-            return { image_mood: imageUrl, remainingCredits: remaining };
-        } catch (error) {
-            await this.creditService.refundCredit(id).catch((refundError) =>
-                console.error(`[Credits] falha ao estornar crédito do usuário ${id}:`, refundError),
-            );
-            console.error('Erro ao gerar imagem do humor:', error);
-            throw new BadRequestException('Não foi possível gerar a imagem agora. Seu crédito foi devolvido.');
-        }
-    }
     async getMoodUserToday(id: string): Promise<any> {
         const mood = await this.userRepository.getMoodUser(id);
         if (mood && mood.tracksAnalyzeds) {
@@ -428,17 +377,6 @@ export class UserService {
                 tracks: [],
             };
         }
-    }
-
-    // Imagens que o usuário já tem, para alternar no card do humor. Sem repetir a mesma URL.
-    async getMoodImages(id: string, limit = 30): Promise<{ id: string; image_mood: string; analyzedAt: Date }[]> {
-        const rows = await this.userRepository.getMoodImages(id, limit);
-        const seen = new Set<string>();
-        return rows.flatMap((row) => {
-            if (!row.image_mood || seen.has(row.image_mood)) return [];
-            seen.add(row.image_mood);
-            return [{ id: row.id, image_mood: row.image_mood, analyzedAt: row.analyzedAt }];
-        });
     }
 
     async getMoodHistory(id: string, limit = 1) {

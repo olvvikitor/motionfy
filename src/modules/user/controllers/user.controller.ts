@@ -48,13 +48,6 @@ export class UserController {
         return await this.userService.getMoodHistory(req.user!.id, isNaN(parsedLimit) ? 20 : parsedLimit);
     }
 
-    // Imagens de humor já geradas, para alternar no card principal.
-    @Get('mood-images')
-    @UseGuards(JwtAuthGuard)
-    async getMoodImages(@Req() req: MRequest) {
-        return await this.userService.getMoodImages(req.user!.id);
-    }
-
     @Get('mood-week')
     @UseGuards(JwtAuthGuard)
     async getMoodWeek(@Req() req: MRequest) {
@@ -120,21 +113,6 @@ export class UserController {
     @UseGuards(JwtAuthGuard)
     async autoRefreshMood(@Req() req: MRequest) {
         return await this.userService.autoRefreshMood(req.user!.id);
-    }
-
-    // Imagem do humor atual: sempre paga (1 crédito). Único caminho que gera imagem nova.
-    @Post('mood-image')
-    @UseGuards(JwtAuthGuard)
-    async generateMoodImage(@Req() req: MRequest) {
-        return await this.userService.generateMoodImage(req.user!.id);
-    }
-
-
-    // Last.fm: quando chegou a última música (para avisar se o app de música não está ligado).
-    @Get('scrobble-status')
-    @UseGuards(JwtAuthGuard)
-    async getScrobbleStatus(@Req() req: MRequest) {
-        return await this.userService.scrobbleStatus(req.user!.id);
     }
 
     @Get('musicListeningNow')

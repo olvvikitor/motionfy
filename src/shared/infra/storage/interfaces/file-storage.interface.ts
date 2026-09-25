@@ -7,7 +7,6 @@ export type UploadFile = {
 export interface FileStorageService {
     uploadFacePhoto(file: UploadFile, userId: string): Promise<string>;
     deleteFacePhoto(path: string): Promise<void>;
-    uploadMoodPhoto(file:UploadFile, userId):Promise<string>
     // Capa das playlists criadas na conta do Mofy (destaque do perfil).
     uploadPlaylistCover(file: UploadFile, userId: string): Promise<string>
 }

@@ -53,7 +53,7 @@ export class UserRepository {
     async SaveMood(userId: string, mood: {
         moodScore: number;
         sentiment: string;
-        image_mood: string | null; // null = humor sem imagem (imagem só é gerada com crédito)
+        image_mood: string | null; // sempre null nos novos: o humor não tem mais imagem (legado dos antigos)
         emotions: EmotionalVector;
         coreAxes: CoreAxes;
         tracks: any;
@@ -69,10 +69,6 @@ export class UserRepository {
                 sentiment: mood.sentiment,
             },
         });
-    }
-
-    async setMoodImage(moodId: string, imageUrl: string) {
-        await this.prisma.moodAnalysis.update({ where: { id: moodId }, data: { image_mood: imageUrl } });
     }
 
     async getMoodUser(userId: string) {
@@ -100,28 +96,6 @@ export class UserRepository {
     }
 
     // ─── Histórico de moods ────────────────────────────────────────────────────
-
-    // Imagens de humor já geradas pelo usuário (mais recentes primeiro).
-    // Uma linha por imagem: a imagem passa para os humores seguintes, então pega o registro
-    // em que ela foi gerada (o mais antigo com aquela URL). Mais recentes primeiro.
-    async getMoodImages(userId: string, limit: number) {
-        const rows = await this.prisma.moodAnalysis.findMany({
-            where: { userId, image_mood: { not: null } },
-            orderBy: { analyzedAt: "asc" },
-            distinct: ["image_mood"],
-            select: { id: true, image_mood: true, analyzedAt: true },
-        });
-        return rows.reverse().slice(0, limit);
-    }
-
-    async getLatestMoodImage(userId: string): Promise<string | null> {
-        const row = await this.prisma.moodAnalysis.findFirst({
-            where: { userId, image_mood: { not: null } },
-            orderBy: { analyzedAt: "desc" },
-            select: { image_mood: true },
-        });
-        return row?.image_mood ?? null;
-    }
 
     async getMoodHistory(userId: string, limit) {
         return this.prisma.moodAnalysis.findMany({
