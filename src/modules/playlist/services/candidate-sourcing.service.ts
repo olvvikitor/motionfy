@@ -74,6 +74,27 @@ export class CandidateSourcingService {
         return found;
     }
 
+    // Playlist de um humor só: todas as paradas caem no mesmo ponto, então precisa de
+    // `needed` músicas perto dele (fillGaps para na primeira). Mesmo teto de classificações.
+    async fillPoint(point: Vector, needed: number, ctx: SourcingContext): Promise<JourneyCandidate[]> {
+        const found: JourneyCandidate[] = [];
+        const seen = new Set(ctx.knownIds);
+        const nearCount = () => found.filter(c => distance(point, c.vector) <= NEAR_RADIUS).length;
+
+        for (const query of this.queriesFor(point, ctx)) {
+            if (nearCount() >= needed || found.length >= MAX_NEW_CANDIDATES) break;
+            const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - found.length);
+
+            // Página sorteada: pedir o mesmo humor de novo não traz sempre as mesmas.
+            const results = await ctx.provider.searchTracks!(ctx.accessToken, query, randomPage() * 10).catch((): TrackInput[] => []);
+            const fresh = results.filter(t => !seen.has(t.spotifyId)).slice(0, budget);
+            fresh.forEach(t => seen.add(t.spotifyId));
+            found.push(...await this.classifyAndSave(fresh));
+        }
+
+        return found;
+    }
+
     // Modo "Eu escolho" com estilo: só busca no Spotify (o acervo do usuário não é
     // consultado), o Jev confere quais músicas são do estilo pedido e uma amostra
     // aleatória delas vira candidata. Músicas já analisadas reaproveitam a análise.

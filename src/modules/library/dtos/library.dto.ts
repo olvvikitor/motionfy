@@ -1,9 +1,10 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsString, Matches, ValidateNested } from 'class-validator';
 
-// "liked" = Músicas Curtidas; qualquer outro valor é o ID de uma playlist do Spotify.
+// "liked" = Músicas Curtidas (no Last.fm, as amadas); "top-<período>" = mais ouvidas no Last.fm;
+// qualquer outro valor é o ID de uma playlist do Spotify.
 export const LIKED_SOURCE = 'liked';
-const SOURCE_PATTERN = /^(liked|[A-Za-z0-9]{22})$/;
+const SOURCE_PATTERN = /^(liked|top-(7day|1month|12month|overall)|[A-Za-z0-9]{22})$/;
 const SPOTIFY_ID_PATTERN = /^[A-Za-z0-9]{22}$/;
 
 export class LibrarySourceParamDto {

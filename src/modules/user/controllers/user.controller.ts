@@ -130,6 +130,13 @@ export class UserController {
     }
 
 
+    // Last.fm: quando chegou a última música (para avisar se o app de música não está ligado).
+    @Get('scrobble-status')
+    @UseGuards(JwtAuthGuard)
+    async getScrobbleStatus(@Req() req: MRequest) {
+        return await this.userService.scrobbleStatus(req.user!.id);
+    }
+
     @Get('musicListeningNow')
     @UseGuards(JwtAuthGuard)
     async getMusicListenNow(@Req() req: MRequest) {

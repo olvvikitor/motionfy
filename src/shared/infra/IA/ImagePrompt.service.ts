@@ -20,6 +20,9 @@ export type HybridPromptInput = {
     faceReferencePath?: string | null;
     topGenre?: string;
     currentSong?: string;
+    // Sempre retrato 9:16. "cover" = arte de playlist: além do 9:16 (card do perfil), sai dela
+    // um recorte 1:1 para a capa do Spotify, então o essencial fica no centro.
+    format?: "portrait" | "cover";
 };
 
 // ── Quadrantes emocionais ─────────────────────────────────────────────────────
@@ -194,7 +197,9 @@ CENA BASE: ${scenario}. POSE BASE: ${motion}. CÂMERA: ${camera}.${groupRule}${g
 
 PERSONAGEM CENTRAL: ${faceRef}${copyrightRule}
 
-SAÍDA: Retrato 9:16, ilustração 2D anime estilizada. NUNCA fotorrealista. Sem texto/tipografia. Reconhecível como arte do estúdio ${studio.company}.`.trim();
+SAÍDA: Retrato 9:16, ilustração 2D anime estilizada.${data.format === "cover"
+    ? " COMPOSIÇÃO: personagem e elemento principal no centro da imagem (terço do meio na vertical), sem nada essencial nas bordas de cima e de baixo — a imagem também será recortada em quadrado para capa."
+    : ""} NUNCA fotorrealista. Sem texto/tipografia. Reconhecível como arte do estúdio ${studio.company}.`.trim();
     }
 
 

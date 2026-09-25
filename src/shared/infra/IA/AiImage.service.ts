@@ -20,7 +20,8 @@ export class AiImageService {
     return this.imagePromptService.build(input);
   }
 
-  async generateImage(prompt: string, facePhotoPath?: string): Promise<Buffer> {
+  // size: "auto" (arte do humor) ou 9:16 fixo (arte de playlist, que também vira a capa 1:1 por recorte).
+  async generateImage(prompt: string, facePhotoPath?: string, size: "auto" | "1024x1536" = "auto"): Promise<Buffer> {
     const fullPrompt = prompt;
 
     let faceFile: Awaited<ReturnType<typeof toFile>> | null = null;
@@ -58,13 +59,13 @@ export class AiImageService {
         model: "gpt-image-1-mini",
         prompt: fullPrompt,
         image: faceFile,
-        size: "auto",
+        size,
       });
     } else {
       result = await this.openai.images.generate({
         model: "gpt-image-1-mini",
         prompt: fullPrompt,
-        size: "auto",
+        size,
       });
     }
 

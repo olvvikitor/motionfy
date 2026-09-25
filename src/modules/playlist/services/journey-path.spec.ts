@@ -140,6 +140,17 @@ describe('journey-path', () => {
         expect(pick.candidate.spotifyId).toBe('old');
     });
 
+    it('buildJourney com partida = chegada fica no mesmo humor, sem repetir música', () => {
+        const near = Array.from({ length: 12 }, (_, i) => candidate(`n${i}`, { a: 0.01 * i, b: 1 - 0.01 * i }));
+        const far = [candidate('far', { a: 1, b: 0 })];
+        const picks = buildJourney(FROM, FROM, 30, [...near, ...far]);
+        const ids = picks.map(p => p.candidate.spotifyId);
+        expect(picks.length).toBeGreaterThan(3);
+        expect(new Set(ids).size).toBe(ids.length);
+        expect(ids).not.toContain('far');
+        expect(picks.every(p => distance(FROM, p.candidate.vector) <= NEAR_RADIUS)).toBe(true);
+    });
+
     it('buildJourney fecha perto da duração pedida', () => {
         const picks = buildJourney(FROM, TO, 30, lineCandidates(40));
         expect(Math.abs(totalDurationMs(picks) - 30 * 60_000)).toBeLessThanOrEqual(120_000);

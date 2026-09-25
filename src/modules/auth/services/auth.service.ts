@@ -6,6 +6,7 @@ import { UserRepository } from "src/modules/user/repository/user.repository";
 import { JwtService } from "@nestjs/jwt";
 import { LoginCredentialsDto, SetPasswordDto } from "../dtos/auth.dto";
 import * as bcrypt from 'bcrypt';
+import { lastFmUserId } from 'src/shared/infra/music/lastfm/lastfm.service';
 
 @Injectable()
 export class AuthService {
@@ -37,23 +38,27 @@ export class AuthService {
             refreshToken: userData.refreshToken
         }
 
-        return await this.createUserService.create(user, providerName);
+        // Contas novas só pelo Last.fm; quem já tinha conta pelo Spotify continua entrando.
+        return await this.createUserService.create(user, providerName, { allowNew: providerName === 'lastfm' });
     }
 
+    // Contas novas entram com o usuário do Last.fm; contas antigas do Spotify, com o e-mail.
     async login(credentials: LoginCredentialsDto) {
-        const users = await this.userRepository.getUsersByEmail(credentials.email);
+        const login = credentials.login.trim();
+        const users = login.includes('@')
+            ? await this.userRepository.getUsersByEmail(login)
+            : [await this.userRepository.getUserById(lastFmUserId(login))].filter((u): u is User => Boolean(u));
         const passwordUser = users.find(user => Boolean(user.password));
-        const providerOnlyUser = users[0];
 
         if (!passwordUser) {
-            throw new UnauthorizedException(
-                'Credenciais inválidas ou e-mail registrado apenas via ' + (providerOnlyUser?.provider || 'provedor externo') + '.',
-            );
+            throw new UnauthorizedException(users.length
+                ? 'Essa conta ainda não tem senha. Entre com o Last.fm.'
+                : 'Usuário ou senha incorretos.');
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, passwordUser.password!);
         if (!isPasswordValid) {
-            throw new UnauthorizedException('Credenciais inválidas.');
+            throw new UnauthorizedException('Usuário ou senha incorretos.');
         }
 
         const token = this.jwtService.sign({

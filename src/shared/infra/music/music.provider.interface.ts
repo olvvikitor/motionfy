@@ -2,7 +2,7 @@ import { TrackInput } from "src/shared/types/TrackInput";
 
 export interface ProviderUserProfile {
   id: string;
-  email: string;
+  email: string | null; // o Last.fm não informa e-mail
   displayName: string;
   country: string;
   imageUrl?: string;
@@ -29,6 +29,8 @@ export  interface MusicProviderInterface{
     getLibrarySources?(accessToken: string): Promise<LibrarySources>;
     getPlaylistTracks?(accessToken: string, playlistId: string, max: number): Promise<TrackInput[]>;
     addTracksToQueue?(accessToken: string, trackIds: string[]): Promise<QueueResult>;
+    // Quando o provedor recebeu a última música (Last.fm: último scrobble). null = nunca.
+    getLastActivity?(refreshToken: string): Promise<Date | null>;
 }
 
 export interface LibraryPlaylist {

@@ -25,6 +25,7 @@ model User {
   histories    ListeningHistory[]
   savedTracks  SavedTrack[]
   playlistSuggestions PlaylistSuggestion[]
+  mofyPlaylists MofyPlaylist[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
   creditPurchases CreditPurchase[]
@@ -149,6 +150,29 @@ model SavedTrack {
   track   Track    @relation(fields: [trackId], references: [spotifyId])
 
   @@unique([userId, trackId])
+}
+
+// Playlists criadas na conta do Mofy no Spotify (o usuário recebe o link; não precisa de login no Spotify).
+// tracksHash = mesma lista de músicas na mesma ordem: reaproveita o link em vez de criar outra.
+model MofyPlaylist {
+  id                String   @id @default(uuid())
+  userId            String
+  spotifyPlaylistId String
+  url               String
+  tracksHash        String
+  // Para o destaque no perfil (playlists antigas ficam sem: o card usa o que der).
+  title             String?
+  sentiment         String?  // humor da playlist (a chegada, na jornada)
+  fromSentiment     String?  // partida, na jornada; igual ao sentiment em "um humor"
+  trackIds          Json?    // ids do Spotify, na ordem
+  coverUrl          String?  // capa enviada ou gerada (sem ela, o card usa a da música mais forte)
+  featuredOrder     Int?     // posição no destaque do perfil (0 a 4); null = fora
+  createdAt         DateTime @default(now())
+  removedAt         DateTime?
+  user              User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([userId, tracksHash])
 }
 
 // Músicas já sugeridas em playlists de jornada: as próximas evitam repetir.

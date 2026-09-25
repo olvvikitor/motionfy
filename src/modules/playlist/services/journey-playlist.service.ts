@@ -6,7 +6,7 @@ import { MusicProviderInterface } from "src/shared/infra/music/music.provider.in
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository, UserTaste } from "../repository/playlist.repository";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
-import { buildJourney, buildPath, findGaps, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildJourney, buildPath, distance, findGaps, NEAR_RADIUS, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 
 export type JourneyPlaylistResponse = {
     from: string;
@@ -67,8 +67,9 @@ export class JourneyPlaylistService {
         if (!user) throw new NotFoundException('Usuário não encontrado');
 
         const provider = this.providers.getProvider(user.provider);
-        if (!provider.searchTracks || !provider.addTracksToQueue) {
-            throw new BadRequestException('Playlist de jornada disponível apenas para contas do Spotify.');
+        // Last.fm também sugere (busca no catálogo do Spotify); só a fila exige login do Spotify.
+        if (!provider.searchTracks) {
+            throw new BadRequestException('Playlist de jornada disponível apenas para contas do Spotify ou Last.fm.');
         }
 
         const from = getClusterVector(journey.from)!;
@@ -141,7 +142,7 @@ export class JourneyPlaylistService {
     private async resolveJourney(userId: string, dto: JourneyPlaylistDto): Promise<ResolvedJourney> {
         if (dto.source !== 'custom') {
             if (!dto.from || !dto.to) throw new BadRequestException('Escolha o sentimento de partida e o de chegada.');
-            if (dto.from === dto.to) throw new BadRequestException('Escolha sentimentos de partida e chegada diferentes.');
+            // Partida = chegada: playlist de um humor só (todas as paradas no mesmo ponto).
             return { from: dto.from, to: dto.to };
         }
 
@@ -196,18 +197,26 @@ export class JourneyPlaylistService {
             // Acervo inteiro + busca automática onde faltar música. Músicas sugeridas
             // há pouco não contam como cobertura: a parada busca novidade no Spotify.
             default: {
-                const path = buildPath(ctx.from, ctx.to, stopCountForDuration(dto.durationMin));
+                const stops = stopCountForDuration(dto.durationMin);
+                const path = buildPath(ctx.from, ctx.to, stops);
                 const unseen = ctx.pool.filter(c => !ctx.recentIds.has(c.spotifyId));
+                const sourcing = {
+                    provider: ctx.provider,
+                    accessToken: ctx.accessToken,
+                    knownIds: new Set(ctx.pool.map(c => c.spotifyId)),
+                    topArtists: ctx.taste.topArtists,
+                    topSubgenres: ctx.taste.topSubgenres,
+                };
+
+                // Um humor só: uma música perto não basta, precisa de uma por parada.
+                if (journey.from === journey.to) {
+                    const near = unseen.filter(c => distance(ctx.from, c.vector) <= NEAR_RADIUS).length;
+                    const fresh = near < stops ? await this.sourcing.fillPoint(ctx.from, stops - near, sourcing) : [];
+                    return { candidates: [...ctx.pool, ...fresh], newTracksAnalyzed: fresh.length };
+                }
+
                 const gapStops = findGaps(path, unseen).map(index => path[index]);
-                const fresh = gapStops.length
-                    ? await this.sourcing.fillGaps(gapStops, {
-                        provider: ctx.provider,
-                        accessToken: ctx.accessToken,
-                        knownIds: new Set(ctx.pool.map(c => c.spotifyId)),
-                        topArtists: ctx.taste.topArtists,
-                        topSubgenres: ctx.taste.topSubgenres,
-                    })
-                    : [];
+                const fresh = gapStops.length ? await this.sourcing.fillGaps(gapStops, sourcing) : [];
                 return { candidates: [...ctx.pool, ...fresh], newTracksAnalyzed: fresh.length };
             }
         }

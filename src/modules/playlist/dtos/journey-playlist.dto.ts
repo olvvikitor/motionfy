@@ -51,6 +51,45 @@ export class QueueJourneyDto {
     trackIds!: string[];
 }
 
+// Cria a playlist na conta do Mofy no Spotify com as músicas mantidas, na ordem.
+export class SpotifyPlaylistDto extends QueueJourneyDto {
+    // Ex.: "Ansioso → Calmo". O servidor põe "Mofy · " na frente.
+    @IsString({ message: 'Nome da playlist inválido.' })
+    @Length(1, 80, { message: 'O nome da playlist pode ter até 80 caracteres.' })
+    title!: string;
+
+    // Humor da playlist (chegada) e partida: organizam o destaque do perfil.
+    @IsOptional()
+    @IsIn(EMOTION_CLUSTERS, { message: 'Humor da playlist inválido.' })
+    sentiment?: string;
+
+    @IsOptional()
+    @IsIn(EMOTION_CLUSTERS, { message: 'Humor de partida inválido.' })
+    fromSentiment?: string;
+}
+
+const FEATURED_MESSAGE = 'Escolha até 5 playlists para o destaque.';
+
+// Playlists que aparecem no destaque do perfil, na ordem.
+export class FeaturedPlaylistsDto {
+    @IsArray({ message: FEATURED_MESSAGE })
+    @ArrayMaxSize(5, { message: FEATURED_MESSAGE })
+    @Matches(/^[A-Za-z0-9]{22}$/, { each: true, message: 'ID de playlist do Spotify inválido.' })
+    playlistIds!: string[];
+}
+
+// Playlist da conta do Mofy (id do Spotify) na rota da capa.
+export class PlaylistIdParamDto {
+    @Matches(/^[A-Za-z0-9]{22}$/, { message: 'ID de playlist do Spotify inválido.' })
+    playlistId!: string;
+}
+
+// Capa gerada pela IA a partir do humor da playlist.
+export class GenerateCoverDto {
+    @IsIn(EMOTION_CLUSTERS, { message: `Humor inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
+    sentiment!: string;
+}
+
 // Trajeto de sentimentos entre partida e chegada (só para desenhar na UI).
 export class JourneyPathQueryDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de partida inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })

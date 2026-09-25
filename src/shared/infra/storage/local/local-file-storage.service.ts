@@ -20,6 +20,11 @@ export class LocalFileStorageService implements FileStorageService {
 
         return `${this.publicPrefix}${fileName}`;
     }
+
+    async uploadPlaylistCover(file: UploadFile, userId: string): Promise<string> {
+        return this.uploadMoodPhoto({ ...file, originalname: "cover.jpg" }, `cover-${userId}`);
+    }
+
     async uploadFacePhoto(file: UploadFile, userId: string): Promise<string> {
         await fs.mkdir(this.uploadsDir, { recursive: true });
 

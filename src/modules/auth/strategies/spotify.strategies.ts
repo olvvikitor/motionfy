@@ -57,7 +57,12 @@ export class SpotifyStrategy extends PassportStrategy(Strategy, 'spotify') {
                 'playlist-read-collaborative',
                 'user-read-playback-state',
                 'user-read-currently-playing',
-                'user-modify-playback-state'
+                'user-modify-playback-state',
+                // Criar playlists: usado pela conta do Mofy (SPOTIFY_MOFY_REFRESH_TOKEN).
+                'playlist-modify-public',
+                'playlist-modify-private',
+                // Mudar a capa das playlists da conta do Mofy.
+                'ugc-image-upload',
 
             ],
         });

@@ -46,4 +46,14 @@ export class ImageKitProvider implements FileStorageService {
         return result.url
     }
 
+    // Capa das playlists criadas na conta do Mofy (destaque do perfil).
+    async uploadPlaylistCover(file: UploadFile, _userId: string): Promise<string> {
+        const result = await this.imageKit.upload({
+            file: file.buffer,
+            fileName: `${randomUUID()}.jpg`,
+            folder: "/playlist-covers",
+        });
+        return result.url;
+    }
+
 }

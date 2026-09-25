@@ -380,6 +380,17 @@ export class UserService {
         return user.accessToken!;
     }
 
+    // Se o Last.fm está recebendo músicas do app da pessoa. Só faz sentido para quem entrou
+    // pelo Last.fm; os outros provedores leem direto do player (applicable: false).
+    async scrobbleStatus(id: string): Promise<{ applicable: boolean; lastScrobbleAt: string | null }> {
+        const user = await this.userRepository.getUserById(id);
+        if (!user) throw new NotFoundException('Usuario não encontrado');
+        const providerMusic = this.providerMusic.getProvider(user.provider);
+        if (!providerMusic.getLastActivity) return { applicable: false, lastScrobbleAt: null };
+        const last = await providerMusic.getLastActivity(user.refreshToken!);
+        return { applicable: true, lastScrobbleAt: last?.toISOString() ?? null };
+    }
+
     async listeningNow(id: string): Promise<ListeningNowResponse> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');

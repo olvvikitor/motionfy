@@ -1,8 +1,10 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class LoginCredentialsDto {
-    @IsEmail({}, { message: 'Por favor, forneça um endereço de e-mail válido.' })
-    email!: string;
+    // Usuário do Last.fm (contas novas) ou e-mail (contas antigas do Spotify).
+    @IsNotEmpty({ message: 'Informe seu usuário do Last.fm.' })
+    @IsString()
+    login!: string;
 
     @IsNotEmpty({ message: 'A senha não pode estar vazia.' })
     @IsString()

@@ -1,9 +1,12 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { User } from "@prisma/client";
 import { UserRepository } from "../../user/repository/user.repository";
 import { JwtService } from "@nestjs/jwt";
 import { FILE_STORAGE } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import type { FileStorageService, UploadFile } from "src/shared/infra/storage/interfaces/file-storage.interface";
+
+// Mensagem usada pelo controller para mandar de volta ao login com o aviso certo.
+export const SIGNUP_CLOSED = 'Contas novas são criadas pelo Last.fm.';
 
 @Injectable()
 export class CreateUserService {
@@ -13,10 +16,19 @@ export class CreateUserService {
         @Inject(FILE_STORAGE) private readonly fileStorage: FileStorageService,
     ) { }
 
-    async create(data: User, provider: string): Promise<{ token: string; isNewUser: boolean }> {
-        const user = await this.userRepository.getUserByEmail(data.email!, provider);
+    // allowNew = false: só entra quem já tem conta (contas novas só pelo Last.fm).
+    async create(data: User, provider: string, { allowNew = true } = {}): Promise<{ token: string; isNewUser: boolean }> {
+        // Sem e-mail (Last.fm) a busca por e-mail pegaria qualquer conta sem e-mail: usa o id.
+        const user = data.email
+            ? await this.userRepository.getUserByEmail(data.email, provider)
+            : await this.userRepository.getUserById(data.id);
+        if (!user && !allowNew) throw new ForbiddenException(SIGNUP_CLOSED);
         if (!user) {
             await this.userRepository.createNewUser(data);
+        } else if (data.refreshToken) {
+            // Guarda o refresh token do login mais recente: ele carrega as permissões atuais
+            // (o antigo continua com as de quando a conta foi criada). No Last.fm é a session key.
+            await this.userRepository.updateTokens(user.id, data.accessToken!, data.refreshToken);
         } else {
             await this.userRepository.update(data.id, data.accessToken!);
         }
