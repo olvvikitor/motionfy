@@ -1,10 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import axios, { AxiosError } from "axios";
+import { PrismaService } from "src/config/prisma.service";
 import { TrackInput } from "src/shared/types/TrackInput";
 
-const RESOLVE_CONCURRENCY = 5;
+// O limite de chamadas do Development Mode é baixo e compartilhado por toda a conta de
+// desenvolvedor: poucas buscas ao mesmo tempo e nunca insistir depois de um 429.
+const RESOLVE_CONCURRENCY = 2;
 const CACHE_MAX = 10_000;
-const MAX_RETRY_WAIT_MS = 5_000;
+const DEFAULT_BLOCK_S = 60; // 429 sem Retry-After
 
 export type SongRef = { title: string; artist: string };
 
@@ -18,6 +21,15 @@ export class SpotifyCatalogService {
     private token: { value: string; expiresAt: number } | null = null;
     // artista|título → faixa do Spotify (null = não achou; evita buscar de novo).
     private readonly resolved = new Map<string, TrackInput | null>();
+    // Disjuntor: depois de um 429, nenhuma chamada até o horário que o Spotify mandou esperar.
+    // Insistir durante o bloqueio só o estende.
+    private blockedUntil = 0;
+
+    constructor(private readonly prisma: PrismaService) { }
+
+    isBlocked(): boolean {
+        return Date.now() < this.blockedUntil;
+    }
 
     async searchTracks(query: string, offset = 0, limit = 10): Promise<TrackInput[]> {
         const response = await this.get('https://api.spotify.com/v1/search', { q: query, type: 'track', limit, offset });
@@ -27,15 +39,21 @@ export class SpotifyCatalogService {
     }
 
     // Acha a faixa do Spotify de cada música (mesma ordem; null quando não encontra).
+    // Com o Spotify bloqueado, só resolve pelo banco (as já conhecidas) e deixa o resto de fora.
     async resolveSongs(songs: SongRef[]): Promise<(TrackInput | null)[]> {
         const results: (TrackInput | null)[] = new Array(songs.length).fill(null);
+        let blockedSkips = 0;
         for (let i = 0; i < songs.length; i += RESOLVE_CONCURRENCY) {
             await Promise.all(songs.slice(i, i + RESOLVE_CONCURRENCY).map(async (song, j) => {
                 results[i + j] = await this.resolveSong(song).catch((err) => {
+                    if (err instanceof CatalogBlockedError) { blockedSkips++; return null; }
                     console.error(`[SpotifyCatalog] falha ao buscar "${song.title}" de ${song.artist}:`, err?.message ?? err);
                     return null;
                 });
             }));
+        }
+        if (blockedSkips) {
+            console.warn(`[SpotifyCatalog] Spotify em espera (limite de chamadas) até ${new Date(this.blockedUntil).toLocaleTimeString('pt-BR')}: ${blockedSkips} música(s) ficaram para depois.`);
         }
         return results;
     }
@@ -44,31 +62,66 @@ export class SpotifyCatalogService {
         const key = `${normalize(song.artist)}|${normalize(song.title)}`;
         if (this.resolved.has(key)) return this.resolved.get(key)!;
 
+        // 1) Banco: faixas já resolvidas antes (sobrevive a reinício da API, sem chamar o Spotify).
+        const known = await this.findKnown(song);
+        if (known) { this.remember(key, known); return known; }
+
+        // 2) Spotify: busca exata; a solta só se a exata não trouxer nada.
         const title = song.title.replace(/"/g, '');
         const artist = song.artist.replace(/"/g, '');
-        let match: TrackInput | null = null;
-        for (const query of [`track:${title} artist:${artist}`, `${title} ${artist}`]) {
-            const found = await this.searchTracks(query, 0, 5);
-            match = found.find(track => sameSong(song, track)) ?? null;
-            if (match) break;
+        const strict = await this.searchTracks(`track:${title} artist:${artist}`, 0, 5);
+        let match = strict.find(track => sameSong(song, track)) ?? null;
+        if (!match && strict.length === 0) {
+            const loose = await this.searchTracks(`${title} ${artist}`, 0, 5);
+            match = loose.find(track => sameSong(song, track)) ?? null;
         }
 
-        if (this.resolved.size >= CACHE_MAX) this.resolved.delete(this.resolved.keys().next().value!);
-        this.resolved.set(key, match);
+        this.remember(key, match);
         return match;
     }
 
+    private remember(key: string, value: TrackInput | null) {
+        if (this.resolved.size >= CACHE_MAX) this.resolved.delete(this.resolved.keys().next().value!);
+        this.resolved.set(key, value);
+    }
+
+    // Mesma música já salva (título igual, sem diferenciar maiúsculas; artista conferido por sameSong).
+    private async findKnown(song: SongRef): Promise<TrackInput | null> {
+        const rows = await this.prisma.track.findMany({
+            where: { title: { equals: song.title.trim(), mode: 'insensitive' }, spotifyId: { not: null } },
+            select: { spotifyId: true, title: true, artist: true, album: true, img_url: true, isrc: true, explicit: true, releaseDate: true, durationMs: true },
+            take: 10,
+        });
+        const row = rows.find(r => sameSong(song, r));
+        if (!row?.spotifyId) return null;
+        return {
+            spotifyId: row.spotifyId,
+            title: row.title,
+            artist: row.artist,
+            album: row.album ?? '',
+            img_url: row.img_url ?? '',
+            isrc: row.isrc,
+            explicit: row.explicit,
+            releaseDate: row.releaseDate,
+            durationMs: row.durationMs,
+            createdAt: new Date(),
+        };
+    }
+
     private async get(url: string, params: Record<string, unknown>, retried = false): Promise<any> {
+        if (this.isBlocked()) throw new CatalogBlockedError(this.blockedUntil);
         try {
             return await axios.get(url, { headers: { Authorization: `Bearer ${await this.appToken()}` }, params });
         } catch (err) {
-            if (err instanceof AxiosError && !retried) {
+            if (err instanceof AxiosError) {
                 const status = err.response?.status;
-                if (status === 401) { this.token = null; return this.get(url, params, true); }
+                if (status === 401 && !retried) { this.token = null; return this.get(url, params, true); }
                 if (status === 429) {
-                    const waitMs = Math.min(Number(err.response?.headers['retry-after'] ?? 1) * 1000, MAX_RETRY_WAIT_MS);
-                    await new Promise(resolve => setTimeout(resolve, waitMs));
-                    return this.get(url, params, true);
+                    // Respeita o Retry-After inteiro (pode ser horas) e não tenta de novo.
+                    const seconds = Number(err.response?.headers['retry-after']) || DEFAULT_BLOCK_S;
+                    this.blockedUntil = Date.now() + seconds * 1000;
+                    console.warn(`[SpotifyCatalog] 429: Spotify pediu para esperar ${Math.round(seconds / 60)} min. Buscas pausadas até ${new Date(this.blockedUntil).toLocaleTimeString('pt-BR')}.`);
+                    throw new CatalogBlockedError(this.blockedUntil);
                 }
             }
             const detail = err instanceof AxiosError ? err.response?.data?.error?.message ?? err.message : String(err);
@@ -92,6 +145,13 @@ export class SpotifyCatalogService {
         // Renova 1 min antes de expirar.
         this.token = { value: response.data.access_token, expiresAt: Date.now() + (response.data.expires_in - 60) * 1000 };
         return this.token.value;
+    }
+}
+
+// Spotify pediu para esperar (429): nenhuma chamada foi feita.
+export class CatalogBlockedError extends HttpException {
+    constructor(readonly until: number) {
+        super('O Spotify pediu uma pausa nas buscas. Tente de novo mais tarde.', HttpStatus.TOO_MANY_REQUESTS);
     }
 }
 
