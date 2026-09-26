@@ -46,106 +46,108 @@ type Dimension = typeof EMOTIONAL_DIMENSIONS[number];
 
 // ---------------------------------------------------------------------------
 // Rubricas das 10 dimensões (Score do Jev, 5 níveis: 0..4 → normalizado 0..1)
+// Exemplos variados (internacionais e brasileiros, vários gêneros) e sem repetir a mesma
+// música entre dimensões: um exemplo usado em várias escalas puxava as notas juntas.
 // ---------------------------------------------------------------------------
 const DIMENSION_RUBRICS: Record<Dimension, { instructions: string; criteria: [string, string, string, string, string] }> = {
   Valencia: {
     instructions: "How positive is the emotional tone of this song?",
     criteria: [
-      "Existential despair, hatred (e.g. 'Mad World')",
-      "Mostly sad or bitter",
-      "Real ambiguity, mixed feelings (e.g. 'Mr. Brightside')",
-      "Hopeful, peaceful (e.g. 'Redemption Song')",
-      "Pure, unshakable joy (e.g. 'Happy')",
+      "Existential despair, hatred (e.g. Johnny Cash 'Hurt')",
+      "Mostly sad or bitter (e.g. Legião Urbana 'Pais e Filhos')",
+      "Real ambiguity, mixed feelings (e.g. The Killers 'Mr. Brightside')",
+      "Hopeful, peaceful (e.g. Bob Marley 'Redemption Song', Toquinho 'Aquarela')",
+      "Pure, unshakable joy (e.g. Jorge Ben Jor 'País Tropical')",
     ],
   },
   Energia: {
-    instructions: "How energetic and sonically intense is this song?",
+    instructions: "How energetic and sonically intense is this song? Use bpm and loudness_db when present.",
     criteria: [
-      "Near-silent minimalism, BPM below 60",
-      "Slow and soft",
-      "Mid-tempo pop, rock ballad",
-      "Upbeat and driving",
-      "Metal, EDM, punk; BPM above 160, maximum intensity",
+      "Near-silent minimalism, BPM below 60 (e.g. Debussy 'Clair de Lune')",
+      "Slow and soft (e.g. João Gilberto 'Chega de Saudade')",
+      "Mid-tempo pop, rock ballad (e.g. Coldplay 'Yellow')",
+      "Upbeat and driving (e.g. MC Kevinho 'Olha a Explosão', Bruno Mars 'Uptown Funk')",
+      "Metal, EDM, punk; BPM above 160, maximum intensity (e.g. Sepultura 'Roots Bloody Roots')",
     ],
   },
   Dominancia: {
     instructions: "How dominant, assertive or commanding is the song's stance?",
     criteria: [
-      "Pleading, fragile, submissive",
-      "Soft-spoken, yielding",
+      "Pleading, fragile, submissive (e.g. Adele 'Someone Like You')",
+      "Soft-spoken, yielding (e.g. Tim Maia 'Gostava Tanto de Você')",
       "Neutral stance",
-      "Assertive, self-assured",
-      "Aggressive, authoritative, commanding (e.g. 'Eye of the Tiger')",
+      "Assertive, self-assured (e.g. Racionais MC's 'Vida Loka, Pt. 2')",
+      "Aggressive, authoritative, commanding (e.g. Eminem 'Lose Yourself')",
     ],
   },
   Melancolia: {
     instructions: "How much sadness, longing or saudade does this song carry?",
     criteria: [
-      "No trace of sadness (e.g. 'Happy')",
+      "No trace of sadness (e.g. Ivete Sangalo 'Festa')",
       "Slight wistfulness",
-      "Soft nostalgia, reflecting on the past",
-      "Clear sadness or longing",
-      "Grief, irreparable loss, consuming saudade (e.g. 'The Sound of Silence')",
+      "Soft nostalgia, reflecting on the past (e.g. Legião Urbana 'Tempo Perdido')",
+      "Clear sadness or longing (e.g. Coldplay 'Fix You')",
+      "Grief, irreparable loss, consuming saudade (e.g. Eric Clapton 'Tears in Heaven', Chico Buarque 'Pedaço de Mim')",
     ],
   },
   Euforia: {
     instructions: "How euphoric or celebratory is this song?",
     criteria: [
-      "Apathy, indifference, deep introspection",
+      "Apathy, indifference, deep introspection (e.g. Bon Iver 'Holocene')",
       "Subdued",
       "Some lift, mild excitement",
-      "Exciting, celebratory",
-      "Ecstasy, manic celebration, emotional peak (e.g. 'Happy')",
+      "Exciting, celebratory (e.g. Anitta 'Envolver')",
+      "Ecstasy, manic celebration, emotional peak (e.g. Queen 'Don't Stop Me Now')",
     ],
   },
   Tensao: {
     instructions: "How much tension, anxiety or unresolved conflict does this song convey?",
     criteria: [
-      "Total relaxation, resolved harmony",
+      "Total relaxation, resolved harmony (e.g. Tom Jobim 'Águas de Março')",
       "Mostly calm",
       "Some unease",
-      "Clear tension or anxiety",
-      "Unresolved dissonance, anxiety, conflict (e.g. 'Smells Like Teen Spirit')",
+      "Clear tension or anxiety (e.g. Radiohead 'Karma Police')",
+      "Unresolved dissonance, anxiety, conflict (e.g. Nirvana 'Smells Like Teen Spirit')",
     ],
   },
   ConexaoSocial: {
     instructions: "How much does this song express collective belonging, togetherness or connection with others?",
     criteria: [
-      "Absolute isolation, inner monologue",
+      "Absolute isolation, inner monologue (e.g. Green Day 'Boulevard of Broken Dreams')",
       "Mostly solitary",
       "Some connection with others",
-      "About relationships or community",
-      "Collective anthem, 'we', belonging (e.g. 'Happy')",
+      "About relationships or community (e.g. Charlie Brown Jr. 'Só os Loucos Sabem')",
+      "Collective anthem, 'we', belonging (e.g. Queen 'We Are the Champions', Zeca Pagodinho 'Deixa a Vida Me Levar')",
     ],
   },
   Introspeccao: {
-    instructions: "How introspective or reflective are the lyrics?",
+    instructions: "How introspective or reflective are the lyrics? If the song is instrumental, judge how inward the music feels.",
     criteria: [
-      "Party lyrics, superficial, no reflection",
+      "Party lyrics, superficial, no reflection (e.g. Los del Río 'Macarena')",
       "Light, mostly surface-level",
       "Some reflection",
-      "Personal and reflective",
-      "Existential philosophy, intimate secrets, diary-like (e.g. 'The Sound of Silence')",
+      "Personal and reflective (e.g. Cazuza 'O Tempo Não Para')",
+      "Existential philosophy, intimate secrets, diary-like (e.g. Simon & Garfunkel 'The Sound of Silence', Titãs 'Epitáfio')",
     ],
   },
   Empoderamento: {
     instructions: "How empowering is this song?",
     criteria: [
-      "Defeat, victimhood",
+      "Defeat, victimhood (e.g. Tears for Fears 'Mad World')",
       "Resigned",
       "Neutral",
-      "Encouraging, confident",
-      "Overcoming, liberation, unshakable self-confidence (e.g. 'Eye of the Tiger')",
+      "Encouraging, confident (e.g. Charlie Brown Jr. 'Dias de Luta, Dias de Glória')",
+      "Overcoming, liberation, unshakable self-confidence (e.g. Survivor 'Eye of the Tiger', IZA 'Pesadão')",
     ],
   },
   Vulnerabilidade: {
     instructions: "How emotionally vulnerable or exposed is this song?",
     criteria: [
-      "Emotional armor, coldness, distance",
+      "Emotional armor, coldness, distance (e.g. Kendrick Lamar 'HUMBLE.')",
       "Guarded",
       "Some openness",
-      "Openly emotional",
-      "Exposed wounds, raw intimacy, crying (e.g. 'Mad World')",
+      "Openly emotional (e.g. Djavan 'Oceano')",
+      "Exposed wounds, raw intimacy, crying (e.g. Radiohead 'Creep', Chitãozinho & Xororó 'Evidências')",
     ],
   },
 };
@@ -247,7 +249,7 @@ export class AiTextService {
     const questions: Questions = {
       sentiment: {
         type: "choice",
-        instructions: "Which emotion best defines the overall mood of this song (lyrics and instrumentation)?",
+        instructions: "Which emotion best defines the overall mood of this song (lyrics and instrumentation)? Weigh lyrics_excerpt and listener_tags when present; an instrumental song is judged by its sound only.",
         criteria: Object.fromEntries(EMOTION_CLUSTERS.map(label => [label, SENTIMENT_CRITERIA[label] ?? null])),
       },
       subgenre: {
@@ -283,7 +285,7 @@ export class AiTextService {
     track: Pick<Track, 'id' | 'title' | 'artist' | 'album' | 'img_url' | 'isrc' | 'explicit' | 'releaseDate'>,
     options: { skipMusicBrainz?: boolean } = {},
   ) {
-    const { artistGenres, bpm } = await this.enrichment.enrich(track, options);
+    const extra = await this.enrichment.enrich(track, options);
 
     // Só manda ao Jev o que existe: campo ausente não vira null/"desconhecido".
     const song = Object.fromEntries(Object.entries({
@@ -292,8 +294,14 @@ export class AiTextService {
       album: track.album || undefined,
       release_year: track.releaseDate ? Number(track.releaseDate.slice(0, 4)) : undefined,
       explicit_lyrics: track.explicit ?? undefined,
-      artist_genres: artistGenres.length ? artistGenres : undefined,
-      bpm: bpm ?? undefined,
+      version: extra.version ?? undefined,
+      artist_genres: extra.artistGenres.length ? extra.artistGenres : undefined,
+      listener_tags: extra.listenerTags.length ? extra.listenerTags : undefined,
+      bpm: extra.bpm ?? undefined,
+      loudness_db: extra.loudnessDb ?? undefined,
+      duration_sec: extra.durationSec ?? undefined,
+      instrumental: extra.instrumental ?? undefined,
+      lyrics_excerpt: extra.lyricsExcerpt ?? undefined,
     }).filter(([, value]) => value !== undefined)) as Record<string, JsonValue>;
 
     const { answers } = await this.jev.systemOne({

@@ -68,17 +68,20 @@ export class PlaylistCoverService {
         const owned = await this.ensureOwner(userId, playlistId);
         const sentiment = owned.sentiment ?? requested;
         if (!EMOTION_CLUSTERS.includes(sentiment)) throw new BadRequestException('Humor inválido para a capa.');
-        const facePhoto = await this.repository.getFacePhotoPath(userId);
+        const [facePhoto, music] = await Promise.all([
+            this.repository.getFacePhotoPath(userId),
+            this.musicContext(owned.trackIds),
+        ]);
 
         const { remaining } = await this.credits.consumeCredit(userId, `Capa de playlist ${sentiment}`);
         try {
             const mood = this.emotionAnalysis.classifyEmotion(getClusterVector(sentiment)!);
             const prompt = await this.aiImage.buildHybridImagePrompt({
                 ativacao: mood.coreAxes.ativacao,
-                moodScore: mood.moodScore,
-                coreAxes: mood.coreAxes,
                 sentiment,
                 faceReferencePath: facePhoto,
+                title: owned.title,
+                ...music,
                 format: 'cover',
             });
             // Uma chamada só, em 9:16; o quadrado sai do recorte.
@@ -96,6 +99,27 @@ export class PlaylistCoverService {
             if (error instanceof HttpException && error.getStatus() === 503) throw error;
             throw new BadRequestException('Não foi possível gerar a capa agora. Seu crédito foi devolvido.');
         }
+    }
+
+    // O que a playlist tem de concreto, para a arte não depender só do humor:
+    // subgêneros mais comuns e algumas músicas (primeiro artista — título).
+    private async musicContext(trackIds: unknown): Promise<{ subgenres: string[]; songs: string[] }> {
+        const ids = Array.isArray(trackIds) ? trackIds.filter((id): id is string => typeof id === 'string') : [];
+        if (!ids.length) return { subgenres: [], songs: [] };
+        const { analyses, tracks } = await this.repository.getTracksForShowcase(ids);
+
+        const counts = new Map<string, number>();
+        for (const { subgenre } of analyses) {
+            if (subgenre && subgenre !== 'Unknown') counts.set(subgenre, (counts.get(subgenre) ?? 0) + 1);
+        }
+        const subgenres = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+
+        const byId = new Map(tracks.map(t => [t.spotifyId, t]));
+        const songs = ids.flatMap(id => {
+            const track = byId.get(id);
+            return track ? [`${track.artist.split(', ')[0]} — ${track.title}`] : [];
+        });
+        return { subgenres, songs };
     }
 
     // Guarda a arte inteira (9:16) para o card do perfil. Se falhar, a capa já está no Spotify: só registra.

@@ -25,12 +25,23 @@ export interface JourneyPick {
 }
 
 export const DEFAULT_TRACK_MS = 210_000; // 3,5 min, usado quando a faixa não tem duração salva
-export const NEAR_RADIUS = 0.6; // mesmo raio (sigma) dos perfis de sentimento
+// Música "combina" com a parada. Menor que a distância entre humores vizinhos
+// (Tensão↔Frustração 0,42; Tristeza↔Melancolia 0,51): 0,6 aceitava música de outro humor.
+export const FIT_RADIUS = 0.45;
 export const MIN_STOPS = 3;
-// Preferência clara pelas músicas do usuário (histórico + biblioteca): no "Descobrir" a base tem
-// músicas de todos os usuários, e com bônus pequeno as de fora ganhavam quase sempre (são muitas mais).
-const HISTORY_BONUS = NEAR_RADIUS / 3;
-const RECENT_PENALTY = NEAR_RADIUS / 2; // já sugerida há pouco: só volta se não houver outra razoável
+// Preferência leve pelas músicas do usuário: com bônus grande elas ganhavam sempre e, como são
+// poucas perto de cada humor, toda playlist repetia as mesmas.
+const HISTORY_BONUS = 0.08;
+// Cansaço: cada vez que a música foi sugerida pesa FATIGUE_WEIGHT, decaindo com o tempo.
+const FATIGUE_WEIGHT = 0.25;
+const FATIGUE_DECAY_DAYS = 10;
+// Variedade dentro da playlist.
+const ARTIST_PENALTY = 0.15; // por música do mesmo artista já escolhida
+const MAX_PER_ARTIST = 2; // só passa disso se não sobrar outra
+const SIMILAR_DISTANCE = 0.08; // vetor quase igual a uma já escolhida
+const SIMILAR_PENALTY = 0.1;
+// Sorteio com peso exp(-score/T): quanto menor, mais concentrado na melhor.
+const SAMPLE_TEMPERATURE = 0.08;
 const DURATION_TOLERANCE_MS = 120_000;
 const MAX_STOPS = 40;
 
@@ -61,7 +72,7 @@ export function buildPath(from: Vector, to: Vector, stops: number): Vector[] {
 export function findGaps(path: Vector[], candidates: JourneyCandidate[]): number[] {
     return path
         .map((point, index) => ({ index, nearest: Math.min(Infinity, ...candidates.map(c => distance(point, c.vector))) }))
-        .filter(({ nearest }) => nearest > NEAR_RADIUS)
+        .filter(({ nearest }) => nearest > FIT_RADIUS)
         .map(({ index }) => index);
 }
 
@@ -74,48 +85,107 @@ function songKey(candidate: JourneyCandidate): string {
     return `${candidate.title}|${candidate.artist}`.toLowerCase().trim();
 }
 
+// "A, B" (colaboração) conta como o artista principal.
+export function primaryArtist(artist: string): string {
+    return artist.split(', ')[0].trim().toLowerCase();
+}
+
+function artistKey(candidate: JourneyCandidate): string {
+    return primaryArtist(candidate.artist);
+}
+
+// Quanto cada música já cansou: soma das sugestões, cada uma decaindo com a idade.
+export function suggestionFatigue(rows: { spotifyId: string; suggestedAt: Date }[], now: Date): Map<string, number> {
+    const fatigue = new Map<string, number>();
+    for (const row of rows) {
+        const ageDays = Math.max(0, (now.getTime() - row.suggestedAt.getTime()) / 86_400_000);
+        const weight = FATIGUE_WEIGHT * Math.exp(-ageDays / FATIGUE_DECAY_DAYS);
+        fatigue.set(row.spotifyId, (fatigue.get(row.spotifyId) ?? 0) + weight);
+    }
+    return fatigue;
+}
+
+// Novidade para o usuário: não é dele e nunca foi sugerida a ele (na janela do cansaço).
+export function isNovel(candidate: JourneyCandidate, fatigue: Map<string, number>): boolean {
+    return !candidate.fromUserHistory && !fatigue.has(candidate.spotifyId);
+}
+
+// Sorteio com peso relativo à melhor (itens em ordem crescente de score).
+function weightedPick<T extends { score: number }>(items: T[], rng: () => number): T {
+    const weights = items.map(item => Math.exp(-(item.score - items[0].score) / SAMPLE_TEMPERATURE));
+    let target = rng() * weights.reduce((sum, w) => sum + w, 0);
+    for (let i = 0; i < items.length; i++) {
+        target -= weights[i];
+        if (target < 0) return items[i];
+    }
+    return items[items.length - 1];
+}
+
 export type PickOptions = {
-    // 1 = sempre a mais próxima. >1 = sorteia entre as N mais próximas dentro do raio.
-    randomTopK?: number;
+    // Sorteia entre as que combinam com a parada, com mais chance para as mais próximas.
+    // Sem isso, sempre a de menor score (determinístico).
+    sample?: boolean;
     rng?: () => number;
     // "Descobrir" (minhas + de fora): música de fora só entra se se encaixar no humor da parada
     // (dentro do raio); só as do usuário podem entrar como aproximadas.
     othersMustFit?: boolean;
-    // Ids sugeridos em playlists recentes: perdem posição para não repetir sempre as mesmas.
-    recentIds?: Set<string>;
+    // Cansaço por música (suggestionFatigue): as sugeridas muitas vezes/há pouco perdem posição.
+    fatigue?: Map<string, number>;
+    // Parte da playlist reservada a músicas novas para o usuário (isNovel), quando houver no raio.
+    noveltyShare?: number;
 };
 
-// Escolhe, em ordem, a candidata mais próxima de cada parada: sem repetir música
-// e evitando o mesmo artista em sequência (a menos que não haja outra opção).
+// Escolhe, em ordem, uma música para cada parada: sem repetir música, no máximo MAX_PER_ARTIST
+// por artista e evitando o mesmo artista em sequência (a menos que não haja outra opção).
 export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], options: PickOptions = {}): JourneyPick[] {
-    const topK = Math.max(1, options.randomTopK ?? 1);
     const rng = options.rng ?? Math.random;
-    const recentIds = options.recentIds ?? new Set<string>();
-    const othersMustFit = options.othersMustFit ?? false;
+    const fatigue = options.fatigue ?? new Map<string, number>();
+    const noveltyShare = options.noveltyShare ?? 0;
     const used = new Set<string>();
+    const perArtist = new Map<string, number>();
     const picks: JourneyPick[] = [];
+    let novelPicked = 0;
 
     path.forEach((point, stop) => {
-        const previousArtist = picks[picks.length - 1]?.candidate.artist;
+        const previousArtist = picks.length ? artistKey(picks[picks.length - 1].candidate) : undefined;
         const ranked = candidates
             .filter(c => !used.has(c.spotifyId) && !used.has(songKey(c)))
             .map(c => {
                 const d = distance(point, c.vector);
-                const score = d - (c.fromUserHistory ? HISTORY_BONUS : 0) + (recentIds.has(c.spotifyId) ? RECENT_PENALTY : 0);
-                return { candidate: c, distance: d, score };
+                const artist = artistKey(c);
+                const artistCount = perArtist.get(artist) ?? 0;
+                const similar = picks.some(p => distance(p.candidate.vector, c.vector) < SIMILAR_DISTANCE);
+                const score = d
+                    - (c.fromUserHistory ? HISTORY_BONUS : 0)
+                    + (fatigue.get(c.spotifyId) ?? 0)
+                    + artistCount * ARTIST_PENALTY
+                    + (similar ? SIMILAR_PENALTY : 0);
+                return { candidate: c, distance: d, score, artist, artistCount };
             })
-            .filter(r => !othersMustFit || r.candidate.fromUserHistory || r.distance <= NEAR_RADIUS)
+            .filter(r => !options.othersMustFit || r.candidate.fromUserHistory || r.distance <= FIT_RADIUS)
             .sort((a, b) => a.score - b.score);
 
-        const otherArtist = ranked.filter(r => r.candidate.artist !== previousArtist);
-        const options = otherArtist.length ? otherArtist : ranked;
-        const near = options.filter(r => r.distance <= NEAR_RADIUS).slice(0, topK);
-        const best = topK > 1 && near.length ? near[Math.floor(rng() * near.length)] : options[0];
+        // Da regra mais exigente para a mais solta; fica na primeira que tiver música no raio.
+        const layers = [
+            ranked.filter(r => r.artistCount < MAX_PER_ARTIST && r.artist !== previousArtist),
+            ranked.filter(r => r.artistCount < MAX_PER_ARTIST),
+            ranked,
+        ];
+        const layer = layers.find(l => l.some(r => r.distance <= FIT_RADIUS)) ?? layers.find(l => l.length) ?? [];
+        let fit = layer.filter(r => r.distance <= FIT_RADIUS);
+
+        const novelBehind = novelPicked < Math.round(noveltyShare * (stop + 1));
+        const novelFit = fit.filter(r => isNovel(r.candidate, fatigue));
+        if (novelBehind && novelFit.length) fit = novelFit;
+
+        const best = fit.length ? (options.sample ? weightedPick(fit, rng) : fit[0]) : layer[0];
         if (!best) return;
 
         used.add(best.candidate.spotifyId);
         used.add(songKey(best.candidate));
-        picks.push({ candidate: best.candidate, stop, distance: best.distance, approximate: best.distance > NEAR_RADIUS });
+        perArtist.set(best.artist, (perArtist.get(best.artist) ?? 0) + 1);
+        if (isNovel(best.candidate, fatigue)) novelPicked++;
+        picks.push({ candidate: best.candidate, stop, distance: best.distance, approximate: best.distance > FIT_RADIUS });
     });
 
     return picks;

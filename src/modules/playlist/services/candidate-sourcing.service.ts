@@ -5,15 +5,17 @@ import { EMOTION_CLUSTERS, getClusterVector } from "src/shared/infra/IA/emotion-
 import { MusicProviderInterface } from "src/shared/infra/music/music.provider.interface";
 import { TrackInput } from "src/shared/types/TrackInput";
 import { SENTIMENT_SEARCH_TERMS } from "../sentiment-search-terms";
-import { distance, JourneyCandidate, NEAR_RADIUS, Vector } from "./journey-path";
+import { distance, FIT_RADIUS, JourneyCandidate, primaryArtist, Vector } from "./journey-path";
 
 const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por playlist
 const PER_QUERY = 5; // novas por busca, para espalhar o orçamento entre as paradas
 const JEV_CONCURRENCY = 5;
-const ARTIST_QUERIES = 3;
+const ARTIST_QUERIES = 4; // buscas por parada: o limite de chamadas ao Spotify é baixo
+// Artista com alguma música do usuário perto do humor da parada é buscado primeiro.
+const ARTIST_NEAR_RADIUS = 0.6;
 const REQUEST_PAGES = 3; // páginas de 10 por termo buscado a partir do pedido
 const MAX_REQUEST_RESULTS = 60;
-const RANDOM_PAGE_SPREAD = 3; // a busca começa numa página sorteada entre as 3 primeiras
+const RANDOM_PAGE_SPREAD = 5; // a busca começa numa página sorteada entre as 5 primeiras
 export const REQUEST_MATCH_THRESHOLD = 0.5;
 
 function shuffle<T>(items: T[]): T[] {
@@ -33,8 +35,10 @@ export type SourcingContext = {
     provider: MusicProviderInterface;
     accessToken: string;
     knownIds: Set<string>;
-    topArtists: string[];
-    topSubgenres: string[];
+    // Artistas que o usuário ouve (histórico + biblioteca): as músicas novas só podem ser deles.
+    artists: string[];
+    // Músicas do usuário: dizem quais artistas combinam com o humor de cada parada.
+    userTracks: JourneyCandidate[];
 };
 
 // ---------------------------------------------------------------------------
@@ -54,20 +58,20 @@ export class CandidateSourcingService {
 
         for (const stop of gapStops) {
             if (found.length >= MAX_NEW_CANDIDATES) break;
-            if (found.some(c => distance(stop, c.vector) <= NEAR_RADIUS)) continue; // já coberta por outra busca
+            if (found.some(c => distance(stop, c.vector) <= FIT_RADIUS)) continue; // já coberta por outra busca
 
             for (const query of this.queriesFor(stop, ctx)) {
                 const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - found.length);
                 if (budget <= 0) break;
 
-                const results = await ctx.provider.searchTracks!(ctx.accessToken, query).catch((): TrackInput[] => []);
-                const fresh = results.filter(t => !seen.has(t.spotifyId)).slice(0, budget);
+                const results = await this.searchOnce(query, ctx);
+                const fresh = results.filter(t => !seen.has(t.spotifyId) && this.byKnownArtist(t, ctx)).slice(0, budget);
                 fresh.forEach(t => seen.add(t.spotifyId));
 
                 const classified = await this.classifyAndSave(fresh);
                 found.push(...classified);
 
-                if (classified.some(c => distance(stop, c.vector) <= NEAR_RADIUS)) break;
+                if (classified.some(c => distance(stop, c.vector) <= FIT_RADIUS)) break;
             }
         }
 
@@ -79,15 +83,14 @@ export class CandidateSourcingService {
     async fillPoint(point: Vector, needed: number, ctx: SourcingContext): Promise<JourneyCandidate[]> {
         const found: JourneyCandidate[] = [];
         const seen = new Set(ctx.knownIds);
-        const nearCount = () => found.filter(c => distance(point, c.vector) <= NEAR_RADIUS).length;
+        const nearCount = () => found.filter(c => distance(point, c.vector) <= FIT_RADIUS).length;
 
         for (const query of this.queriesFor(point, ctx)) {
             if (nearCount() >= needed || found.length >= MAX_NEW_CANDIDATES) break;
             const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - found.length);
 
-            // Página sorteada: pedir o mesmo humor de novo não traz sempre as mesmas.
-            const results = await ctx.provider.searchTracks!(ctx.accessToken, query, randomPage() * 10).catch((): TrackInput[] => []);
-            const fresh = results.filter(t => !seen.has(t.spotifyId)).slice(0, budget);
+            const results = await this.searchOnce(query, ctx);
+            const fresh = results.filter(t => !seen.has(t.spotifyId) && this.byKnownArtist(t, ctx)).slice(0, budget);
             fresh.forEach(t => seen.add(t.spotifyId));
             found.push(...await this.classifyAndSave(fresh));
         }
@@ -138,7 +141,7 @@ export class CandidateSourcingService {
         let classifiedCount = 0;
 
         for (const stop of stops) {
-            if ([...found.values()].some(c => distance(stop, c.vector) <= NEAR_RADIUS)) continue;
+            if ([...found.values()].some(c => distance(stop, c.vector) <= FIT_RADIUS)) continue;
 
             for (const query of shuffle(SENTIMENT_SEARCH_TERMS[this.nearestSentiment(stop)] ?? [])) {
                 const results = shuffle(await this.searchPages(query, ctx, 1)).filter(t => !found.has(t.spotifyId));
@@ -151,12 +154,21 @@ export class CandidateSourcingService {
                 classifiedCount += toClassify.length;
                 classified.forEach(c => found.set(c.spotifyId, c));
 
-                if ([...found.values()].some(c => distance(stop, c.vector) <= NEAR_RADIUS)) break;
+                if ([...found.values()].some(c => distance(stop, c.vector) <= FIT_RADIUS)) break;
                 if (classifiedCount >= MAX_NEW_CANDIDATES) break;
             }
         }
 
         return [...found.values()];
+    }
+
+    // Uma página sorteada (pedir o mesmo humor de novo não traz sempre as mesmas);
+    // se vier vazia (termo com poucos resultados), a primeira.
+    private async searchOnce(query: string, ctx: Pick<SourcingContext, 'provider' | 'accessToken'>): Promise<TrackInput[]> {
+        const page = randomPage();
+        const results = await ctx.provider.searchTracks!(ctx.accessToken, query, page * 10).catch((): TrackInput[] => []);
+        if (results.length || page === 0) return results;
+        return ctx.provider.searchTracks!(ctx.accessToken, query, 0).catch((): TrackInput[] => []);
     }
 
     // Busca `pages` páginas a partir de uma página sorteada; se ela vier vazia
@@ -193,19 +205,23 @@ export class CandidateSourcingService {
         return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     }
 
-    // Primeiro artistas que o usuário ouve; depois gêneros ligados ao sentimento
-    // da parada, com os subgêneros que ele mais ouve na frente.
+    // Só artistas que o usuário já ouve. Primeiro os que têm música dele perto do humor da parada
+    // (sorteados), depois os outros; ARTIST_QUERIES buscas por parada.
     private queriesFor(stop: Vector, ctx: SourcingContext): string[] {
-        const sentiment = this.nearestSentiment(stop);
-        const userGenres = ctx.topSubgenres.map(sg => sg.toLowerCase());
-        const terms = [...(SENTIMENT_SEARCH_TERMS[sentiment] ?? [])].sort((a, b) =>
-            Number(userGenres.some(g => b.toLowerCase().includes(g))) - Number(userGenres.some(g => a.toLowerCase().includes(g))),
-        );
+        const near = new Set(ctx.userTracks
+            .filter(c => distance(stop, c.vector) <= ARTIST_NEAR_RADIUS)
+            .map(c => primaryArtist(c.artist)));
+        const isNear = (artist: string) => near.has(primaryArtist(artist));
 
-        return [
-            ...ctx.topArtists.slice(0, ARTIST_QUERIES).map(artist => `artist:"${artist.replace(/"/g, '')}"`),
-            ...terms,
-        ];
+        return [...shuffle(ctx.artists.filter(isNear)), ...shuffle(ctx.artists.filter(a => !isNear(a)))]
+            .slice(0, ARTIST_QUERIES)
+            .map(artist => `artist:"${artist.replace(/"/g, '')}"`);
+    }
+
+    // A busca por artista também traz homônimos e participações: fica só quem o usuário ouve.
+    private byKnownArtist(track: TrackInput, ctx: SourcingContext): boolean {
+        const artist = primaryArtist(track.artist);
+        return ctx.artists.some(a => primaryArtist(a) === artist);
     }
 
     private nearestSentiment(point: Vector): string {

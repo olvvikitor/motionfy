@@ -4,7 +4,10 @@
 // - score: quanto da playlist está de fato nesse humor (% das faixas no raio)
 // - subgênero: o que mais aparece entre as faixas
 // ---------------------------------------------------------------------------
-import { distance, NEAR_RADIUS, Vector } from "./journey-path";
+import { distance, Vector } from "./journey-path";
+
+// Raio largo do card do perfil (% das faixas no humor da playlist); a escolha usa FIT_RADIUS.
+const NEAR_RADIUS = 0.6;
 
 export type ShowcaseTrack = { spotifyId: string; title: string; artist: string; imgUrl: string; vector: Vector | null; subgenre: string | null };
 

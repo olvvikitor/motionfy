@@ -6,7 +6,7 @@ import { MusicProviderInterface } from "src/shared/infra/music/music.provider.in
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository, UserTaste } from "../repository/playlist.repository";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
-import { buildJourney, buildPath, distance, findGaps, NEAR_RADIUS, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 
 export type JourneyPlaylistResponse = {
     from: string;
@@ -31,8 +31,12 @@ export type JourneyPlaylistResponse = {
     }[];
 };
 
-// Janela em que uma música sugerida é evitada nas próximas playlists.
-const RECENT_SUGGESTION_DAYS = 7;
+// Janela do cansaço: sugestões mais velhas que isso já não pesam (e são apagadas).
+const RECENT_SUGGESTION_DAYS = 30;
+// No "Descobrir", ~30% da playlist vem de músicas novas para o usuário.
+const NOVELTY_SHARE = 0.3;
+// Abaixo disso a música já "descansou" e conta como cobertura da parada.
+const RESTED_FATIGUE = 0.1;
 
 export type JourneyFromOrigin = 'request' | 'current_mood' | 'jev_guess';
 
@@ -79,15 +83,20 @@ export class JourneyPlaylistService {
         const taste = await this.repository.getUserTaste(userId);
         const pool = await this.repository.getAnalyzedPool(taste.tasteIds);
         const since = new Date(Date.now() - RECENT_SUGGESTION_DAYS * 86_400_000);
-        const recentIds = await this.repository.getRecentSuggestionIds(userId, since);
+        const fatigue = suggestionFatigue(await this.repository.getSuggestionHistory(userId, since), new Date());
 
-        const { candidates, newTracksAnalyzed } = await this.collectCandidates(dto, journey, { from, to, pool, taste, provider, accessToken, recentIds });
+        const { candidates, newTracksAnalyzed } = await this.collectCandidates(dto, journey, { from, to, pool, taste, provider, accessToken, fatigue });
 
-        // Sorteia entre as 3 mais próximas de cada parada e rebaixa as já sugeridas nos últimos
-        // dias: o mesmo pedido gera playlists diferentes em vez de repetir as mesmas músicas.
+        // Sorteio com peso entre as que combinam com cada parada; as sugeridas muitas vezes/há pouco
+        // perdem posição e, no "Descobrir", ~30% vêm de músicas novas para o usuário.
         // "Descobrir": músicas de outros usuários/novidades só se se encaixarem no humor da parada.
         // "Minha biblioteca" já só tem as do usuário; o pedido em texto só busca no Spotify.
-        const picks = buildJourney(from, to, dto.durationMin, candidates, { randomTopK: 3, recentIds, othersMustFit: dto.source === 'all' });
+        const picks = buildJourney(from, to, dto.durationMin, candidates, {
+            sample: true,
+            fatigue,
+            othersMustFit: dto.source === 'all',
+            noveltyShare: dto.source === 'all' ? NOVELTY_SHARE : 0,
+        });
         if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto));
 
         await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
@@ -175,7 +184,7 @@ export class JourneyPlaylistService {
         taste: UserTaste;
         provider: MusicProviderInterface;
         accessToken: string;
-        recentIds: Set<string>;
+        fatigue: Map<string, number>;
     }): Promise<{ candidates: JourneyCandidate[]; newTracksAnalyzed: number }> {
         switch (dto.source) {
             // Só as curtidas já analisadas; nada de busca externa.
@@ -196,30 +205,46 @@ export class JourneyPlaylistService {
                 };
             }
 
-            // Acervo inteiro + busca automática onde faltar música. Músicas sugeridas
-            // há pouco não contam como cobertura: a parada busca novidade no Spotify.
+            // As do usuário + músicas de fora **só de artistas que ele já ouve** (histórico + biblioteca),
+            // com busca no Spotify onde faltar música "descansada" ou novidade para fechar a cota.
+            // Músicas cansadas não contam como cobertura.
             default: {
                 const stops = stopCountForDuration(dto.durationMin);
                 const path = buildPath(ctx.from, ctx.to, stops);
-                const unseen = ctx.pool.filter(c => !ctx.recentIds.has(c.spotifyId));
+                const quota = Math.ceil(NOVELTY_SHARE * stops);
+                const knownArtists = new Set(ctx.taste.topArtists.map(primaryArtist));
+                const pool = ctx.pool.filter(c => c.fromUserHistory || knownArtists.has(primaryArtist(c.artist)));
+                const rested = pool.filter(c => (ctx.fatigue.get(c.spotifyId) ?? 0) < RESTED_FATIGUE);
+                const novel = pool.filter(c => isNovel(c, ctx.fatigue));
                 const sourcing = {
                     provider: ctx.provider,
                     accessToken: ctx.accessToken,
                     knownIds: new Set(ctx.pool.map(c => c.spotifyId)),
-                    topArtists: ctx.taste.topArtists,
-                    topSubgenres: ctx.taste.topSubgenres,
+                    artists: ctx.taste.topArtists,
+                    userTracks: ctx.pool.filter(c => c.fromUserHistory),
                 };
 
-                // Um humor só: uma música perto não basta, precisa de uma por parada.
+                // Um humor só: uma música perto não basta, precisa de uma por parada (e da cota de novas).
                 if (journey.from === journey.to) {
-                    const near = unseen.filter(c => distance(ctx.from, c.vector) <= NEAR_RADIUS).length;
-                    const fresh = near < stops ? await this.sourcing.fillPoint(ctx.from, stops - near, sourcing) : [];
-                    return { candidates: [...ctx.pool, ...fresh], newTracksAnalyzed: fresh.length };
+                    const near = (list: JourneyCandidate[]) => list.filter(c => distance(ctx.from, c.vector) <= FIT_RADIUS).length;
+                    const needed = Math.max(stops - near(rested), quota - near(novel));
+                    const fresh = needed > 0 ? await this.sourcing.fillPoint(ctx.from, needed, sourcing) : [];
+                    return { candidates: [...pool, ...fresh], newTracksAnalyzed: fresh.length };
                 }
 
-                const gapStops = findGaps(path, unseen).map(index => path[index]);
+                const gaps = new Set(findGaps(path, rested));
+                const novelGaps = findGaps(path, novel);
+                const deficit = quota - (stops - novelGaps.length);
+                if (deficit > 0) {
+                    // Paradas espalhadas pelo caminho primeiro, depois as que faltarem.
+                    const spread = new Set(Array.from({ length: quota }, (_, i) => Math.floor((i * stops) / quota)));
+                    const ordered = [...novelGaps.filter(i => spread.has(i)), ...novelGaps.filter(i => !spread.has(i))];
+                    ordered.slice(0, deficit).forEach(i => gaps.add(i));
+                }
+
+                const gapStops = [...gaps].sort((a, b) => a - b).map(index => path[index]);
                 const fresh = gapStops.length ? await this.sourcing.fillGaps(gapStops, sourcing) : [];
-                return { candidates: [...ctx.pool, ...fresh], newTracksAnalyzed: fresh.length };
+                return { candidates: [...pool, ...fresh], newTracksAnalyzed: fresh.length };
             }
         }
     }

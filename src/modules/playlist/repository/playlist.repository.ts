@@ -4,13 +4,13 @@ import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.servi
 import { JourneyCandidate, Vector } from "../services/journey-path";
 
 const POOL_LIMIT = 5000;
+const TASTE_CHUNK = 1000;
 
 export type UserTaste = {
     // Faixas que o usuário ouviu ou curtiu — recebem preferência na jornada.
     tasteIds: Set<string>;
     savedIds: Set<string>;
-    topArtists: string[];
-    topSubgenres: string[];
+    topArtists: string[]; // artista principal, dos mais ouvidos aos menos
 };
 
 @Injectable()
@@ -34,14 +34,12 @@ export class PlaylistRepository {
         return latest?.sentiment ?? null;
     }
 
-    // Músicas sugeridas ao usuário em playlists de jornada desde `since`.
-    async getRecentSuggestionIds(userId: string, since: Date): Promise<Set<string>> {
-        const rows = await this.prisma.playlistSuggestion.findMany({
+    // Sugestões ao usuário desde `since`, uma linha por vez sugerida (para o cansaço).
+    async getSuggestionHistory(userId: string, since: Date): Promise<{ spotifyId: string; suggestedAt: Date }[]> {
+        return this.prisma.playlistSuggestion.findMany({
             where: { userId, suggestedAt: { gte: since } },
-            select: { spotifyId: true },
-            distinct: ['spotifyId'],
+            select: { spotifyId: true, suggestedAt: true },
         });
-        return new Set(rows.map(r => r.spotifyId));
     }
 
     // Grava a sugestão nova e apaga as que já saíram da janela (não servem mais para nada).
@@ -63,7 +61,7 @@ export class PlaylistRepository {
 
     // Só quem criou a playlist pode mudar a capa dela.
     async findOwnedMofyPlaylist(userId: string, spotifyPlaylistId: string) {
-        return this.prisma.mofyPlaylist.findFirst({ where: { userId, spotifyPlaylistId, removedAt: null }, select: { id: true, sentiment: true } });
+        return this.prisma.mofyPlaylist.findFirst({ where: { userId, spotifyPlaylistId, removedAt: null }, select: { id: true, sentiment: true, title: true, trackIds: true } });
     }
 
     async getFacePhotoPath(userId: string): Promise<string | null> {
@@ -113,7 +111,7 @@ export class PlaylistRepository {
         await this.prisma.mofyPlaylist.updateMany({ where: { userId, spotifyPlaylistId, removedAt: null }, data: { coverUrl } });
     }
 
-    // Análise e dados das faixas das playlists (música mais forte, subgênero, % no humor).
+    // Análise e dados das faixas das playlists (música mais forte, subgênero, % no humor; contexto da capa gerada).
     async getTracksForShowcase(spotifyIds: string[]) {
         const [analyses, tracks] = await Promise.all([
             this.prisma.tracksAnalysis.findMany({
@@ -157,26 +155,23 @@ export class PlaylistRepository {
         const tasteTracks = [...history, ...saved].map(item => item.track);
         const tasteIds = new Set(tasteTracks.map(t => t.spotifyId).filter((id): id is string => Boolean(id)));
 
-        const analyses = await this.prisma.tracksAnalysis.findMany({
-            where: { spotifyid: { in: [...tasteIds] } },
-            select: { subgenre: true },
-        });
-
         return {
             tasteIds,
             savedIds: new Set(saved.map(s => s.track.spotifyId).filter((id): id is string => Boolean(id))),
             topArtists: this.rankByCount(tasteTracks.map(t => t.artist.split(', ')[0])),
-            topSubgenres: this.rankByCount(analyses.map(a => a.subgenre).filter(sg => sg && sg !== 'Unknown')),
         };
     }
 
-    // Todo o acervo analisado (de todos os usuários), já no formato de candidata.
+    // Acervo analisado: as POOL_LIMIT mais recentes (de todos os usuários) + todas as do usuário,
+    // senão as curtidas antigas sumiriam quando o acervo passasse do limite.
     async getAnalyzedPool(tasteIds: Set<string>): Promise<JourneyCandidate[]> {
-        const analyses = await this.prisma.tracksAnalysis.findMany({
-            select: { spotifyid: true, emotionalVector: true, dominantSentiment: true },
-            orderBy: { analyzedAt: 'desc' },
-            take: POOL_LIMIT,
-        });
+        const select = { spotifyid: true, emotionalVector: true, dominantSentiment: true } as const;
+        const recent = await this.prisma.tracksAnalysis.findMany({ select, orderBy: { analyzedAt: 'desc' }, take: POOL_LIMIT });
+        const recentIds = new Set(recent.map(a => a.spotifyid));
+        const missing = [...tasteIds].filter(id => !recentIds.has(id));
+        const chunks = Array.from({ length: Math.ceil(missing.length / TASTE_CHUNK) }, (_, i) => missing.slice(i * TASTE_CHUNK, (i + 1) * TASTE_CHUNK));
+        const tasteAnalyses = (await Promise.all(chunks.map(ids => this.prisma.tracksAnalysis.findMany({ where: { spotifyid: { in: ids } }, select })))).flat();
+        const analyses = [...recent, ...tasteAnalyses];
 
         const tracks = await this.prisma.track.findMany({
             where: { spotifyId: { in: analyses.map(a => a.spotifyid) } },
