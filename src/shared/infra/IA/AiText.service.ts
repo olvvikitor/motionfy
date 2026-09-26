@@ -29,6 +29,7 @@ export type ResponseAi = {
     moodScore: number;
     genre: string;
     subgenre: string;
+    bpm?: number | null;
     coreAxes: CoreAxes;
   }[];
 };
@@ -175,7 +176,7 @@ const SENTIMENT_CRITERIA: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Subgênero (Choice do Jev) → gênero derivado. Uma única pergunta resolve os dois.
 // ---------------------------------------------------------------------------
-const SUBGENRE_TO_GENRE: Record<string, string> = {
+export const SUBGENRE_TO_GENRE: Record<string, string> = {
   "Pop": "Pop",
   "Dance Pop": "Pop",
   "Indie Pop": "Pop",
@@ -330,6 +331,7 @@ export class AiTextService {
       moodScore,
       genre: SUBGENRE_TO_GENRE[subgenre] ?? "Unknown",
       subgenre,
+      bpm: extra.bpm,
       coreAxes,
       sentimentProbabilities: sentiment.probabilities,
     };

@@ -3,6 +3,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString,
 
 const REQUEST_MESSAGE = 'Diga o que você quer ouvir (de 2 a 200 caracteres).';
 import { EMOTION_CLUSTERS } from 'src/shared/infra/IA/emotion-analysis.service';
+import { BPM_RANGE_KEYS, type BpmRange } from '../services/journey-filters';
 
 export const JOURNEY_SOURCES = ['all', 'saved', 'custom'] as const;
 export type JourneySource = typeof JOURNEY_SOURCES[number];
@@ -39,6 +40,26 @@ export class JourneyPlaylistDto {
     @IsOptional()
     @IsIn(REQUEST_SOURCES, { message: 'Origem do pedido inválida. Use search.' })
     requestSource: RequestSource = 'search';
+
+    // Filtros (modos all/saved), cada um com várias opções. Gênero e subgênero somam; BPM restringe.
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(20, { message: 'Escolha até 20 gêneros.' })
+    @IsString({ each: true })
+    @Length(1, 60, { each: true })
+    genres?: string[];
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(20, { message: 'Escolha até 20 subgêneros.' })
+    @IsString({ each: true })
+    @Length(1, 60, { each: true })
+    subgenres?: string[];
+
+    @IsOptional()
+    @IsArray()
+    @IsIn(BPM_RANGE_KEYS, { each: true, message: `Faixa de BPM inválida. Use: ${BPM_RANGE_KEYS.join(', ')}.` })
+    bpm?: BpmRange[];
 }
 
 const TRACK_IDS_MESSAGE = 'Escolha de 1 a 60 músicas para adicionar à fila.';

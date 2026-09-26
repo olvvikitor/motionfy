@@ -58,6 +58,7 @@ async function main() {
                             reasoning: a.reasoning,
                             genre: a.genre,
                             subgenre: a.subgenre,
+                            bpm: a.bpm,
                             analyzedAt: new Date(),
                         },
                     });

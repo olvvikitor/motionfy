@@ -12,6 +12,7 @@ export type TrackAnalysisWriteInput = {
     reasoning: string;
     genre: string;
     subgenre: string;
+    bpm?: number | null; // ausente = mantém o que já estava salvo
     analyzedAt?: Date;
 };
 
@@ -108,6 +109,7 @@ export class TrackRepository {
                             dominantSentiment: music.dominantSentiment,
                             genre: music.genre,
                             subgenre: music.subgenre,
+                            ...(music.bpm !== undefined ? { bpm: music.bpm } : {}),
                             coreAxes: music.coreAxes as any,
                             emotionalVector: music.emotionalVector as any,
                             reasoning: music.reasoning,
@@ -119,6 +121,7 @@ export class TrackRepository {
                             dominantSentiment: music.dominantSentiment,
                             genre: music.genre,
                             subgenre: music.subgenre,
+                            bpm: music.bpm ?? null,
                             coreAxes: music.coreAxes as any,
                             emotionalVector: music.emotionalVector as any,
                             reasoning: music.reasoning,

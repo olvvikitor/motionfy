@@ -6,6 +6,7 @@ import { MusicProviderInterface } from "src/shared/infra/music/music.provider.in
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository, UserTaste } from "../repository/playlist.repository";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
+import { buildFacets, FilterFacets, hasFilters, JourneyFilters, matchesFilters } from "./journey-filters";
 import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 
 export type JourneyPlaylistResponse = {
@@ -81,11 +82,20 @@ export class JourneyPlaylistService {
         const accessToken = await provider.refreshToken(user.refreshToken!);
 
         const taste = await this.repository.getUserTaste(userId);
-        const pool = await this.repository.getAnalyzedPool(taste.tasteIds);
+        const fullPool = await this.repository.getAnalyzedPool(taste.tasteIds);
         const since = new Date(Date.now() - RECENT_SUGGESTION_DAYS * 86_400_000);
         const fatigue = suggestionFatigue(await this.repository.getSuggestionHistory(userId, since), new Date());
 
-        const { candidates, newTracksAnalyzed } = await this.collectCandidates(dto, journey, { from, to, pool, taste, provider, accessToken, fatigue });
+        // Filtros do usuário (gêneros, subgêneros, BPM): valem para o acervo e para as músicas novas buscadas.
+        // O pedido em texto (custom) tem o estilo dele e não usa filtros.
+        const filters: JourneyFilters = dto.source === 'custom' ? {} : { genres: dto.genres, subgenres: dto.subgenres, bpm: dto.bpm };
+        const filtering = hasFilters(filters);
+        const pool = filtering ? fullPool.filter(c => matchesFilters(c, filters)) : fullPool;
+        const knownIds = new Set(fullPool.map(c => c.spotifyId)); // já analisadas: não busca/classifica de novo
+
+        const collected = await this.collectCandidates(dto, journey, { from, to, pool, knownIds, taste, provider, accessToken, fatigue });
+        const candidates = filtering ? collected.candidates.filter(c => matchesFilters(c, filters)) : collected.candidates;
+        const { newTracksAnalyzed } = collected;
 
         // Sorteio com peso entre as que combinam com cada parada; as sugeridas muitas vezes/há pouco
         // perdem posição e, no "Descobrir", ~30% vêm de músicas novas para o usuário.
@@ -97,7 +107,7 @@ export class JourneyPlaylistService {
             othersMustFit: dto.source === 'all',
             noveltyShare: dto.source === 'all' ? NOVELTY_SHARE : 0,
         });
-        if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto));
+        if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto, filtering));
 
         await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
 
@@ -124,6 +134,12 @@ export class JourneyPlaylistService {
                 approximate: pick.approximate,
             })),
         };
+    }
+
+    // Opções dos filtros: gêneros, subgêneros e faixas de BPM das músicas do usuário, com quantas tem de cada.
+    async filterOptions(userId: string): Promise<FilterFacets> {
+        const taste = await this.repository.getUserTaste(userId);
+        return buildFacets(await this.repository.getTasteFacetRows(taste.tasteIds));
     }
 
     // Sentimentos por onde a playlist passa entre partida e chegada (mesmo caminho do build).
@@ -181,6 +197,7 @@ export class JourneyPlaylistService {
         from: Vector;
         to: Vector;
         pool: JourneyCandidate[];
+        knownIds: Set<string>;
         taste: UserTaste;
         provider: MusicProviderInterface;
         accessToken: string;
@@ -219,7 +236,7 @@ export class JourneyPlaylistService {
                 const sourcing = {
                     provider: ctx.provider,
                     accessToken: ctx.accessToken,
-                    knownIds: new Set(ctx.pool.map(c => c.spotifyId)),
+                    knownIds: ctx.knownIds,
                     artists: ctx.taste.topArtists,
                     userTracks: ctx.pool.filter(c => c.fromUserHistory),
                 };
@@ -249,7 +266,8 @@ export class JourneyPlaylistService {
         }
     }
 
-    private emptyMessage(dto: JourneyPlaylistDto): string {
+    private emptyMessage(dto: JourneyPlaylistDto, filtering: boolean): string {
+        if (filtering) return 'Nenhuma música combina com esses filtros e com esse humor. Tire algum filtro e tente de novo.';
         if (dto.source === 'saved') {
             return 'Ainda não há músicas curtidas analisadas. Elas são importadas logo após o login — tente de novo em alguns minutos.';
         }

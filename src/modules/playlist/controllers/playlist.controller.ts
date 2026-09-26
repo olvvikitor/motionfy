@@ -36,6 +36,13 @@ export class PlaylistController {
         return await this.mofyPlaylist.create(req.user!.id, dto);
     }
 
+    // Opções dos filtros da geração (gêneros, subgêneros e BPM das músicas do usuário).
+    @Get('journey-playlist/filters')
+    @UseGuards(JwtAuthGuard)
+    async journeyFilters(@Req() req: MRequest) {
+        return await this.journeyPlaylist.filterOptions(req.user!.id);
+    }
+
     // Perfil: as playlists criadas com os dados do card, das mais novas, em páginas (?cursor=&limit=).
     @Get('mofy-playlists')
     @UseGuards(JwtAuthGuard)

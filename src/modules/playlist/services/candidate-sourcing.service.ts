@@ -260,6 +260,7 @@ export class CandidateSourcingService {
                     reasoning: analysis.reasoning,
                     genre: analysis.genre,
                     subgenre: analysis.subgenre,
+                    bpm: analysis.bpm,
                 }]);
 
                 return {
@@ -271,6 +272,9 @@ export class CandidateSourcingService {
                     vector: analysis.emotionalVector,
                     dominantSentiment: analysis.dominantSentiment,
                     fromUserHistory: false,
+                    genre: analysis.genre,
+                    subgenre: analysis.subgenre,
+                    bpm: analysis.bpm,
                 } satisfies JourneyCandidate;
             }));
 

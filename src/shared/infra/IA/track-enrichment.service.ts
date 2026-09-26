@@ -165,6 +165,11 @@ export class TrackEnrichmentService {
 
     // -------------------------------- Deezer --------------------------------
 
+    // Só o BPM (preencher análises antigas sem chamar o Jev: scripts/backfill-bpm.ts).
+    async getBpm(track: EnrichableTrack): Promise<number | null> {
+        return (await this.getDeezerTrack(track).catch(() => null))?.bpm ?? null;
+    }
+
     private async getDeezerTrack(track: EnrichableTrack): Promise<{ bpm: number | null; gain: number | null; duration: number | null } | null> {
         let data: any = null;
 

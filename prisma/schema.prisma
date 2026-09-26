@@ -122,6 +122,7 @@ model TracksAnalysis {
   reasoning         String
   genre             String
   subgenre          String
+  bpm               Int?     // do Deezer (null = desconhecido); filtro de BPM da playlist
   analyzedAt        DateTime @default(now())
 }
 

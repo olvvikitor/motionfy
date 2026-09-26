@@ -202,6 +202,7 @@ export default class SaveTracks {
                         reasoning: resultTrack.reasoning ?? "",
                         genre: resultTrack.genre ?? "Unknown",
                         subgenre: resultTrack.subgenre ?? "Unknown",
+                        bpm: resultTrack.bpm ?? null,
                         analyzedAt: new Date(),
                     });
                 }

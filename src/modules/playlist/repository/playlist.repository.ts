@@ -153,10 +153,20 @@ export class PlaylistRepository {
         };
     }
 
+    // Gênero, subgênero e BPM das músicas do usuário: opções dos filtros da playlist.
+    async getTasteFacetRows(tasteIds: Set<string>) {
+        const ids = [...tasteIds];
+        const chunks = Array.from({ length: Math.ceil(ids.length / TASTE_CHUNK) }, (_, i) => ids.slice(i * TASTE_CHUNK, (i + 1) * TASTE_CHUNK));
+        return (await Promise.all(chunks.map(chunk => this.prisma.tracksAnalysis.findMany({
+            where: { spotifyid: { in: chunk } },
+            select: { genre: true, subgenre: true, bpm: true },
+        })))).flat();
+    }
+
     // Acervo analisado: as POOL_LIMIT mais recentes (de todos os usuários) + todas as do usuário,
     // senão as curtidas antigas sumiriam quando o acervo passasse do limite.
     async getAnalyzedPool(tasteIds: Set<string>): Promise<JourneyCandidate[]> {
-        const select = { spotifyid: true, emotionalVector: true, dominantSentiment: true } as const;
+        const select = { spotifyid: true, emotionalVector: true, dominantSentiment: true, genre: true, subgenre: true, bpm: true } as const;
         const recent = await this.prisma.tracksAnalysis.findMany({ select, orderBy: { analyzedAt: 'desc' }, take: POOL_LIMIT });
         const recentIds = new Set(recent.map(a => a.spotifyid));
         const missing = [...tasteIds].filter(id => !recentIds.has(id));
@@ -184,6 +194,9 @@ export class PlaylistRepository {
                 vector,
                 dominantSentiment: analysis.dominantSentiment,
                 fromUserHistory: tasteIds.has(analysis.spotifyid),
+                genre: analysis.genre,
+                subgenre: analysis.subgenre,
+                bpm: analysis.bpm,
             }];
         });
     }

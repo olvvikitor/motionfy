@@ -15,6 +15,10 @@ export interface JourneyCandidate {
     vector: Vector;
     dominantSentiment: string;
     fromUserHistory: boolean; // ouvida ou curtida pelo usuário
+    // Para os filtros escolhidos pelo usuário (journey-filters.ts).
+    genre?: string | null;
+    subgenre?: string | null;
+    bpm?: number | null;
 }
 
 export interface JourneyPick {
