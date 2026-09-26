@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Res, UseGuards, Post, Body, Query, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Req, Res, UseGuards, Post, Body, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
 import { LastFmProvider } from 'src/shared/infra/music/lastfm/lastfm.service';
@@ -27,22 +27,6 @@ export class AuthController {
         const host = req.get('host') ?? 'localhost:3000';
         const hostname = host.replace(/:\d+$/, '');
         return `${protocol}://${hostname}:3002`;
-    }
-
-    @Get('spotify/callback')
-    @UseGuards(AuthGuard('spotify'))
-    async spotifyCallback(@Req() req: any, @Res() res) {
-        const { accessToken, refreshToken } = req.user;
-        const frontend = this.getFrontendUrl(req);
-        try {
-            const { token, isNewUser } = await this.authService.handleCallback('spotify', { accessToken, refreshToken });
-            return res.redirect(`${frontend}/terminate?token=${token}&new=${isNewUser}`);
-        } catch (error) {
-            // Contas novas só pelo Last.fm: quem não tinha conta volta ao login com o aviso.
-            if (error instanceof ForbiddenException) return res.redirect(`${frontend}/login?error=signup-closed`);
-            console.error('[Auth] login com Spotify falhou:', error?.message ?? error);
-            return res.redirect(`${frontend}/login?error=spotify`);
-        }
     }
 
     // Last.fm: sem limite de usuários como o Spotify. Redireciona para a tela de permissão dele.

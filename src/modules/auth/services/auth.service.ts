@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
+import { Inject, Injectable, UnauthorizedException, BadRequestException, ConflictException } from "@nestjs/common";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
 import { User } from "@prisma/client";
 import { CreateUserService } from "src/modules/user/services/create.user.service";
@@ -38,7 +38,7 @@ export class AuthService {
             refreshToken: userData.refreshToken
         }
 
-        // Contas novas só pelo Last.fm; quem já tinha conta pelo Spotify continua entrando.
+        // Contas novas só pelo Last.fm (não há mais login pelo Spotify; contas antigas entram com e-mail e senha).
         return await this.createUserService.create(user, providerName, { allowNew: providerName === 'lastfm' });
     }
 
@@ -76,9 +76,15 @@ export class AuthService {
             throw new BadRequestException('Usuário não encontrado.');
         }
 
-        const hashedPassword = await bcrypt.hash(data.password, 10);
-        await this.userRepository.updatePassword(userId, hashedPassword);
+        // Um e-mail por conta: o login por e-mail precisa achar uma conta só.
+        const email = data.email.trim().toLowerCase();
+        if (await this.userRepository.isEmailTakenByOther(email, userId)) {
+            throw new ConflictException('Esse e-mail já está em outra conta.');
+        }
 
-        return { message: 'Senha atualizada com sucesso.' };
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        await this.userRepository.updateCredentials(userId, hashedPassword, email);
+
+        return { message: 'Senha e e-mail salvos.' };
     }
 }

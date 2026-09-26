@@ -242,7 +242,7 @@ export class SpotifyProvider implements MusicProviderInterface {
         } catch (err) {
             if (err instanceof AxiosError && err.response?.status === 403) {
                 throw new HttpException(
-                    'O Spotify não liberou esta playlist. Entre de novo com o Spotify para dar acesso às suas playlists.',
+                    'O Spotify não liberou esta playlist. Use as curtidas ou outra playlist sua.',
                     HttpStatus.FORBIDDEN,
                 );
             }
