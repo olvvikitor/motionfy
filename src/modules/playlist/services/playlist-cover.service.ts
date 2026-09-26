@@ -12,14 +12,14 @@ const COVER_SIZE = 640;
 // O Spotify aceita até 256 KB de base64 na capa; folga para não bater no limite.
 const MAX_BASE64_LENGTH = 250 * 1024;
 const JPEG_QUALITIES = [85, 75, 65, 55, 45, 35];
-// Arte do perfil (9:16): até 1080×1920, sem aumentar imagem pequena.
-const ART_MAX = { width: 1080, height: 1920 };
+// Arte do card do perfil: quadrada, como a capa do Spotify.
+const ART_SIZE = 1024;
 
 export type CoverResponse = { preview: string; remainingCredits?: number };
 
-// Quadrado 640×640 em JPEG para o Spotify, baixando a qualidade até caber no limite.
-// O recorte "attention" procura a parte com mais detalhe (rosto, personagem) em vez do
-// meio exato: a mesma arte 9:16 do perfil vira a capa 1:1 sem gerar outra imagem.
+// Quadrado 640×640 em JPEG para o Spotify, baixando a qualidade até caber no limite. A capa gerada
+// já é quadrada; só imagem enviada pelo usuário em outro formato é recortada ("attention" procura a
+// parte com mais detalhe, como rosto ou personagem, em vez do meio exato).
 export async function toSpotifyCover(image: Buffer): Promise<string> {
     const square = sharp(image).rotate().resize(COVER_SIZE, COVER_SIZE, { fit: 'cover', position: sharp.strategy.attention });
     for (const quality of JPEG_QUALITIES) {
@@ -29,17 +29,17 @@ export async function toSpotifyCover(image: Buffer): Promise<string> {
     throw new BadRequestException('Não deu para deixar a imagem pequena o bastante para o Spotify. Tente outra.');
 }
 
-// Arte inteira para o card do perfil (formato original, normalmente 9:16), em JPEG.
+// Arte do card do perfil: o mesmo quadrado da capa do Spotify, em tamanho maior.
 export async function toProfileArt(image: Buffer): Promise<Buffer> {
     return sharp(image).rotate()
-        .resize(ART_MAX.width, ART_MAX.height, { fit: 'inside', withoutEnlargement: true })
+        .resize(ART_SIZE, ART_SIZE, { fit: 'cover', position: sharp.strategy.attention })
         .jpeg({ quality: 85, mozjpeg: true })
         .toBuffer();
 }
 
 // Capa das playlists criadas na conta do Mofy: imagem do usuário ou gerada pela IA
 // (mesmo estilo e mesma regra de crédito da arte do humor no perfil).
-// Uma imagem só, dois usos: a arte 9:16 vai para o card do perfil; o recorte 1:1, para o Spotify.
+// Uma imagem só, quadrada: vai para o Spotify (640, JPEG ≤ 256 KB) e para o card do perfil (1024).
 @Injectable()
 export class PlaylistCoverService {
     constructor(
@@ -82,10 +82,9 @@ export class PlaylistCoverService {
                 faceReferencePath: facePhoto,
                 title: owned.title,
                 ...music,
-                format: 'cover',
             });
-            // Uma chamada só, em 9:16; o quadrado sai do recorte.
-            const image = await this.aiImage.generateImage(prompt, facePhoto ?? undefined, '1024x1536');
+            // Uma chamada só, já quadrada: a mesma imagem vai para o Spotify e para o card.
+            const image = await this.aiImage.generateImage(prompt, facePhoto ?? undefined);
             const cover = await toSpotifyCover(image);
             await this.account.setCover(playlistId, cover);
             await this.saveProfileArt(userId, playlistId, image);
@@ -122,7 +121,7 @@ export class PlaylistCoverService {
         return { subgenres, songs };
     }
 
-    // Guarda a arte inteira (9:16) para o card do perfil. Se falhar, a capa já está no Spotify: só registra.
+    // Guarda a arte quadrada para o card do perfil. Se falhar, a capa já está no Spotify: só registra.
     private async saveProfileArt(userId: string, playlistId: string, image: Buffer): Promise<void> {
         try {
             const art = await toProfileArt(image);

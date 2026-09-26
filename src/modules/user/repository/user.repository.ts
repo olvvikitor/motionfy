@@ -59,6 +59,26 @@ export class UserRepository {
         await this.prisma.user.update({ where: { id: userId }, data: { face_photo_path: facePhotoPath } });
     }
 
+    // Mesmo humor ainda em curso: atualiza a linha (e a hora) em vez de criar outra, para a linha do
+    // tempo e as contagens não virarem uma linha por música.
+    async updateMood(moodId: string, mood: {
+        moodScore: number;
+        emotions: EmotionalVector;
+        coreAxes: CoreAxes;
+        tracks: any;
+    }) {
+        await this.prisma.moodAnalysis.update({
+            where: { id: moodId },
+            data: {
+                tracksAnalyzeds: mood.tracks,
+                emotions: mood.emotions,
+                moodScore: mood.moodScore,
+                coreAxes: mood.coreAxes,
+                analyzedAt: new Date(),
+            },
+        });
+    }
+
     async SaveMood(userId: string, mood: {
         moodScore: number;
         sentiment: string;

@@ -13,7 +13,7 @@ jest.setTimeout(30_000);
 
 describe('toSpotifyCover', () => {
     it('devolve JPEG quadrado 640×640 dentro do limite de 256 KB do Spotify', async () => {
-        const base64 = await toSpotifyCover(await noisyPng(1024, 1536));
+        const base64 = await toSpotifyCover(await noisyPng(1024, 1024));
         expect(base64.length).toBeLessThanOrEqual(256 * 1024);
 
         const meta = await sharp(Buffer.from(base64, 'base64')).metadata();
@@ -22,11 +22,13 @@ describe('toSpotifyCover', () => {
         expect(meta.height).toBe(640);
     });
 
-    it('arte do perfil mantém o 9:16 da imagem gerada (só reduz se for maior que 1080×1920)', async () => {
-        const art = await toProfileArt(await noisyPng(1024, 1536));
-        const meta = await sharp(art).metadata();
-        expect(meta.format).toBe('jpeg');
-        expect(meta.width! / meta.height!).toBeCloseTo(1024 / 1536, 2);
+    it('arte do perfil é o mesmo quadrado da capa, em 1024×1024 (imagem de outro formato é recortada)', async () => {
+        for (const [w, h] of [[1024, 1024], [800, 1200]]) {
+            const meta = await sharp(await toProfileArt(await noisyPng(w, h))).metadata();
+            expect(meta.format).toBe('jpeg');
+            expect(meta.width).toBe(1024);
+            expect(meta.height).toBe(1024);
+        }
     });
 
     it('recusa arquivo que não é imagem', async () => {

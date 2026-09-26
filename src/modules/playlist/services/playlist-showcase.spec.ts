@@ -1,4 +1,4 @@
-import { defaultFeatured, showcaseStats, ShowcaseTrack } from './playlist-showcase';
+import { showcaseStats, ShowcaseTrack } from './playlist-showcase';
 
 const MOOD = { a: 0, b: 1 };
 const track = (id: string, vector: Record<string, number> | null, subgenre: string | null = null): ShowcaseTrack =>
@@ -24,12 +24,5 @@ describe('showcaseStats', () => {
         const stats = showcaseStats(MOOD, [track('1', null)]);
         expect(stats.score).toBeNull();
         expect(stats.strongestTrack?.spotifyId).toBe('1');
-    });
-});
-
-describe('defaultFeatured', () => {
-    it('pega as mais novas, uma por humor, até o limite', () => {
-        const list = [{ id: 1, sentiment: 'Paz' }, { id: 2, sentiment: 'Paz' }, { id: 3, sentiment: 'Tensao' }, { id: 4, sentiment: 'Amor' }];
-        expect(defaultFeatured(list, 2).map(p => p.id)).toEqual([1, 3]);
     });
 });

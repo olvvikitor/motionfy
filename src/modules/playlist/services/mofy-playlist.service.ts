@@ -5,13 +5,13 @@ import { SpotifyMofyAccountService } from "src/shared/infra/music/spotify/spotif
 import { SpotifyPlaylistDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { Vector } from "./journey-path";
-import { defaultFeatured, showcaseStats, ShowcaseStats } from "./playlist-showcase";
+import { showcaseStats, ShowcaseStats } from "./playlist-showcase";
 
 const DAILY_LIMIT = 10; // por usuário: a conta do Mofy é uma só para todos
 const KEEP_DAYS = 30; // depois disso a playlist sai do perfil do Mofy (quem salvou continua com ela)
 const PRUNE_BATCH = 20;
 const REUSE_WINDOW_MS = 10 * 60_000; // só protege contra clique repetido
-export const FEATURED_LIMIT = 5;
+export const PAGE_SIZE = 10;
 const DESCRIPTION = 'Montada pelo Mofy a partir do humor das suas músicas.';
 
 export type MofyPlaylistResponse = { url: string; playlistId: string; reused: boolean };
@@ -28,15 +28,14 @@ export type ShowcasePlaylist = ShowcaseStats & {
 };
 
 export type ShowcaseResponse = {
-    // O que aparece no perfil, na ordem (até 5). customized = o usuário escolheu.
-    featured: string[];
-    customized: boolean;
     playlists: ShowcasePlaylist[];
+    nextCursor: string | null;
+    total: number | null; // só na primeira página
 };
 
 // Playlist pronta no Spotify para qualquer usuário (Spotify ou Last.fm): criada na conta
-// do Mofy, o usuário recebe o link e pode tocar, salvar ou seguir. As criadas também
-// alimentam o destaque do perfil (até 5, escolhidas pelo usuário).
+// do Mofy, o usuário recebe o link e pode tocar, salvar ou seguir. As criadas aparecem
+// todas no perfil (paginadas).
 @Injectable()
 export class MofyPlaylistService {
     constructor(
@@ -65,7 +64,7 @@ export class MofyPlaylistService {
         await this.repository.saveMofyPlaylist({
             userId, spotifyPlaylistId: playlist.id, url: playlist.url, tracksHash,
             title, sentiment: dto.sentiment ?? null, fromSentiment: dto.fromSentiment ?? null,
-            trackIds: dto.trackIds, featuredOrder: null,
+            trackIds: dto.trackIds,
         });
 
         // Limpeza em segundo plano: não atrasa a resposta.
@@ -74,10 +73,15 @@ export class MofyPlaylistService {
         return { url: playlist.url, playlistId: playlist.id, reused: false };
     }
 
-    // Todas as playlists do usuário com os dados do card, e quais vão para o destaque.
-    // Sem escolha do usuário, o destaque são as mais novas, uma por humor.
-    async showcase(userId: string): Promise<ShowcaseResponse> {
-        const rows = await this.repository.listMofyPlaylists(userId);
+    // Playlists do usuário com os dados do card, das mais novas, uma página por vez (só a página
+    // busca faixas e análises). nextCursor null = acabou.
+    async showcase(userId: string, cursor?: string, limit = PAGE_SIZE): Promise<ShowcaseResponse> {
+        const [page, total] = await Promise.all([
+            this.repository.listMofyPlaylistsPage(userId, limit, cursor),
+            cursor ? Promise.resolve(null) : this.repository.countMofyPlaylists(userId),
+        ]);
+        const rows = page.slice(0, limit);
+        const nextCursor = page.length > limit ? rows[rows.length - 1].id : null;
         const trackIdsOf = (value: unknown): string[] => (Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []);
         const allIds = [...new Set(rows.flatMap(r => trackIdsOf(r.trackIds)))];
         const { analyses, tracks } = allIds.length ? await this.repository.getTracksForShowcase(allIds) : { analyses: [], tracks: [] };
@@ -112,21 +116,10 @@ export class MofyPlaylistService {
             };
         });
 
-        const chosen = rows
-            .filter(r => r.featuredOrder !== null)
-            .sort((a, b) => a.featuredOrder! - b.featuredOrder!)
-            .map(r => r.spotifyPlaylistId);
-        const featured = chosen.length ? chosen : defaultFeatured(playlists, FEATURED_LIMIT).map(p => p.playlistId);
-
-        return { featured, customized: chosen.length > 0, playlists };
+        return { playlists, nextCursor, total };
     }
 
-    async setFeatured(userId: string, playlistIds: string[]): Promise<ShowcaseResponse> {
-        await this.repository.setFeaturedMofyPlaylists(userId, [...new Set(playlistIds)].slice(0, FEATURED_LIMIT));
-        return this.showcase(userId);
-    }
-
-    // Tira do perfil do Mofy as playlists com mais de KEEP_DAYS dias (menos as do destaque).
+    // Tira do perfil do Mofy as playlists com mais de KEEP_DAYS dias.
     private async pruneExpired(): Promise<void> {
         const before = new Date(Date.now() - KEEP_DAYS * 24 * 60 * 60_000);
         for (const old of await this.repository.listExpiredMofyPlaylists(before, PRUNE_BATCH)) {

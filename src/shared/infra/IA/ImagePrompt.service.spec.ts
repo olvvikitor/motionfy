@@ -6,20 +6,14 @@ const base = { ativacao: -0.3 };
 describe('ImagePromptService', () => {
     const service = new ImagePromptService();
 
-    it('arte de playlist: 9:16 com o essencial no centro (vira capa 1:1 por recorte)', () => {
-        const prompt = service.build({ ...base, sentiment: 'Paz', format: 'cover' });
-        expect(prompt).toContain('Retrato 9:16');
-        expect(prompt).toContain('recortada em quadrado');
-    });
-
-    it('arte do humor: 9:16, sem a regra de recorte', () => {
+    it('capa de playlist: quadrada, mostrada inteira (sem recorte)', () => {
         const prompt = service.build({ ...base, sentiment: 'Paz' });
-        expect(prompt).toContain('Retrato 9:16');
-        expect(prompt).not.toContain('recortada em quadrado');
+        expect(prompt).toContain('Square 1:1');
+        expect(prompt).not.toContain('9:16');
     });
 
     it('usa só o humor recebido (o final da jornada), sem outro humor no tema', () => {
-        const prompt = service.build({ ...base, sentiment: 'Paz', format: 'cover' });
+        const prompt = service.build({ ...base, sentiment: 'Paz' });
         expect(prompt).toContain('MOOD: the silence before the world wakes up');
         expect(prompt).not.toMatch(/\bPaz\b|\bpeace\b/i); // o nome do humor puxa o clichê
         expect(prompt).not.toMatch(/Tensao|Tensão|dread/);

@@ -1,9 +1,9 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { UploadFile } from 'src/shared/infra/storage/interfaces/file-storage.interface';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 import type { MRequest } from 'src/modules/user/controllers/user.controller';
-import { FeaturedPlaylistsDto, GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, PlaylistIdParamDto, QueueJourneyDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
+import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, PlaylistIdParamDto, QueueJourneyDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
 import { JourneyPlaylistService } from '../services/journey-playlist.service';
 import { MofyPlaylistService } from '../services/mofy-playlist.service';
 import { PlaylistCoverService } from '../services/playlist-cover.service';
@@ -36,17 +36,11 @@ export class PlaylistController {
         return await this.mofyPlaylist.create(req.user!.id, dto);
     }
 
-    // Destaque do perfil: todas as playlists criadas (com os dados do card) e as até 5 em destaque.
+    // Perfil: as playlists criadas com os dados do card, das mais novas, em páginas (?cursor=&limit=).
     @Get('mofy-playlists')
     @UseGuards(JwtAuthGuard)
-    async listMofyPlaylists(@Req() req: MRequest) {
-        return await this.mofyPlaylist.showcase(req.user!.id);
-    }
-
-    @Put('mofy-playlists/featured')
-    @UseGuards(JwtAuthGuard)
-    async setFeaturedPlaylists(@Req() req: MRequest, @Body() dto: FeaturedPlaylistsDto) {
-        return await this.mofyPlaylist.setFeatured(req.user!.id, dto.playlistIds);
+    async listMofyPlaylists(@Req() req: MRequest, @Query() query: ShowcaseQueryDto) {
+        return await this.mofyPlaylist.showcase(req.user!.id, query.cursor, query.limit);
     }
 
     // Capa da playlist criada: imagem do usuário (multipart "file")...

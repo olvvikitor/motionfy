@@ -41,17 +41,3 @@ function mostCommon(values: string[]): string | null {
     for (const [v, c] of counts) if (c > bestCount) { best = v; bestCount = c; }
     return best;
 }
-
-// Sem escolha do usuário: as mais novas, uma por humor, até `limit`.
-export function defaultFeatured<T extends { sentiment: string | null }>(newestFirst: T[], limit = 5): T[] {
-    const seen = new Set<string>();
-    const picked: T[] = [];
-    for (const p of newestFirst) {
-        const key = p.sentiment ?? '';
-        if (seen.has(key)) continue;
-        seen.add(key);
-        picked.push(p);
-        if (picked.length >= limit) break;
-    }
-    return picked;
-}

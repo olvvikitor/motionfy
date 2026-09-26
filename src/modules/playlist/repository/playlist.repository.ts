@@ -75,36 +75,28 @@ export class PlaylistRepository {
 
     async saveMofyPlaylist(data: {
         userId: string; spotifyPlaylistId: string; url: string; tracksHash: string;
-        title: string; sentiment: string | null; fromSentiment: string | null; trackIds: string[]; featuredOrder: number | null;
+        title: string; sentiment: string | null; fromSentiment: string | null; trackIds: string[];
     }): Promise<void> {
         await this.prisma.mofyPlaylist.create({ data });
     }
 
-    async countFeaturedMofyPlaylists(userId: string): Promise<number> {
-        return this.prisma.mofyPlaylist.count({ where: { userId, removedAt: null, featuredOrder: { not: null } } });
+    async countMofyPlaylists(userId: string): Promise<number> {
+        return this.prisma.mofyPlaylist.count({ where: { userId, removedAt: null } });
     }
 
-    // Todas as playlists do usuário ainda na conta do Mofy, das mais novas.
-    async listMofyPlaylists(userId: string) {
+    // Uma página das playlists do usuário ainda na conta do Mofy, das mais novas. `cursor` = id da última
+    // da página anterior. Traz uma a mais para saber se há próxima página.
+    async listMofyPlaylistsPage(userId: string, take: number, cursor?: string) {
         return this.prisma.mofyPlaylist.findMany({
             where: { userId, removedAt: null },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take: take + 1,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             select: {
-                spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
-                trackIds: true, coverUrl: true, featuredOrder: true, createdAt: true,
+                id: true, spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
+                trackIds: true, coverUrl: true, createdAt: true,
             },
         });
-    }
-
-    // Destaque do perfil: só as escolhidas ficam com posição (na ordem recebida).
-    async setFeaturedMofyPlaylists(userId: string, spotifyPlaylistIds: string[]): Promise<void> {
-        await this.prisma.$transaction([
-            this.prisma.mofyPlaylist.updateMany({ where: { userId }, data: { featuredOrder: null } }),
-            ...spotifyPlaylistIds.map((spotifyPlaylistId, index) => this.prisma.mofyPlaylist.updateMany({
-                where: { userId, spotifyPlaylistId, removedAt: null },
-                data: { featuredOrder: index },
-            })),
-        ]);
     }
 
     async setMofyPlaylistCover(userId: string, spotifyPlaylistId: string, coverUrl: string): Promise<void> {
@@ -127,10 +119,9 @@ export class PlaylistRepository {
     }
 
     // Playlists antigas ainda na conta do Mofy (de todos os usuários), das mais velhas.
-    // As que estão no destaque de alguém ficam.
     async listExpiredMofyPlaylists(before: Date, take: number) {
         return this.prisma.mofyPlaylist.findMany({
-            where: { createdAt: { lt: before }, removedAt: null, featuredOrder: null },
+            where: { createdAt: { lt: before }, removedAt: null },
             orderBy: { createdAt: 'asc' },
             select: { id: true, spotifyPlaylistId: true },
             take,

@@ -108,7 +108,7 @@ export class UserController {
         return await this.userService.RefreshMoodUserToday(req.user!.id);
     }
 
-    // Atualização automática: o app chama de tempos em tempos; recalcula a cada 1 hora se houve música nova.
+    // Atualização automática: o app chama a cada minuto; recalcula a cada música nova.
     @Post('mood/auto-refresh')
     @UseGuards(JwtAuthGuard)
     async autoRefreshMood(@Req() req: MRequest) {

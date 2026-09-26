@@ -1,4 +1,5 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, Min, ValidateIf } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, Min, ValidateIf } from 'class-validator';
 
 const REQUEST_MESSAGE = 'Diga o que você quer ouvir (de 2 a 200 caracteres).';
 import { EMOTION_CLUSTERS } from 'src/shared/infra/IA/emotion-analysis.service';
@@ -68,14 +69,18 @@ export class SpotifyPlaylistDto extends QueueJourneyDto {
     fromSentiment?: string;
 }
 
-const FEATURED_MESSAGE = 'Escolha até 5 playlists para o destaque.';
+// Página das playlists do perfil: cursor = id da última da página anterior.
+export class ShowcaseQueryDto {
+    @IsOptional()
+    @IsUUID('4', { message: 'Cursor inválido.' })
+    cursor?: string;
 
-// Playlists que aparecem no destaque do perfil, na ordem.
-export class FeaturedPlaylistsDto {
-    @IsArray({ message: FEATURED_MESSAGE })
-    @ArrayMaxSize(5, { message: FEATURED_MESSAGE })
-    @Matches(/^[A-Za-z0-9]{22}$/, { each: true, message: 'ID de playlist do Spotify inválido.' })
-    playlistIds!: string[];
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(20)
+    limit?: number;
 }
 
 // Playlist da conta do Mofy (id do Spotify) na rota da capa.

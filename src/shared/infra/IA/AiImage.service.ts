@@ -20,8 +20,8 @@ export class AiImageService {
     return this.imagePromptService.build(input);
   }
 
-  // size: "auto" (arte do humor) ou 9:16 fixo (arte de playlist, que também vira a capa 1:1 por recorte).
-  async generateImage(prompt: string, facePhotoPath?: string, size: "auto" | "1024x1536" = "auto"): Promise<Buffer> {
+  // Capa de playlist: sempre quadrada, a mesma imagem no Spotify e no card do perfil (sem recorte).
+  async generateImage(prompt: string, facePhotoPath?: string, size: "1024x1024" = "1024x1024"): Promise<Buffer> {
     const fullPrompt = prompt;
 
     let faceFile: Awaited<ReturnType<typeof toFile>> | null = null;

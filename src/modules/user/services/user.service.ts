@@ -9,15 +9,13 @@ import { MusicProviderFactory } from "src/shared/infra/music/music.provider.fact
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
 
-// O humor pode ser recalculado de hora em hora, com as músicas das últimas 3h.
-const MOOD_REFRESH_MS = 60 * 60 * 1000;
+// O humor é recalculado a cada música nova, com as músicas das últimas 3h. Sem nenhuma nesse
+// período, fica "sem sentimento definido" (idle) e nenhum humor é criado.
 const MOOD_WINDOW_HOURS = 3;
-// Histórico sincronizado há menos que isso é reaproveitado (a tela abre várias consultas juntas).
-const HISTORY_SYNC_TTL_MS = 2 * 60 * 1000;
-
-export function canRefreshMood(lastAnalyzedAt: Date | null, now: Date): boolean {
-    return !lastAnalyzedAt || now.getTime() - lastAnalyzedAt.getTime() >= MOOD_REFRESH_MS;
-}
+const MOOD_WINDOW_MS = MOOD_WINDOW_HOURS * 60 * 60 * 1000;
+// Histórico sincronizado há menos que isso é reaproveitado (a tela abre várias consultas juntas
+// e o app confere a cada minuto).
+const HISTORY_SYNC_TTL_MS = 45 * 1000;
 
 export type ListeningNowResponse =
     | ({ isPlaying: true } & ResponseAi)
@@ -271,67 +269,53 @@ export class UserService {
         return run;
     }
 
-    // Recalcula o humor (sem imagem).
-    async RefreshMoodUserToday(id: string): Promise<ResponseAi> {
-        const user = await this.userRepository.getUserById(id);
-        if (!user) throw new NotFoundException('Usuario não encontrado');
-
-        const lastMood = await this.userRepository.getMoodUser(id);
-        if (!canRefreshMood(lastMood ? new Date(lastMood.analyzedAt) : null, new Date())) {
-            throw new BadRequestException('Seu mood já foi gerado há menos de 1 hora.');
-        }
+    // Recalcula o humor agora (cadastro). null = nenhuma música nas últimas 3h (sem sentimento definido).
+    async RefreshMoodUserToday(id: string): Promise<ResponseAi | null> {
         await this.lastTracks(id);
-        return this.recomputeMood(id, lastMood);
+        return this.recomputeMood(id);
     }
 
-    // Chamado sozinho pelo app (ao abrir e ao voltar para a aba). Recalcula se já passou
-    // 1 hora e houve música nova desde o último humor; senão responde sem erro. Sem música
-    // nova não cria outro humor igual (ele entraria na linha do tempo e nas contagens).
+    // O que entrou no último cálculo de cada usuário (quantas escutas na janela + a mais nova).
+    // Igual = nada mudou e não recalcula. Some no reinício: aí recalcula uma vez, sem efeito
+    // visível (o mesmo humor só atualiza a linha).
+    private readonly moodInputs = new Map<string, string>();
+
+    // Chamado pelo app a cada minuto com o dashboard aberto: recalcula a cada música nova (ou quando
+    // uma sai da janela de 3h). Sem nenhuma na janela, o humor fica indefinido e nada é salvo.
     async autoRefreshMood(id: string): Promise<{ updated: boolean }> {
-        const lastMood = await this.userRepository.getMoodUser(id);
-        const lastAt = lastMood ? new Date(lastMood.analyzedAt) : null;
-        if (!canRefreshMood(lastAt, new Date())) return { updated: false };
-
         await this.lastTracks(id);
-        if (lastAt && !(await this.trackRepository.hasListenedSince(id, lastAt))) return { updated: false };
+        const history = await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
+        const newest = history.reduce((max, h) => Math.max(max, new Date(h.playedAt).getTime()), 0);
+        const inputs = `${history.length}:${newest}`;
+        if (this.moodInputs.get(id) === inputs) return { updated: false };
 
-        await this.recomputeMood(id, lastMood);
+        const mood = await this.recomputeMood(id, history);
+        // Sem análise ainda (Jev falhou): não guarda, para tentar de novo no próximo ciclo.
+        if (mood || !history.length) this.moodInputs.set(id, inputs);
         return { updated: true };
     }
 
-    // Espera o histórico já sincronizado com o Spotify (lastTracks).
+    // Espera o histórico já sincronizado com o provedor (lastTracks). Mesmo humor ainda em curso
+    // (último dentro da janela) atualiza a linha; humor diferente ou depois de uma pausa cria outra.
     private async recomputeMood(
         id: string,
-        lastMood: Awaited<ReturnType<UserRepository["getMoodUser"]>>,
-    ): Promise<ResponseAi> {
-        const historyMusic = await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
+        history?: Awaited<ReturnType<TrackRepository["getListenedLastHours"]>>,
+    ): Promise<ResponseAi | null> {
+        const historyMusic = history ?? await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
 
         const tracks = historyMusic
             .map((entry) => entry.track)
             .filter((track): track is Track => Boolean(track?.spotifyId));
+        if (!tracks.length) return null;
 
         const spotifyIds = tracks.map((t) => t.spotifyId).filter((sid): sid is string => Boolean(sid));
 
         const trackAnalyses = await this.trackRepository.getTrackAnalysesByMusicIds(spotifyIds);
-        let response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
-
-        if (!response) {
-            const fallbackVector = this.emotionAnalysis.buildFallbackVector();
-            const fallbackClassification = this.emotionAnalysis.classifyEmotion(fallbackVector);
-            response = {
-                moodScore: fallbackClassification.moodScore,
-                dominantSentiment: fallbackClassification.dominantSentiment,
-                emotionalVector: fallbackVector,
-                reasoning: `Sem análises suficientes para compor o mood agora — nenhuma música ouvida nas últimas ${MOOD_WINDOW_HOURS}h.`,
-                coreAxes: fallbackClassification.coreAxes,
-                image_mood: "",
-                tracks: [],
-            };
-        }
+        const response = this.buildMoodFromStoredAnalyses(tracks, trackAnalyses);
+        if (!response) return null; // músicas ainda sem análise: o próximo ciclo tenta de novo
 
         const moodDataStore = {
             moodScore: response.moodScore,
-            sentiment: response.dominantSentiment,
             emotions: response.emotionalVector,
             coreAxes: response.coreAxes,
             tracks: response.tracks,
@@ -339,23 +323,33 @@ export class UserService {
 
         // O humor não tem imagem (as artes são as capas das playlists).
         response.image_mood = "";
-        await this.userRepository.SaveMood(id, { ...moodDataStore, image_mood: null });
+        const lastMood = await this.userRepository.getMoodUser(id);
+        const ongoing = lastMood
+            && lastMood.sentiment === response.dominantSentiment
+            && Date.now() - new Date(lastMood.analyzedAt).getTime() < MOOD_WINDOW_MS;
+        if (ongoing) await this.userRepository.updateMood(lastMood.id, moodDataStore);
+        else await this.userRepository.SaveMood(id, { ...moodDataStore, sentiment: response.dominantSentiment, image_mood: null });
 
         return response;
     }
 
+    // `idle`: nenhuma música nas últimas 3h. O app mostra "sem sentimento definido" no lugar do humor.
     async getMoodUserToday(id: string): Promise<any> {
         const mood = await this.userRepository.getMoodUser(id);
-        if (mood && mood.tracksAnalyzeds) {
+        if (!mood) return mood;
+        const since = new Date(Date.now() - MOOD_WINDOW_MS);
+        const idle = !(await this.trackRepository.hasListenedSince(id, since));
+        if (mood.tracksAnalyzeds) {
             const parsedTracks = typeof mood.tracksAnalyzeds === 'string' ? JSON.parse(mood.tracksAnalyzeds as string) : mood.tracksAnalyzeds;
-            
+
             const mostListened = this.computeMostListened(Array.isArray(parsedTracks) ? parsedTracks : []);
             return {
                 ...mood,
-                ...mostListened
+                ...mostListened,
+                idle,
             };
         }
-        return mood;
+        return { ...mood, idle };
     }
 
     async getValidToken(id: string): Promise<string> {

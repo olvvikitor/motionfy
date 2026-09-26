@@ -8,9 +8,6 @@ export type HybridPromptInput = {
     title?: string | null;
     subgenres?: string[];
     songs?: string[]; // "Artista — Música"
-    // Sempre retrato 9:16. "cover" = arte de playlist: além do 9:16 (card do perfil), sai dela
-    // um recorte 1:1 para a capa do Spotify, então o essencial fica no centro.
-    format?: "portrait" | "cover";
 };
 
 // O prompt vai em inglês: o modelo de imagem segue instruções em inglês com mais precisão.
@@ -204,9 +201,7 @@ LIGHT AND COLOR: ${this.random(mood.palettes)}, coming from real light sources i
 ENERGY: ${energy(data.ativacao ?? 0)}.
 AVOID: ${AVOID}. For this mood also avoid: ${mood.cliches}.
 
-OUTPUT: Retrato 9:16, vertical, 2D anime, never photorealistic, no text.${data.format === "cover"
-    ? " Keep the subject and key detail in the middle third — a imagem também será recortada em quadrado para capa."
-    : ""}`.trim();
+OUTPUT: Square 1:1 album cover, 2D anime, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.`.trim();
     }
 
     private worldsFor(subgenres: string[]): string[] {
