@@ -41,7 +41,6 @@ export type LibraryPlaylist = {
     fromSentiment: string | null;
     coverUrl: string | null;
     createdAt: Date;
-    onSpotifyUntil: Date | null; // null = já saiu da conta do Mofy; dá para gerar de novo
     tracks: { spotifyId: string; title: string; artist: string; imgUrl: string }[];
 };
 
@@ -175,7 +174,6 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
             fromSentiment: row.fromSentiment,
             coverUrl: row.coverUrl,
             createdAt: row.createdAt,
-            onSpotifyUntil: row.removedAt ? null : new Date(row.createdAt.getTime() + KEEP_MS),
             tracks: trackIdsOf(row.trackIds).flatMap(id => {
                 const track = trackById.get(id);
                 return track ? [{ spotifyId: id, title: track.title, artist: track.artist, imgUrl: track.img_url ?? '' }] : [];
@@ -185,12 +183,11 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
         return { playlists, nextCursor, total };
     }
 
-    // Gera de novo no Spotify uma playlist que já saiu da conta do Mofy: mesmas músicas, título e capa.
-    // A linha é a mesma (volta ao perfil, com prazo novo). Se ainda estiver no Spotify, só devolve o link.
+    // Gera de novo no Spotify (esteja ela lá ou não): mesmas músicas, título e capa. A linha é a mesma
+    // (vai para o topo, com prazo novo); a cópia antiga, se ainda estiver na conta do Mofy, sai de lá.
     async recreate(userId: string, id: string): Promise<MofyPlaylistResponse> {
         const row = await this.repository.findUserMofyPlaylist(userId, id);
         if (!row) throw new NotFoundException('Playlist não encontrada.');
-        if (!row.removedAt) return { url: row.url, playlistId: row.spotifyPlaylistId, reused: true };
 
         const trackIds = trackIdsOf(row.trackIds);
         if (!trackIds.length) throw new HttpException('Essa playlist não tem músicas guardadas para gerar de novo.', HttpStatus.UNPROCESSABLE_ENTITY);
@@ -200,6 +197,11 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
         const title = row.title ?? 'Playlist do Mofy';
         const playlist = await this.account.createPlaylist(`Mofy · ${title}`.slice(0, 100), DESCRIPTION, trackIds);
         await this.repository.reviveMofyPlaylist(row.id, playlist.id, playlist.url);
+
+        if (!row.removedAt) {
+            this.account.removePlaylist(row.spotifyPlaylistId)
+                .catch(err => console.error(`[MofyPlaylist] não removeu a cópia antiga ${row.spotifyPlaylistId}:`, err?.message ?? err));
+        }
 
         // Capa guardada no Mofy volta para o Spotify em segundo plano (sem ela, o Spotify usa o mosaico).
         if (row.coverUrl) {

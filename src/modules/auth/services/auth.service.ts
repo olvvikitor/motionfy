@@ -1,6 +1,6 @@
 import { Inject, Injectable, ConflictException } from "@nestjs/common";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
-import { User } from "@prisma/client";
+import { Prisma, User } from "@prisma/client";
 import { CreateUserService } from "src/modules/user/services/create.user.service";
 import { UserRepository } from "src/modules/user/repository/user.repository";
 import { SetEmailDto } from "../dtos/auth.dto";
@@ -25,7 +25,7 @@ export class AuthService {
             country: profile.country,
             img_profile: profile.imageUrl ?? '',
             face_photo_path: null,
-            image_credits: 1,
+            image_credits: new Prisma.Decimal(1),
             provider: providerName,
             notificateEmail: false,
             notificatePush: false,

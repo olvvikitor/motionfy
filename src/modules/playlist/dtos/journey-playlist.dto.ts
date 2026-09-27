@@ -4,6 +4,7 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString,
 const REQUEST_MESSAGE = 'Diga o que você quer ouvir (de 2 a 200 caracteres).';
 import { EMOTION_CLUSTERS } from 'src/shared/infra/IA/emotion-analysis.service';
 import { BPM_RANGE_KEYS, type BpmRange } from '../services/journey-filters';
+import { PLAYLIST_DURATIONS } from '../services/playlist-pricing';
 
 export const JOURNEY_SOURCES = ['all', 'saved', 'custom'] as const;
 export type JourneySource = typeof JOURNEY_SOURCES[number];
@@ -21,9 +22,8 @@ export class JourneyPlaylistDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de chegada inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     to?: string;
 
-    @IsInt({ message: 'A duração deve ser um número inteiro de minutos.' })
-    @Min(10, { message: 'A duração mínima é 10 minutos.' })
-    @Max(90, { message: 'A duração máxima é 90 minutos.' })
+    // Acima de 45 min a geração custa créditos (playlist-pricing.ts).
+    @IsIn(PLAYLIST_DURATIONS, { message: `Duração inválida. Use uma de: ${PLAYLIST_DURATIONS.join(', ')} minutos.` })
     durationMin!: number;
 
     // all = acervo + busca automática; saved = só a biblioteca do usuário (SavedTrack); custom = o que o usuário pedir em `request`.

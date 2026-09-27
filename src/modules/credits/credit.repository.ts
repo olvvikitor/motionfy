@@ -11,22 +11,22 @@ export class CreditRepository {
             where: { id: userId },
             select: { image_credits: true },
         });
-        return user?.image_credits ?? 0;
+        return Number(user?.image_credits ?? 0);
     }
 
-    // Debita 1 crédito só se houver saldo, numa única operação (duas gerações ao mesmo
-    // tempo não deixam o saldo negativo). Retorna null quando não há crédito.
-    async consume(userId: string, note = 'Geração de imagem'): Promise<number | null> {
+    // Debita `amount` créditos (pode ser fração, ex.: 0,30) só se o saldo cobrir, numa única operação
+    // (duas cobranças ao mesmo tempo não deixam o saldo negativo). Retorna null quando não há saldo.
+    async consume(userId: string, amount: number, note: string): Promise<number | null> {
         return this.prisma.$transaction(async (tx) => {
             const { count } = await tx.user.updateMany({
-                where: { id: userId, image_credits: { gt: 0 } },
-                data: { image_credits: { decrement: 1 } },
+                where: { id: userId, image_credits: { gte: amount } },
+                data: { image_credits: { decrement: amount } },
             });
             if (count === 0) return null;
 
-            await tx.creditLog.create({ data: { userId, type: CreditLogType.CONSUME, amount: -1, note } });
+            await tx.creditLog.create({ data: { userId, type: CreditLogType.CONSUME, amount: -amount, note } });
             const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { image_credits: true } });
-            return user.image_credits;
+            return Number(user.image_credits);
         });
     }
 
@@ -41,33 +41,27 @@ export class CreditRepository {
             },
             select: { image_credits: true },
         });
-        return user.image_credits;
+        return Number(user.image_credits);
     }
 
     async getLogs(userId: string, limit = 10) {
-        return this.prisma.creditLog.findMany({
+        const logs = await this.prisma.creditLog.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' },
             take: limit,
         });
+        // Decimal vira texto no JSON: devolve número.
+        return logs.map(log => ({ ...log, amount: Number(log.amount) }));
     }
 
-    // Últimas imagens geradas pelo usuário. A imagem passa para os humores seguintes, então
-    // pega uma linha por imagem: a do humor em que ela foi gerada.
-    async getGeneratedImages(userId: string, limit = 6) {
-        const rows = await this.prisma.moodAnalysis.findMany({
-            where: { userId, image_mood: { not: null } },
-            orderBy: { analyzedAt: 'asc' },
-            distinct: ['image_mood'],
-            select: {
-                id: true,
-                image_mood: true,
-                sentiment: true,
-                moodScore: true,
-                analyzedAt: true,
-            },
+    // Últimas capas das playlists do usuário (é nelas que os créditos são gastos; o humor não tem mais imagem).
+    async getRecentCovers(userId: string, limit = 6) {
+        return this.prisma.mofyPlaylist.findMany({
+            where: { userId, coverUrl: { not: null } },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            select: { id: true, coverUrl: true, title: true, sentiment: true, createdAt: true },
         });
-        return rows.reverse().slice(0, limit);
     }
 
     // ── Compras (Stripe) ──────────────────────────────────────────────────────
@@ -115,7 +109,7 @@ export class CreditRepository {
                 },
                 select: { image_credits: true },
             });
-            return user.image_credits;
+            return Number(user.image_credits);
         });
     }
 

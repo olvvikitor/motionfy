@@ -6,8 +6,10 @@ import { MusicProviderInterface } from "src/shared/infra/music/music.provider.in
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository, UserTaste } from "../repository/playlist.repository";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
+import { CreditService } from "src/modules/credits/credit.service";
+import { durationCost } from "./playlist-pricing";
 import { buildFacets, FilterFacets, hasFilters, JourneyFilters, matchesFilters } from "./journey-filters";
-import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 
 export type JourneyPlaylistResponse = {
     from: string;
@@ -62,10 +64,29 @@ export class JourneyPlaylistService {
         private readonly sourcing: CandidateSourcingService,
         private readonly providers: MusicProviderFactory,
         private readonly aiText: AiTextService,
+        private readonly credits: CreditService,
     ) { }
 
     // Só sugere as músicas. Nada vai para a fila até o usuário revisar e chamar queue().
+    // Acima de 45 min a geração custa créditos (playlist-pricing.ts): debita antes (sem saldo, nem começa) e
+    // devolve se a geração falhar.
     async build(userId: string, dto: JourneyPlaylistDto): Promise<JourneyPlaylistResponse> {
+        const cost = durationCost(dto.durationMin);
+        if (!cost) return this.compose(userId, dto);
+
+        const price = cost.toFixed(2).replace('.', ',');
+        await this.credits.consumeCredit(userId, `Playlist de ${dto.durationMin} min`, cost,
+            `Playlists de ${dto.durationMin} min custam ${price} crédito. Compre créditos para gerar.`);
+        try {
+            return await this.compose(userId, dto);
+        } catch (error) {
+            await this.credits.refundCredit(userId, `Estorno: playlist de ${dto.durationMin} min não gerada`, cost)
+                .catch(refundError => console.error('[JourneyPlaylist] estorno falhou:', refundError?.message ?? refundError));
+            throw error;
+        }
+    }
+
+    private async compose(userId: string, dto: JourneyPlaylistDto): Promise<JourneyPlaylistResponse> {
         const journey = await this.resolveJourney(userId, dto);
 
         const user = await this.repository.getUser(userId);
@@ -144,8 +165,12 @@ export class JourneyPlaylistService {
 
     // Sentimentos por onde a playlist passa entre partida e chegada (mesmo caminho do build).
     path(dto: JourneyPathQueryDto): { path: string[] } {
-        const clusters = Object.fromEntries(EMOTION_CLUSTERS.map(label => [label, getClusterVector(label)!]));
-        return { path: waypointsAlong(dto.from, dto.to, clusters) };
+        return { path: waypointsAlong(dto.from, dto.to, clusterVectors()) };
+    }
+
+    // Humores que podem vir junto com cada um (área no mapa do seletor).
+    areas(): { areas: Record<string, string[]> } {
+        return { areas: moodAreas(clusterVectors()) };
     }
 
     // Adiciona à fila do Spotify só as músicas que o usuário manteve, na ordem recebida.
@@ -276,4 +301,8 @@ export class JourneyPlaylistService {
         }
         return 'Não encontrei músicas para montar essa jornada. Ouça mais algumas músicas e tente de novo.';
     }
+}
+
+function clusterVectors(): Record<string, Vector> {
+    return Object.fromEntries(EMOTION_CLUSTERS.map(label => [label, getClusterVector(label)!]));
 }

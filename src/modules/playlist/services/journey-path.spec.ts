@@ -5,6 +5,7 @@ import {
     findGaps,
     FIT_RADIUS,
     isNovel,
+    moodAreas,
     JourneyCandidate,
     pickAlongPath,
     stopCountForDuration,
@@ -302,5 +303,23 @@ describe('waypointsAlong', () => {
 
     it('sentimento desconhecido volta só as pontas', () => {
         expect(waypointsAlong('A', 'Nope', clusters)).toEqual(['A', 'Nope']);
+    });
+});
+
+describe('moodAreas', () => {
+    const r = FIT_RADIUS;
+    const clusters: Record<string, Vector> = {
+        A: { a: 0, b: 0 },
+        perto: { a: 2 * r - 0.1, b: 0 },  // alcançável: há música a até FIT_RADIUS de A que é mais perto dele
+        meio: { a: r, b: 0 },
+        longe: { a: 2 * r + 0.1, b: 0 },
+    };
+
+    it('traz os humores a menos de 2 × FIT_RADIUS, do mais perto ao mais longe', () => {
+        expect(moodAreas(clusters).A).toEqual(['meio', 'perto']);
+    });
+
+    it('não inclui o próprio humor', () => {
+        expect(moodAreas(clusters).longe).not.toContain('longe');
     });
 });

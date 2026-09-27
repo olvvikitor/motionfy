@@ -30,6 +30,13 @@ export class PlaylistController {
     }
 
     // Depois da revisão: playlist pronta na conta do Mofy no Spotify; devolve o link.
+    // Humores que podem vir junto com cada um (área no mapa do seletor).
+    @Get('journey-playlist/mood-areas')
+    @UseGuards(JwtAuthGuard)
+    moodAreas() {
+        return this.journeyPlaylist.areas();
+    }
+
     @Post('journey-playlist/spotify-playlist')
     @UseGuards(JwtAuthGuard)
     async createSpotifyPlaylist(@Req() req: MRequest, @Body() dto: SpotifyPlaylistDto) {

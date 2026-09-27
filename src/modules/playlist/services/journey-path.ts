@@ -251,3 +251,16 @@ export function waypointsAlong(
     sequence.push(toLabel);
     return sequence;
 }
+
+// Área de cada humor: os outros humores que podem vir junto quando a playlist pede esse humor. Uma música
+// entra na parada se estiver a até FIT_RADIUS dele; ela pode ser de outro humor B (o mais perto dela) quando
+// B está a menos de 2 × FIT_RADIUS. Do mais perto ao mais longe (usado para desenhar a área no mapa).
+export function moodAreas(clusters: Record<string, Vector>): Record<string, string[]> {
+    const labels = Object.keys(clusters);
+    return Object.fromEntries(labels.map(label => [
+        label,
+        labels
+            .filter(other => other !== label && distance(clusters[label], clusters[other]) < 2 * FIT_RADIUS)
+            .sort((a, b) => distance(clusters[label], clusters[a]) - distance(clusters[label], clusters[b])),
+    ]));
+}

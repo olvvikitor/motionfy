@@ -10,8 +10,7 @@ export const PACKAGES = [
         label: '1 crédito',
         tag: null,
         popular: false,
-        recommended: false,
-        description: 'Perfeito para testar sua próxima arte.',
+        description: 'Uma capa gerada pela IA ou três playlists de 1 hora.',
     },
     {
         id: 'p5',
@@ -20,8 +19,7 @@ export const PACKAGES = [
         label: '5 créditos',
         tag: 'Mais vendido',
         popular: true,
-        recommended: true,
-        description: 'Melhor equilíbrio entre preço e frequência de uso.',
+        description: 'Capas novas e playlists longas para a semana.',
     },
     {
         id: 'p15',
@@ -30,8 +28,7 @@ export const PACKAGES = [
         label: '15 créditos',
         tag: 'Melhor valor',
         popular: false,
-        recommended: false,
-        description: 'Para quem quer gerar sem medo e pagar menos por imagem.',
+        description: 'Para quem cria sempre e quer pagar menos por crédito.',
     },
 ] as const;
 
@@ -45,25 +42,26 @@ export class CreditService {
     }
 
     async getStatus(userId: string) {
-        const [balance, logs, images] = await Promise.all([
+        const [balance, logs, covers] = await Promise.all([
             this.repo.getBalance(userId),
             this.repo.getLogs(userId, 5),
-            this.repo.getGeneratedImages(userId, 6),
+            this.repo.getRecentCovers(userId, 6),
         ]);
-        return { balance, logs, images, packages: PACKAGES };
+        return { balance, logs, covers, packages: PACKAGES };
     }
 
-    async consumeCredit(userId: string, note?: string): Promise<{ remaining: number }> {
-        const remaining = await this.repo.consume(userId, note);
+    // Debita `amount` créditos (capa = 1; playlist longa = 0,30 a 0,75). `missing`: mensagem quando o saldo não cobre.
+    async consumeCredit(userId: string, note: string, amount = 1, missing = 'Sem créditos disponíveis.'): Promise<{ remaining: number }> {
+        const remaining = await this.repo.consume(userId, amount, note);
         if (remaining === null) {
-            throw new BadRequestException('Sem créditos disponíveis.');
+            throw new BadRequestException(missing);
         }
         return { remaining };
     }
 
-    // Devolve o crédito quando a geração paga falha depois do débito.
-    async refundCredit(userId: string, note = 'Estorno: falha na geração de imagem'): Promise<{ balance: number }> {
-        const balance = await this.repo.add(userId, 1, CreditLogType.REFUND, note);
+    // Devolve o que foi debitado quando a geração paga falha depois do débito.
+    async refundCredit(userId: string, note: string, amount = 1): Promise<{ balance: number }> {
+        const balance = await this.repo.add(userId, amount, CreditLogType.REFUND, note);
         return { balance };
     }
 
