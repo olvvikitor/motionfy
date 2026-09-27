@@ -64,6 +64,13 @@ export class PlaylistController {
         return await this.mofyPlaylist.library(req.user!.id, query.cursor, query.limit);
     }
 
+    // "Abrir no Spotify": link da playlist, gerada de novo (com a capa) se já não estiver na conta do Mofy.
+    @Post('mofy-playlists/:id/open')
+    @UseGuards(JwtAuthGuard)
+    async openMofyPlaylist(@Req() req: MRequest, @Param() params: MofyPlaylistIdParamDto) {
+        return await this.mofyPlaylist.open(req.user!.id, params.id);
+    }
+
     // Gera de novo no Spotify (mesmas músicas, título e capa) uma playlist que já saiu da conta do Mofy.
     @Post('mofy-playlists/:id/recreate')
     @UseGuards(JwtAuthGuard)

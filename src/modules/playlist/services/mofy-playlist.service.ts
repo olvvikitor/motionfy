@@ -183,6 +183,20 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
         return { playlists, nextCursor, total };
     }
 
+    // "Abrir no Spotify" do perfil: confere se a playlist ainda está na conta do Mofy; se não estiver,
+    // gera de novo (mesmas músicas, título e capa) e devolve o link novo. Sem resposta do Spotify, abre a guardada.
+    async open(userId: string, id: string): Promise<MofyPlaylistResponse> {
+        const row = await this.repository.findUserMofyPlaylist(userId, id);
+        if (!row) throw new NotFoundException('Playlist não encontrada.');
+        if (!row.removedAt) {
+            if (await this.account.isFollowing(row.spotifyPlaylistId) !== false) {
+                return { url: row.url, playlistId: row.spotifyPlaylistId, reused: true };
+            }
+            await this.repository.markMofyPlaylistRemoved(row.id);
+        }
+        return await this.recreate(userId, id);
+    }
+
     // Gera de novo no Spotify (esteja ela lá ou não): mesmas músicas, título e capa. A linha é a mesma
     // (vai para o topo, com prazo novo); a cópia antiga, se ainda estiver na conta do Mofy, sai de lá.
     async recreate(userId: string, id: string): Promise<MofyPlaylistResponse> {
@@ -203,9 +217,10 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
                 .catch(err => console.error(`[MofyPlaylist] não removeu a cópia antiga ${row.spotifyPlaylistId}:`, err?.message ?? err));
         }
 
-        // Capa guardada no Mofy volta para o Spotify em segundo plano (sem ela, o Spotify usa o mosaico).
+        // Capa guardada no Mofy (enviada ou gerada pela IA) volta para o Spotify antes do link sair, para a
+        // playlist já abrir com ela. Se falhar, segue com o mosaico do Spotify.
         if (row.coverUrl) {
-            this.restoreCover(playlist.id, row.coverUrl)
+            await this.restoreCover(playlist.id, row.coverUrl)
                 .catch(err => console.error(`[MofyPlaylist] capa não voltou para ${playlist.id}:`, err?.message ?? err));
         }
         this.pruneExpired().catch(err => console.error('[MofyPlaylist] limpeza falhou:', err?.message ?? err));

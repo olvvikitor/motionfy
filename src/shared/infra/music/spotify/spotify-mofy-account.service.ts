@@ -47,6 +47,17 @@ export class SpotifyMofyAccountService {
         await this.request('delete', `/playlists/${playlistId}/followers`, PLAYLIST_SCOPES);
     }
 
+    // A conta do Mofy ainda segue a playlist? false = já foi apagada de lá (ou não existe mais);
+    // null = não deu para saber (limite do Spotify, rede): quem chama decide.
+    async isFollowing(playlistId: string): Promise<boolean | null> {
+        try {
+            const result = await this.request('get', `/playlists/${playlistId}/followers/contains`, PLAYLIST_SCOPES);
+            return Array.isArray(result) ? result[0] === true : null;
+        } catch (err) {
+            return err instanceof HttpException && err.getStatus() === HttpStatus.NOT_FOUND ? false : null;
+        }
+    }
+
     authorizeUrl(state: string, redirectUri: string): string {
         const params = new URLSearchParams({
             response_type: 'code',
@@ -70,7 +81,7 @@ export class SpotifyMofyAccountService {
         return response.data.refresh_token;
     }
 
-    private async request(method: 'post' | 'put' | 'delete', path: string, scopes: string[], body?: unknown, contentType = 'application/json'): Promise<any> {
+    private async request(method: 'get' | 'post' | 'put' | 'delete', path: string, scopes: string[], body?: unknown, contentType = 'application/json'): Promise<any> {
         // Fora do try: erro do token/permissão já vem com a mensagem certa.
         const token = await this.accessToken(scopes);
         try {
@@ -83,7 +94,8 @@ export class SpotifyMofyAccountService {
             return response.data;
         } catch (err) {
             const detail = err instanceof AxiosError ? err.response?.data?.error?.message ?? err.message : String(err);
-            const status = err instanceof AxiosError && err.response?.status === 429 ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.BAD_GATEWAY;
+            const code = err instanceof AxiosError ? err.response?.status : undefined;
+            const status = code === 429 ? HttpStatus.TOO_MANY_REQUESTS : code === 404 ? HttpStatus.NOT_FOUND : HttpStatus.BAD_GATEWAY;
             throw new HttpException(`Erro ao montar a playlist no Spotify: ${detail}`, status);
         }
     }
