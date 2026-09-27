@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { UploadFile } from 'src/shared/infra/storage/interfaces/file-storage.interface';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 import type { MRequest } from 'src/modules/user/controllers/user.controller';
-import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, PlaylistIdParamDto, QueueJourneyDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
+import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, MofyPlaylistIdParamDto, PlaylistIdParamDto, QueueJourneyDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
 import { JourneyPlaylistService } from '../services/journey-playlist.service';
 import { MofyPlaylistService } from '../services/mofy-playlist.service';
 import { PlaylistCoverService } from '../services/playlist-cover.service';
@@ -48,6 +48,20 @@ export class PlaylistController {
     @UseGuards(JwtAuthGuard)
     async listMofyPlaylists(@Req() req: MRequest, @Query() query: ShowcaseQueryDto) {
         return await this.mofyPlaylist.showcase(req.user!.id, query.cursor, query.limit);
+    }
+
+    // Biblioteca: todas as playlists criadas (também as que já saíram do Spotify), com as músicas guardadas no Mofy.
+    @Get('mofy-playlists/library')
+    @UseGuards(JwtAuthGuard)
+    async listLibraryPlaylists(@Req() req: MRequest, @Query() query: ShowcaseQueryDto) {
+        return await this.mofyPlaylist.library(req.user!.id, query.cursor, query.limit);
+    }
+
+    // Gera de novo no Spotify (mesmas músicas, título e capa) uma playlist que já saiu da conta do Mofy.
+    @Post('mofy-playlists/:id/recreate')
+    @UseGuards(JwtAuthGuard)
+    async recreateMofyPlaylist(@Req() req: MRequest, @Param() params: MofyPlaylistIdParamDto) {
+        return await this.mofyPlaylist.recreate(req.user!.id, params.id);
     }
 
     // Capa da playlist criada: imagem do usuário (multipart "file")...

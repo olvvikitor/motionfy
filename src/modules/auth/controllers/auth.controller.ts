@@ -1,10 +1,10 @@
-import { Controller, Get, Req, Res, UseGuards, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Req, Res, UseGuards, Post, Body, Query, Put } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../services/auth.service';
 import { LastFmProvider } from 'src/shared/infra/music/lastfm/lastfm.service';
 import { SpotifyMofyAccountService } from 'src/shared/infra/music/spotify/spotify-mofy-account.service';
 import { randomBytes } from 'crypto';
-import { LoginCredentialsDto, SetPasswordDto } from '../dtos/auth.dto';
+import { SetEmailDto } from '../dtos/auth.dto';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 
 @Controller('auth')
@@ -88,15 +88,10 @@ export class AuthController {
         return res.redirect(`${this.getFrontendUrl(req)}/terminate?token=${token}&new=${isNewUser}`);
     }
 
-    @Post('login')
-    async login(@Body() credentials: LoginCredentialsDto) {
-        return await this.authService.login(credentials);
-    }
-
-    @Post('set-password')
+    // Informações pessoais: o e-mail (a entrada é sempre pelo Last.fm; não há senha).
+    @Put('email')
     @UseGuards(JwtAuthGuard)
-    async setPassword(@Req() req: any, @Body() data: SetPasswordDto) {
-        const userId = req.user.id;
-        return await this.authService.setPassword(userId, data);
+    async setEmail(@Req() req: any, @Body() data: SetEmailDto) {
+        return await this.authService.setEmail(req.user.id, data);
     }
 }

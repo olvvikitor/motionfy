@@ -1,6 +1,6 @@
 export type UserResponseDto = {
     id: string
-    email: string
+    email: string | null // sem e-mail: o app mostra o alerta em "Informações pessoais"
     provider: string
     img_profile: string
     face_photo_path?: string | null

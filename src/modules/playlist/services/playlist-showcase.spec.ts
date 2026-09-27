@@ -10,19 +10,13 @@ describe('showcaseStats', () => {
         expect(stats.strongestTrack?.spotifyId).toBe('close');
     });
 
-    it('score = % das faixas dentro do raio do humor', () => {
-        const stats = showcaseStats(MOOD, [track('1', { a: 0, b: 1 }), track('2', { a: 0.1, b: 0.9 }), track('3', { a: 3, b: -3 }), track('4', { a: 4, b: -4 })]);
-        expect(stats.score).toBe(50);
-    });
-
     it('subgênero mais comum, ignorando Unknown', () => {
         const stats = showcaseStats(MOOD, [track('1', null, 'Unknown'), track('2', null, 'MPB'), track('3', null, 'MPB'), track('4', null, 'Rock')]);
         expect(stats.subgenre).toBe('MPB');
     });
 
-    it('sem análises: sem score e usa a primeira faixa com capa', () => {
+    it('sem análises: usa a primeira faixa com capa', () => {
         const stats = showcaseStats(MOOD, [track('1', null)]);
-        expect(stats.score).toBeNull();
         expect(stats.strongestTrack?.spotifyId).toBe('1');
     });
 });

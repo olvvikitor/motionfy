@@ -220,7 +220,7 @@ export class UserService {
         return {
             country: user.country,
             display_name: user.display_name,
-            email: user.email!,
+            email: user.email,
             id: user.id,
             img_profile: user.img_profile,
             face_photo_path: user.face_photo_path,

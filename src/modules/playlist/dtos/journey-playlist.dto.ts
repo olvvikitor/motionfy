@@ -110,6 +110,12 @@ export class PlaylistIdParamDto {
     playlistId!: string;
 }
 
+// Playlist pelo id do Mofy (a biblioteca guarda também as que já saíram do Spotify).
+export class MofyPlaylistIdParamDto {
+    @IsUUID('4', { message: 'Playlist inválida.' })
+    id!: string;
+}
+
 // Capa gerada pela IA a partir do humor da playlist.
 export class GenerateCoverDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Humor inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })

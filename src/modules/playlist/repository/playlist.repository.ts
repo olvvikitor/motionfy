@@ -80,23 +80,38 @@ export class PlaylistRepository {
         await this.prisma.mofyPlaylist.create({ data });
     }
 
+    // Todas as playlists do usuário, também as que já saíram da conta do Mofy no Spotify.
     async countMofyPlaylists(userId: string): Promise<number> {
-        return this.prisma.mofyPlaylist.count({ where: { userId, removedAt: null } });
+        return this.prisma.mofyPlaylist.count({ where: { userId } });
     }
 
-    // Uma página das playlists do usuário ainda na conta do Mofy, das mais novas. `cursor` = id da última
-    // da página anterior. Traz uma a mais para saber se há próxima página.
+    // Uma página das playlists do usuário (também as que já saíram do Spotify), das mais novas.
+    // `cursor` = id da última da página anterior. Traz uma a mais para saber se há próxima página.
     async listMofyPlaylistsPage(userId: string, take: number, cursor?: string) {
         return this.prisma.mofyPlaylist.findMany({
-            where: { userId, removedAt: null },
+            where: { userId },
             orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             take: take + 1,
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             select: {
                 id: true, spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
-                trackIds: true, coverUrl: true, createdAt: true,
+                trackIds: true, coverUrl: true, createdAt: true, removedAt: true,
             },
         });
+    }
+
+    // Playlist do usuário pelo id do Mofy, mesmo a que já saiu do Spotify (para gerar de novo).
+    async findUserMofyPlaylist(userId: string, id: string) {
+        return this.prisma.mofyPlaylist.findFirst({
+            where: { id, userId },
+            select: { id: true, spotifyPlaylistId: true, url: true, title: true, trackIds: true, coverUrl: true, removedAt: true },
+        });
+    }
+
+    // Gerada de novo no Spotify: a mesma linha passa a apontar para a playlist nova e o prazo na
+    // conta do Mofy recomeça (conta também no limite do dia).
+    async reviveMofyPlaylist(id: string, spotifyPlaylistId: string, url: string): Promise<void> {
+        await this.prisma.mofyPlaylist.update({ where: { id }, data: { spotifyPlaylistId, url, removedAt: null, createdAt: new Date() } });
     }
 
     async setMofyPlaylistCover(userId: string, spotifyPlaylistId: string, coverUrl: string): Promise<void> {

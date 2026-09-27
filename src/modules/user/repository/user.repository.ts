@@ -15,17 +15,8 @@ export class UserRepository {
         return this.prisma.user.findFirst({ where: { email, provider } });
     }
 
-    async getUserByEmailAuth(email: string): Promise<User | null> {
-        return this.prisma.user.findFirst({ where: { email } });
-    }
-
-    async getUsersByEmail(email: string): Promise<User[]> {
-        return this.prisma.user.findMany({ where: { email: { equals: email.trim(), mode: 'insensitive' } } });
-    }
-
-    // Cadastro: senha + e-mail (o e-mail serve para entrar e para promoções/notificações).
-    async updateCredentials(userId: string, hashedPw: string, email: string): Promise<void> {
-        await this.prisma.user.update({ where: { id: userId }, data: { password: hashedPw, email } });
+    async updateEmail(userId: string, email: string): Promise<void> {
+        await this.prisma.user.update({ where: { id: userId }, data: { email } });
     }
 
     async isEmailTakenByOther(email: string, userId: string): Promise<boolean> {
