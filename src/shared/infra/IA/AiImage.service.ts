@@ -8,12 +8,24 @@ import * as http from 'http';
 
 export type ReferenceImage = { buffer: Buffer; mimeType: string };
 
-// Só lê a foto de referência (pessoa ou cenário + descrição curta); barato, imagem em baixa resolução.
-const VISION_MODEL = "gpt-4.1-mini";
+type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
+const IMAGE_QUALITIES: ImageQuality[] = ['low', 'medium', 'high', 'auto'];
+
+// Modelos no .env (trocar sem mexer no código); sem a variável, valem os padrões.
+// OPENAI_IMAGE_MODEL: gera a capa. OPENAI_IMAGE_QUALITY: a capa vai a 640×640 no Spotify e 1024 no card,
+// "medium" não perde nada visível e custa bem menos que "high" ("auto" pode escolher "high").
+// OPENAI_VISION_MODEL: só lê a foto de referência (pessoa ou cenário + descrição curta), em baixa resolução.
+function imageQuality(): ImageQuality {
+  const value = process.env.OPENAI_IMAGE_QUALITY as ImageQuality | undefined;
+  return value && IMAGE_QUALITIES.includes(value) ? value : 'medium';
+}
 
 @Injectable()
 export class AiImageService {
   private openai: OpenAI;
+  private readonly imageModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini';
+  private readonly imageQuality = imageQuality();
+  private readonly visionModel = process.env.OPENAI_VISION_MODEL || 'gpt-4.1-mini';
 
   constructor(private readonly imagePromptService: ImagePromptService) {
     this.openai = new OpenAI({
@@ -44,7 +56,7 @@ export class AiImageService {
   async describeReference(image: ReferenceImage): Promise<CoverReference> {
     try {
       const response = await this.openai.chat.completions.create({
-        model: VISION_MODEL,
+        model: this.visionModel,
         response_format: { type: 'json_object' },
         max_tokens: 120,
         messages: [{
@@ -75,16 +87,18 @@ export class AiImageService {
     if (reference) {
       const ext = reference.mimeType.split('/')[1] || 'png';
       result = await this.openai.images.edit({
-        model: "gpt-image-1-mini",
+        model: this.imageModel,
         prompt,
         image: await toFile(reference.buffer, `reference.${ext}`, { type: reference.mimeType }),
         size,
+        quality: this.imageQuality,
       });
     } else {
       result = await this.openai.images.generate({
-        model: "gpt-image-1-mini",
+        model: this.imageModel,
         prompt,
         size,
+        quality: this.imageQuality,
       });
     }
 
