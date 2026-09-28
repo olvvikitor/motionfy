@@ -85,20 +85,6 @@ export function buildPath(from: Vector, to: Vector, stops: number): Vector[] {
     });
 }
 
-// Caminho por vários pontos em sequência (os humores de um quadrante), com as paradas espalhadas
-// igualmente pelos trechos; a primeira no primeiro ponto e a última no último.
-export function buildPolyline(points: Vector[], stops: number): Vector[] {
-    if (points.length === 1) return Array.from({ length: Math.max(1, stops) }, () => points[0]);
-    const count = Math.max(2, stops);
-    return Array.from({ length: count }, (_, i) => {
-        const t = (i / (count - 1)) * (points.length - 1);
-        const seg = Math.min(Math.floor(t), points.length - 2);
-        const local = t - seg;
-        const [a, b] = [points[seg], points[seg + 1]];
-        return Object.fromEntries(Object.keys(a).map(key => [key, a[key] + (b[key] - a[key]) * local]));
-    });
-}
-
 // Paradas sem nenhuma candidata dentro do raio.
 export function findGaps(path: Vector[], candidates: JourneyCandidate[]): number[] {
     return path
@@ -164,8 +150,8 @@ export type PickOptions = {
     fatigue?: Map<string, number>;
     // Parte da playlist reservada a músicas novas para o usuário (isNovel), quando houver no raio.
     noveltyShare?: number;
-    // Quando a música "serve" para a parada. Padrão: estar a até FIT_RADIUS dela. Playlist por quadrante:
-    // ser de um dos humores do quadrante (a distância à parada só ordena).
+    // Quando a música "serve" para a parada. Padrão: estar a até FIT_RADIUS dela. Playlist de um humor:
+    // ser dele ou de um humor próximo (a distância à parada só ordena).
     fits?: (candidate: JourneyCandidate, distance: number) => boolean;
 };
 
@@ -241,16 +227,6 @@ export function buildJourney(
     options: PickOptions = {},
 ): JourneyPick[] {
     return fitToDuration(stops => buildPath(from, to, stops), durationMin, candidates, options);
-}
-
-// Playlist por quadrante: o caminho passa pelos humores dele em ordem (quadrantRoute).
-export function buildRouteJourney(
-    route: Vector[],
-    durationMin: number,
-    candidates: JourneyCandidate[],
-    options: PickOptions = {},
-): JourneyPick[] {
-    return fitToDuration(stops => buildPolyline(route, stops), durationMin, candidates, options);
 }
 
 function fitToDuration(

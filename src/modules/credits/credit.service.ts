@@ -10,7 +10,7 @@ export const PACKAGES = [
         label: '1 crédito',
         tag: null,
         popular: false,
-        description: 'Uma capa gerada pela IA ou três playlists de 1 hora.',
+        description: 'Uma capa gerada pela IA ou três playlists de 60 min.',
     },
     {
         id: 'p5',

@@ -11,14 +11,14 @@ import { CandidateSourcingService } from "./candidate-sourcing.service";
 import { CreditService } from "src/modules/credits/credit.service";
 import { durationCost } from "./playlist-pricing";
 import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesFilters } from "./journey-filters";
-import { buildJourney, buildPath, buildRouteJourney, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, JourneyPick, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
-import { inQuadrant, Quadrant, quadrantRoute } from "./quadrants";
+import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 
 export type JourneyPlaylistResponse = {
-    // No quadrante, o humor que mais aparece nas músicas escolhidas (partida = chegada): guia a capa e a cor.
+    // Um humor: partida = chegada = o humor escolhido (capa e cor).
     from: string;
     to: string;
-    quadrant?: Quadrant;
+    // Um humor: os humores que podiam entrar (o escolhido primeiro, depois os próximos).
+    moods?: string[];
     durationMin: number;
     source: JourneySource;
     request?: string;
@@ -63,8 +63,8 @@ type ResolvedJourney = {
     fromOrigin?: JourneyFromOrigin;
     // Modo custom com estilo pedido: só entram músicas que o Jev confirmar que são desse estilo.
     style?: { request: string; genre: string | null };
-    // Playlist de um quadrante: from/to são o primeiro e o último humor do caminho dele.
-    quadrant?: Quadrant;
+    // Playlist de um humor: from = to = ele; entram músicas dele e dos humores próximos (moodAreas).
+    moods?: string[];
 };
 
 // Gêneros de onde vêm as músicas de fora no "Descobrir" (tags das populares) e o teste de cada música.
@@ -129,40 +129,37 @@ export class JourneyPlaylistService {
         if (filters.national && filters.national !== 'include') await this.artistCountry.annotate(fullPool);
         const pool = filtering ? fullPool.filter(c => matchesFilters(c, filters)) : fullPool;
 
-        const quadrant = journey.quadrant;
+        const moods = journey.moods;
         const collected = await this.collectCandidates(dto, journey, { from, to, pool, fullPool, taste, provider, accessToken, fatigue, filters });
-        // Quadrante: só músicas de um dos humores dele (nada de "aproximada" de outro quadrante).
+        // Um humor: só músicas dele ou de um humor próximo (nada de "aproximada" de humor longe).
         const candidates = collected.candidates.filter(c =>
-            (!filtering || matchesFilters(c, filters)) && (!quadrant || inQuadrant(quadrant, c.dominantSentiment)));
+            (!filtering || matchesFilters(c, filters)) && (!moods || moods.includes(c.dominantSentiment)));
         const { newTracksAnalyzed } = collected;
 
         // Sorteio com peso entre as que combinam com cada parada; as sugeridas muitas vezes/há pouco
         // perdem posição e, no "Descobrir", ~metade vem de músicas novas para o usuário.
         // "Descobrir": músicas de outros usuários/novidades só se se encaixarem no humor da parada.
         // "Minha biblioteca" já só tem as do usuário; o pedido em texto só busca no Spotify.
-        // Quadrante: o caminho passa pelos humores dele, do mais calmo ao mais agitado, e qualquer música do
-        // quadrante serve em qualquer parada (a distância só ordena).
+        // Um humor: todas as paradas no humor escolhido e qualquer música dele ou de um próximo serve (a
+        // distância só ordena, então as do escolhido vêm antes).
         const options = {
             sample: true,
             fatigue,
             othersMustFit: dto.source === 'all',
             noveltyShare: dto.source === 'all' ? NOVELTY_SHARE : 0,
-            ...(quadrant ? { fits: (c: JourneyCandidate) => inQuadrant(quadrant, c.dominantSentiment) } : {}),
+            ...(moods ? { fits: (c: JourneyCandidate) => moods.includes(c.dominantSentiment) } : {}),
         };
-        const picks = quadrant
-            ? buildRouteJourney(quadrantRoute(quadrant).map(r => r.vector), dto.durationMin, candidates, options)
-            : buildJourney(from, to, dto.durationMin, candidates, options);
+        const picks = buildJourney(from, to, dto.durationMin, candidates, options);
         if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto, filtering));
 
         await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
 
         const lastStop = Math.max(1, picks[picks.length - 1].stop);
-        const representative = quadrant ? mostFrequentMood(picks) : null;
 
         return {
-            from: representative ?? journey.from,
-            to: representative ?? journey.to,
-            quadrant,
+            from: journey.from,
+            to: journey.to,
+            moods,
             durationMin: dto.durationMin,
             source: dto.source,
             request: dto.source === 'custom' ? dto.request : undefined,
@@ -219,9 +216,8 @@ export class JourneyPlaylistService {
     // do usuário ou, em último caso, do palpite do Jev.
     private async resolveJourney(userId: string, dto: JourneyPlaylistDto): Promise<ResolvedJourney> {
         if (dto.source !== 'custom') {
-            if (dto.quadrant) {
-                const route = quadrantRoute(dto.quadrant);
-                return { from: route[0].mood, to: route[route.length - 1].mood, quadrant: dto.quadrant };
+            if (dto.mood) {
+                return { from: dto.mood, to: dto.mood, moods: [dto.mood, ...(moodAreas(clusterVectors())[dto.mood] ?? [])] };
             }
             if (!dto.from || !dto.to) throw new BadRequestException('Escolha o sentimento de partida e o de chegada.');
             return { from: dto.from, to: dto.to };
@@ -292,10 +288,10 @@ export class JourneyPlaylistService {
 
                 let fits: (c: JourneyCandidate) => boolean;
                 let needed: number;
-                const quadrant = journey.quadrant;
-                if (quadrant) {
-                    // Quadrante: qualquer música dele serve; falta uma por parada (e a cota de novas).
-                    fits = c => inQuadrant(quadrant, c.dominantSentiment);
+                const moods = journey.moods;
+                if (moods) {
+                    // Um humor: qualquer música dele ou de um próximo serve; falta uma por parada (e a cota de novas).
+                    fits = c => moods.includes(c.dominantSentiment);
                     const count = (list: JourneyCandidate[]) => list.filter(fits).length;
                     needed = Math.max(0, stops - count(rested), quota - count(novel));
                 } else {
@@ -377,10 +373,10 @@ export class JourneyPlaylistService {
         if (dto.national && dto.national !== 'include') {
             return 'Nenhuma música combina com esse filtro de música nacional agora. Ainda estamos descobrindo o país de alguns artistas: tente de novo em alguns minutos ou mude o filtro.';
         }
-        if (dto.quadrant) {
+        if (dto.mood) {
             return filtering
-                ? 'Nenhuma música desse quadrante combina com esses filtros. Tire algum filtro e tente de novo.'
-                : 'Ainda não há músicas desse quadrante para você. Tente "Descobrir" ou outro quadrante.';
+                ? 'Nenhuma música desse humor combina com esses filtros. Tire algum filtro e tente de novo.'
+                : 'Ainda não há músicas desse humor para você. Tente "Descobrir" ou outro humor.';
         }
         if (filtering) return 'Nenhuma música combina com esses filtros e com esse humor. Tire algum filtro e tente de novo.';
         if (dto.source === 'saved') {
@@ -391,13 +387,6 @@ export class JourneyPlaylistService {
         }
         return 'Não encontrei músicas para montar essa jornada. Ouça mais algumas músicas e tente de novo.';
     }
-}
-
-// Humor que mais aparece nas músicas escolhidas (o primeiro a aparecer desempata).
-function mostFrequentMood(picks: JourneyPick[]): string {
-    const counts = new Map<string, number>();
-    for (const { candidate } of picks) counts.set(candidate.dominantSentiment, (counts.get(candidate.dominantSentiment) ?? 0) + 1);
-    return [...counts.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0];
 }
 
 function clusterVectors(): Record<string, Vector> {

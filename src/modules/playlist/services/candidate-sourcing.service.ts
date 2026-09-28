@@ -57,7 +57,7 @@ export type PopularContext = {
     // Acervo já carregado (não busca de novo) e músicas do usuário.
     analyzed: Map<string, JourneyCandidate>;
     tasteIds: Set<string>;
-    // A música serve para a playlist (humor da parada ou do quadrante) e está no gênero.
+    // A música serve para a playlist (humor da parada ou, em "um humor", dele ou de um próximo) e está no gênero.
     fits: (candidate: JourneyCandidate) => boolean;
     inScope: (candidate: JourneyCandidate) => boolean;
     // Completa dados que o `inScope` usa (país do artista, no filtro de música nacional), antes do teste.

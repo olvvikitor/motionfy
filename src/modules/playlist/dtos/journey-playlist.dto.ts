@@ -5,7 +5,6 @@ const REQUEST_MESSAGE = 'Diga o que você quer ouvir (de 2 a 200 caracteres).';
 import { EMOTION_CLUSTERS } from 'src/shared/infra/IA/emotion-analysis.service';
 import { BPM_RANGE_KEYS, NATIONAL_OPTIONS, type BpmRange, type NationalOption } from '../services/journey-filters';
 import { PLAYLIST_DURATIONS } from '../services/playlist-pricing';
-import { QUADRANTS, type Quadrant } from '../services/quadrants';
 
 export const JOURNEY_SOURCES = ['all', 'saved', 'custom'] as const;
 export type JourneySource = typeof JOURNEY_SOURCES[number];
@@ -13,8 +12,8 @@ export type JourneySource = typeof JOURNEY_SOURCES[number];
 export const REQUEST_SOURCES = ['search'] as const;
 export type RequestSource = typeof REQUEST_SOURCES[number];
 
-// Jornada (all/saved): partida e chegada. Quadrante: só `quadrant`. Pedido (custom): o Jev decide.
-const needsJourney = (dto: JourneyPlaylistDto) => dto.source !== 'custom' && !dto.quadrant;
+// Jornada (all/saved): partida e chegada. Um humor: só `mood`. Pedido (custom): o Jev decide.
+const needsJourney = (dto: JourneyPlaylistDto) => dto.source !== 'custom' && !dto.mood;
 
 export class JourneyPlaylistDto {
     @ValidateIf(needsJourney)
@@ -25,10 +24,10 @@ export class JourneyPlaylistDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de chegada inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     to?: string;
 
-    // Playlist de um quadrante inteiro (qualquer humor dele), no lugar de partida → chegada. Modos all/saved.
+    // Playlist de um humor só (com os humores próximos dele), no lugar de partida → chegada. Modos all/saved.
     @IsOptional()
-    @IsIn(QUADRANTS, { message: `Quadrante inválido. Use um de: ${QUADRANTS.join(', ')}.` })
-    quadrant?: Quadrant;
+    @IsIn(EMOTION_CLUSTERS, { message: `Humor inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
+    mood?: string;
 
     // Acima de 45 min a geração custa créditos (playlist-pricing.ts).
     @IsIn(PLAYLIST_DURATIONS, { message: `Duração inválida. Use uma de: ${PLAYLIST_DURATIONS.join(', ')} minutos.` })
