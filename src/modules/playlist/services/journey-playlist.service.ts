@@ -5,15 +5,20 @@ import { MusicProviderFactory } from "src/shared/infra/music/music.provider.fact
 import { MusicProviderInterface } from "src/shared/infra/music/music.provider.interface";
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository, UserTaste } from "../repository/playlist.repository";
+import { TrackInput } from "src/shared/types/TrackInput";
+import { ArtistCountryService } from "./artist-country.service";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
 import { CreditService } from "src/modules/credits/credit.service";
 import { durationCost } from "./playlist-pricing";
-import { buildFacets, FilterFacets, hasFilters, JourneyFilters, matchesFilters } from "./journey-filters";
-import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesFilters } from "./journey-filters";
+import { buildJourney, buildPath, buildRouteJourney, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, JourneyPick, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { inQuadrant, Quadrant, quadrantRoute } from "./quadrants";
 
 export type JourneyPlaylistResponse = {
+    // No quadrante, o humor que mais aparece nas músicas escolhidas (partida = chegada): guia a capa e a cor.
     from: string;
     to: string;
+    quadrant?: Quadrant;
     durationMin: number;
     source: JourneySource;
     request?: string;
@@ -36,8 +41,11 @@ export type JourneyPlaylistResponse = {
 
 // Janela do cansaço: sugestões mais velhas que isso já não pesam (e são apagadas).
 const RECENT_SUGGESTION_DAYS = 30;
-// No "Descobrir", ~30% da playlist vem de músicas novas para o usuário.
-const NOVELTY_SHARE = 0.3;
+// No "Descobrir", ~60% da playlist vem de músicas novas para o usuário (populares do gênero).
+const NOVELTY_SHARE = 0.6;
+// Sem gênero nos filtros, as músicas de fora ficam nos gêneros principais do usuário.
+const TOP_GENRES = 3;
+const TOP_SUBGENRES = 4;
 // Abaixo disso a música já "descansou" e conta como cobertura da parada.
 const RESTED_FATIGUE = 0.1;
 
@@ -55,7 +63,12 @@ type ResolvedJourney = {
     fromOrigin?: JourneyFromOrigin;
     // Modo custom com estilo pedido: só entram músicas que o Jev confirmar que são desse estilo.
     style?: { request: string; genre: string | null };
+    // Playlist de um quadrante: from/to são o primeiro e o último humor do caminho dele.
+    quadrant?: Quadrant;
 };
+
+// Gêneros de onde vêm as músicas de fora no "Descobrir" (tags das populares) e o teste de cada música.
+type GenreScope = { genres: string[]; inScope: (candidate: JourneyCandidate) => boolean };
 
 @Injectable()
 export class JourneyPlaylistService {
@@ -65,6 +78,7 @@ export class JourneyPlaylistService {
         private readonly providers: MusicProviderFactory,
         private readonly aiText: AiTextService,
         private readonly credits: CreditService,
+        private readonly artistCountry: ArtistCountryService,
     ) { }
 
     // Só sugere as músicas. Nada vai para a fila até o usuário revisar e chamar queue().
@@ -109,34 +123,46 @@ export class JourneyPlaylistService {
 
         // Filtros do usuário (gêneros, subgêneros, BPM): valem para o acervo e para as músicas novas buscadas.
         // O pedido em texto (custom) tem o estilo dele e não usa filtros.
-        const filters: JourneyFilters = dto.source === 'custom' ? {} : { genres: dto.genres, subgenres: dto.subgenres, bpm: dto.bpm };
+        const filters: JourneyFilters = dto.source === 'custom' ? {} : { genres: dto.genres, subgenres: dto.subgenres, bpm: dto.bpm, national: dto.national };
         const filtering = hasFilters(filters);
+        // País do artista (música nacional): só quando o filtro pede.
+        if (filters.national && filters.national !== 'include') await this.artistCountry.annotate(fullPool);
         const pool = filtering ? fullPool.filter(c => matchesFilters(c, filters)) : fullPool;
-        const knownIds = new Set(fullPool.map(c => c.spotifyId)); // já analisadas: não busca/classifica de novo
 
-        const collected = await this.collectCandidates(dto, journey, { from, to, pool, knownIds, taste, provider, accessToken, fatigue });
-        const candidates = filtering ? collected.candidates.filter(c => matchesFilters(c, filters)) : collected.candidates;
+        const quadrant = journey.quadrant;
+        const collected = await this.collectCandidates(dto, journey, { from, to, pool, fullPool, taste, provider, accessToken, fatigue, filters });
+        // Quadrante: só músicas de um dos humores dele (nada de "aproximada" de outro quadrante).
+        const candidates = collected.candidates.filter(c =>
+            (!filtering || matchesFilters(c, filters)) && (!quadrant || inQuadrant(quadrant, c.dominantSentiment)));
         const { newTracksAnalyzed } = collected;
 
         // Sorteio com peso entre as que combinam com cada parada; as sugeridas muitas vezes/há pouco
-        // perdem posição e, no "Descobrir", ~30% vêm de músicas novas para o usuário.
+        // perdem posição e, no "Descobrir", ~metade vem de músicas novas para o usuário.
         // "Descobrir": músicas de outros usuários/novidades só se se encaixarem no humor da parada.
         // "Minha biblioteca" já só tem as do usuário; o pedido em texto só busca no Spotify.
-        const picks = buildJourney(from, to, dto.durationMin, candidates, {
+        // Quadrante: o caminho passa pelos humores dele, do mais calmo ao mais agitado, e qualquer música do
+        // quadrante serve em qualquer parada (a distância só ordena).
+        const options = {
             sample: true,
             fatigue,
             othersMustFit: dto.source === 'all',
             noveltyShare: dto.source === 'all' ? NOVELTY_SHARE : 0,
-        });
+            ...(quadrant ? { fits: (c: JourneyCandidate) => inQuadrant(quadrant, c.dominantSentiment) } : {}),
+        };
+        const picks = quadrant
+            ? buildRouteJourney(quadrantRoute(quadrant).map(r => r.vector), dto.durationMin, candidates, options)
+            : buildJourney(from, to, dto.durationMin, candidates, options);
         if (!picks.length) throw new UnprocessableEntityException(this.emptyMessage(dto, filtering));
 
         await this.repository.saveSuggestions(userId, picks.map(p => p.candidate.spotifyId), since);
 
         const lastStop = Math.max(1, picks[picks.length - 1].stop);
+        const representative = quadrant ? mostFrequentMood(picks) : null;
 
         return {
-            from: journey.from,
-            to: journey.to,
+            from: representative ?? journey.from,
+            to: representative ?? journey.to,
+            quadrant,
             durationMin: dto.durationMin,
             source: dto.source,
             request: dto.source === 'custom' ? dto.request : undefined,
@@ -193,8 +219,11 @@ export class JourneyPlaylistService {
     // do usuário ou, em último caso, do palpite do Jev.
     private async resolveJourney(userId: string, dto: JourneyPlaylistDto): Promise<ResolvedJourney> {
         if (dto.source !== 'custom') {
+            if (dto.quadrant) {
+                const route = quadrantRoute(dto.quadrant);
+                return { from: route[0].mood, to: route[route.length - 1].mood, quadrant: dto.quadrant };
+            }
             if (!dto.from || !dto.to) throw new BadRequestException('Escolha o sentimento de partida e o de chegada.');
-            // Partida = chegada: playlist de um humor só (todas as paradas no mesmo ponto).
             return { from: dto.from, to: dto.to };
         }
 
@@ -221,12 +250,13 @@ export class JourneyPlaylistService {
     private async collectCandidates(dto: JourneyPlaylistDto, journey: ResolvedJourney, ctx: {
         from: Vector;
         to: Vector;
-        pool: JourneyCandidate[];
-        knownIds: Set<string>;
+        pool: JourneyCandidate[]; // acervo já com os filtros
+        fullPool: JourneyCandidate[];
         taste: UserTaste;
         provider: MusicProviderInterface;
         accessToken: string;
         fatigue: Map<string, number>;
+        filters: JourneyFilters;
     }): Promise<{ candidates: JourneyCandidate[]; newTracksAnalyzed: number }> {
         switch (dto.source) {
             // Só as curtidas já analisadas; nada de busca externa.
@@ -247,51 +277,111 @@ export class JourneyPlaylistService {
                 };
             }
 
-            // As do usuário + músicas de fora **só de artistas que ele já ouve** (histórico + biblioteca),
-            // com busca no Spotify onde faltar música "descansada" ou novidade para fechar a cota.
-            // Músicas cansadas não contam como cobertura.
+            // As do usuário + músicas de fora de artistas que ele já ouve + as **populares do gênero** (paradas
+            // do Last.fm dos gêneros escolhidos ou, sem filtro, dos principais dele, e os sucessos dos artistas
+            // dele). De fora, só dentro do gênero. As populares já analisadas entram sempre; as novas passam
+            // pelo Jev só onde faltar música "descansada" ou novidade para fechar a cota.
             default: {
                 const stops = stopCountForDuration(dto.durationMin);
-                const path = buildPath(ctx.from, ctx.to, stops);
                 const quota = Math.ceil(NOVELTY_SHARE * stops);
+                const scope = await this.genreScope(ctx.taste, ctx.filters);
                 const knownArtists = new Set(ctx.taste.topArtists.map(primaryArtist));
-                const pool = ctx.pool.filter(c => c.fromUserHistory || knownArtists.has(primaryArtist(c.artist)));
-                const rested = pool.filter(c => (ctx.fatigue.get(c.spotifyId) ?? 0) < RESTED_FATIGUE);
-                const novel = pool.filter(c => isNovel(c, ctx.fatigue));
-                const sourcing = {
-                    provider: ctx.provider,
-                    accessToken: ctx.accessToken,
-                    knownIds: ctx.knownIds,
-                    artists: ctx.taste.topArtists,
-                    userTracks: ctx.pool.filter(c => c.fromUserHistory),
-                };
+                const base = ctx.pool.filter(c => c.fromUserHistory || (knownArtists.has(primaryArtist(c.artist)) && scope.inScope(c)));
+                const rested = base.filter(c => (ctx.fatigue.get(c.spotifyId) ?? 0) < RESTED_FATIGUE);
+                const novel = base.filter(c => isNovel(c, ctx.fatigue));
 
-                // Um humor só: uma música perto não basta, precisa de uma por parada (e da cota de novas).
-                if (journey.from === journey.to) {
-                    const near = (list: JourneyCandidate[]) => list.filter(c => distance(ctx.from, c.vector) <= FIT_RADIUS).length;
-                    const needed = Math.max(stops - near(rested), quota - near(novel));
-                    const fresh = needed > 0 ? await this.sourcing.fillPoint(ctx.from, needed, sourcing) : [];
-                    return { candidates: [...pool, ...fresh], newTracksAnalyzed: fresh.length };
+                let fits: (c: JourneyCandidate) => boolean;
+                let needed: number;
+                const quadrant = journey.quadrant;
+                if (quadrant) {
+                    // Quadrante: qualquer música dele serve; falta uma por parada (e a cota de novas).
+                    fits = c => inQuadrant(quadrant, c.dominantSentiment);
+                    const count = (list: JourneyCandidate[]) => list.filter(fits).length;
+                    needed = Math.max(0, stops - count(rested), quota - count(novel));
+                } else {
+                    // Jornada: paradas sem música por perto, mais as que faltam para a cota de novas
+                    // (espalhadas pelo caminho primeiro).
+                    const path = buildPath(ctx.from, ctx.to, stops);
+                    fits = c => path.some(p => distance(p, c.vector) <= FIT_RADIUS);
+                    const gaps = new Set(findGaps(path, rested));
+                    const novelGaps = findGaps(path, novel);
+                    const deficit = quota - (stops - novelGaps.length);
+                    if (deficit > 0) {
+                        const spread = new Set(Array.from({ length: quota }, (_, i) => Math.floor((i * stops) / quota)));
+                        const ordered = [...novelGaps.filter(i => spread.has(i)), ...novelGaps.filter(i => !spread.has(i))];
+                        ordered.slice(0, deficit).forEach(i => gaps.add(i));
+                    }
+                    needed = gaps.size;
                 }
 
-                const gaps = new Set(findGaps(path, rested));
-                const novelGaps = findGaps(path, novel);
-                const deficit = quota - (stops - novelGaps.length);
-                if (deficit > 0) {
-                    // Paradas espalhadas pelo caminho primeiro, depois as que faltarem.
-                    const spread = new Set(Array.from({ length: quota }, (_, i) => Math.floor((i * stops) / quota)));
-                    const ordered = [...novelGaps.filter(i => spread.has(i)), ...novelGaps.filter(i => !spread.has(i))];
-                    ordered.slice(0, deficit).forEach(i => gaps.add(i));
-                }
+                // Artistas do usuário com música dele que sirva primeiro (os sucessos deles tendem a servir também).
+                const fittingArtists = new Set(base.filter(c => c.fromUserHistory && fits(c)).map(c => primaryArtist(c.artist)));
+                const artists = [
+                    ...shuffle(ctx.taste.topArtists.filter(a => fittingArtists.has(primaryArtist(a)))),
+                    ...ctx.taste.topArtists.filter(a => !fittingArtists.has(primaryArtist(a))),
+                ];
 
-                const gapStops = [...gaps].sort((a, b) => a - b).map(index => path[index]);
-                const fresh = gapStops.length ? await this.sourcing.fillGaps(gapStops, sourcing) : [];
-                return { candidates: [...pool, ...fresh], newTracksAnalyzed: fresh.length };
+                const national = ctx.filters.national && ctx.filters.national !== 'include' ? ctx.filters.national : null;
+                const popular = await this.sourcing.popular({
+                    genres: scope.genres,
+                    artists,
+                    analyzed: new Map(ctx.fullPool.map(c => [c.spotifyId, c])),
+                    tasteIds: ctx.taste.tasteIds,
+                    fits,
+                    // Gênero e os outros filtros (BPM, música nacional): não gasta o Jev com o que sairia depois.
+                    inScope: c => scope.inScope(c) && matchesFilters(c, ctx.filters),
+                    // Filtro de música nacional: o país do artista antes do teste acima e, nas novas, só as de artista
+                    // com país conhecido e do lado certo passam pelo Jev.
+                    ...(national ? {
+                        annotate: (list: JourneyCandidate[]) => this.artistCountry.annotate(list),
+                        eligible: (tracks: TrackInput[]) => this.artistCountry.keepMatching(tracks, national),
+                    } : {}),
+                    needed,
+                });
+                const candidates = [...new Map([...base, ...popular.candidates].map(c => [c.spotifyId, c])).values()];
+                return { candidates, newTracksAnalyzed: popular.classified };
             }
         }
     }
 
+    // Gêneros das músicas de fora: os escolhidos nos filtros ou, sem filtro de gênero, os principais do
+    // usuário (e os subgêneros mais ouvidos deles, que dão paradas de populares mais certeiras).
+    private async genreScope(taste: UserTaste, filters: JourneyFilters): Promise<GenreScope> {
+        const chosen = chosenGenres(filters);
+        if (chosen.length) {
+            const genreFilters = { genres: filters.genres, subgenres: filters.subgenres };
+            return { genres: chosen, inScope: c => matchesFilters(c, genreFilters) };
+        }
+
+        const facets = buildFacets(await this.repository.getTasteFacetRows(taste.tasteIds));
+
+        // Só nacional: o artista brasileiro faz pop, rock, eletrônica… então o gênero não restringe (o filtro
+        // já restringe bastante); as populares vêm dos gêneros brasileiros que a pessoa ouve ou da tag geral.
+        if (filters.national === 'only') {
+            const national = [...facets.subgenres, ...facets.genres].map(g => g.name).filter(isNationalGenre);
+            return { genres: national.length ? [...new Set(national)].slice(0, TOP_SUBGENRES) : ['brazilian'], inScope: () => true };
+        }
+
+        // Sem música nacional: os gêneros brasileiros não contam entre os principais (nem viram busca de populares).
+        const allowed = (name: string) => filters.national !== 'exclude' || !isNationalGenre(name);
+        const top = facets.genres.filter(g => allowed(g.name)).slice(0, TOP_GENRES).map(g => g.name);
+        if (!top.length) return { genres: [], inScope: () => true }; // sem gênero conhecido ainda: não restringe
+        const subgenres = facets.subgenres.filter(s => top.includes(s.genre) && allowed(s.name)).slice(0, TOP_SUBGENRES).map(s => s.name);
+        return {
+            genres: subgenres.length ? subgenres : top,
+            inScope: c => Boolean(c.genre && top.includes(c.genre)),
+        };
+    }
+
     private emptyMessage(dto: JourneyPlaylistDto, filtering: boolean): string {
+        if (dto.national && dto.national !== 'include') {
+            return 'Nenhuma música combina com esse filtro de música nacional agora. Ainda estamos descobrindo o país de alguns artistas: tente de novo em alguns minutos ou mude o filtro.';
+        }
+        if (dto.quadrant) {
+            return filtering
+                ? 'Nenhuma música desse quadrante combina com esses filtros. Tire algum filtro e tente de novo.'
+                : 'Ainda não há músicas desse quadrante para você. Tente "Descobrir" ou outro quadrante.';
+        }
         if (filtering) return 'Nenhuma música combina com esses filtros e com esse humor. Tire algum filtro e tente de novo.';
         if (dto.source === 'saved') {
             return 'Ainda não há músicas curtidas analisadas. Elas são importadas logo após o login — tente de novo em alguns minutos.';
@@ -301,6 +391,13 @@ export class JourneyPlaylistService {
         }
         return 'Não encontrei músicas para montar essa jornada. Ouça mais algumas músicas e tente de novo.';
     }
+}
+
+// Humor que mais aparece nas músicas escolhidas (o primeiro a aparecer desempata).
+function mostFrequentMood(picks: JourneyPick[]): string {
+    const counts = new Map<string, number>();
+    for (const { candidate } of picks) counts.set(candidate.dominantSentiment, (counts.get(candidate.dominantSentiment) ?? 0) + 1);
+    return [...counts.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best))[0];
 }
 
 function clusterVectors(): Record<string, Vector> {

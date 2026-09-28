@@ -14,11 +14,34 @@ export const BPM_RANGES = {
 export type BpmRange = keyof typeof BPM_RANGES;
 export const BPM_RANGE_KEYS = Object.keys(BPM_RANGES) as BpmRange[];
 
-export type JourneyFilters = { genres?: string[]; subgenres?: string[]; bpm?: BpmRange[] };
-type Filterable = { genre?: string | null; subgenre?: string | null; bpm?: number | null };
+// Música nacional (brasileira): include = entra tudo (padrão), exclude = sem nacional, only = só nacional.
+export const NATIONAL_OPTIONS = ['include', 'exclude', 'only'] as const;
+export type NationalOption = typeof NATIONAL_OPTIONS[number];
+
+export type JourneyFilters = { genres?: string[]; subgenres?: string[]; bpm?: BpmRange[]; national?: NationalOption };
+type Filterable = { genre?: string | null; subgenre?: string | null; bpm?: number | null; artistCountry?: string | null };
 
 const norm = (value: string) => value.trim().toLowerCase();
 const GENRE_OF = new Map(Object.entries(SUBGENRE_TO_GENRE).map(([sub, genre]) => [norm(sub), norm(genre)]));
+
+// Gêneros e subgêneros do Jev que são brasileiros (só escolhem de onde vêm as populares; quem decide se a
+// música é nacional é o país do artista).
+const NATIONAL_GENRES = new Set([
+    'Rock Nacional', 'Rap Nacional', 'Trap BR', 'Funk', 'Funk Carioca', 'Brega Funk', 'Sertanejo', 'Sertanejo Universitário',
+    'Sertanejo Raiz', 'Samba/Pagode', 'Pagode', 'Samba', 'MPB', 'Bossa Nova', 'Forró', 'Piseiro', 'Axé', 'Arrocha',
+].map(norm));
+
+// Música nacional = artista principal brasileiro, pelo país dele (ArtistInfo: MusicBrainz/Last.fm). Com o filtro
+// ligado (sem/só nacional), música de artista sem país conhecido fica de fora: não dá para saber de que lado está.
+export function matchesNational(artistCountry: string | null | undefined, option: NationalOption | undefined): boolean {
+    if (!option || option === 'include') return true;
+    if (typeof artistCountry !== 'string') return false;
+    return (artistCountry === 'BR') === (option === 'only');
+}
+
+export function isNationalGenre(name: string): boolean {
+    return NATIONAL_GENRES.has(norm(name));
+}
 
 export function bpmRangeOf(bpm: number | null | undefined): BpmRange | null {
     if (typeof bpm !== 'number') return null;
@@ -26,7 +49,15 @@ export function bpmRangeOf(bpm: number | null | undefined): BpmRange | null {
 }
 
 export function hasFilters(filters: JourneyFilters): boolean {
-    return Boolean(filters.genres?.length || filters.subgenres?.length || filters.bpm?.length);
+    return Boolean(filters.genres?.length || filters.subgenres?.length || filters.bpm?.length || (filters.national && filters.national !== 'include'));
+}
+
+// Gêneros e subgêneros que valem nos filtros: os subgêneros e os gêneros que não foram afunilados por um
+// subgênero seu ("Rock" + "Indie Rock" = só "Indie Rock"). Usado para buscar as populares desses gêneros.
+export function chosenGenres(filters: JourneyFilters): string[] {
+    const subgenres = filters.subgenres ?? [];
+    const narrowed = new Set(subgenres.map(sub => GENRE_OF.get(norm(sub))).filter(Boolean));
+    return [...subgenres, ...(filters.genres ?? []).filter(genre => !narrowed.has(norm(genre)))];
 }
 
 export function matchesFilters(track: Filterable, filters: JourneyFilters): boolean {
@@ -44,7 +75,7 @@ export function matchesFilters(track: Filterable, filters: JourneyFilters): bool
         const range = bpmRangeOf(track.bpm);
         if (!range || !filters.bpm.includes(range)) return false;
     }
-    return true;
+    return matchesNational(track.artistCountry, filters.national);
 }
 
 export type FilterFacets = {

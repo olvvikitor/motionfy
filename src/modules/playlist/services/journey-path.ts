@@ -19,6 +19,10 @@ export interface JourneyCandidate {
     genre?: string | null;
     subgenre?: string | null;
     bpm?: number | null;
+    isrc?: string | null; // "BR…" = gravada no Brasil (filtro de música nacional)
+    // País do artista principal (ArtistInfo): string = conhecido; null = consultado sem resposta;
+    // ausente = ainda não consultado. Com o filtro de música nacional ligado, sem país a música fica de fora.
+    artistCountry?: string | null;
 }
 
 export interface JourneyPick {
@@ -57,6 +61,15 @@ export function distance(a: Vector, b: Vector): number {
     return Math.sqrt(sum);
 }
 
+export function shuffle<T>(items: T[]): T[] {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+}
+
 export function stopCountForDuration(durationMin: number): number {
     return Math.max(MIN_STOPS, Math.round((durationMin * 60_000) / DEFAULT_TRACK_MS));
 }
@@ -69,6 +82,20 @@ export function buildPath(from: Vector, to: Vector, stops: number): Vector[] {
         return Object.fromEntries(
             Object.keys(from).map(key => [key, from[key] + (to[key] - from[key]) * t]),
         );
+    });
+}
+
+// Caminho por vários pontos em sequência (os humores de um quadrante), com as paradas espalhadas
+// igualmente pelos trechos; a primeira no primeiro ponto e a última no último.
+export function buildPolyline(points: Vector[], stops: number): Vector[] {
+    if (points.length === 1) return Array.from({ length: Math.max(1, stops) }, () => points[0]);
+    const count = Math.max(2, stops);
+    return Array.from({ length: count }, (_, i) => {
+        const t = (i / (count - 1)) * (points.length - 1);
+        const seg = Math.min(Math.floor(t), points.length - 2);
+        const local = t - seg;
+        const [a, b] = [points[seg], points[seg + 1]];
+        return Object.fromEntries(Object.keys(a).map(key => [key, a[key] + (b[key] - a[key]) * local]));
     });
 }
 
@@ -137,7 +164,12 @@ export type PickOptions = {
     fatigue?: Map<string, number>;
     // Parte da playlist reservada a músicas novas para o usuário (isNovel), quando houver no raio.
     noveltyShare?: number;
+    // Quando a música "serve" para a parada. Padrão: estar a até FIT_RADIUS dela. Playlist por quadrante:
+    // ser de um dos humores do quadrante (a distância à parada só ordena).
+    fits?: (candidate: JourneyCandidate, distance: number) => boolean;
 };
+
+const withinRadius = (_: JourneyCandidate, d: number) => d <= FIT_RADIUS;
 
 // Escolhe, em ordem, uma música para cada parada: sem repetir música, no máximo MAX_PER_ARTIST
 // por artista e evitando o mesmo artista em sequência (a menos que não haja outra opção).
@@ -145,6 +177,7 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
     const rng = options.rng ?? Math.random;
     const fatigue = options.fatigue ?? new Map<string, number>();
     const noveltyShare = options.noveltyShare ?? 0;
+    const fits = options.fits ?? withinRadius;
     const used = new Set<string>();
     const perArtist = new Map<string, number>();
     const picks: JourneyPick[] = [];
@@ -164,19 +197,19 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
                     + (fatigue.get(c.spotifyId) ?? 0)
                     + artistCount * ARTIST_PENALTY
                     + (similar ? SIMILAR_PENALTY : 0);
-                return { candidate: c, distance: d, score, artist, artistCount };
+                return { candidate: c, distance: d, score, artist, artistCount, fits: fits(c, d) };
             })
-            .filter(r => !options.othersMustFit || r.candidate.fromUserHistory || r.distance <= FIT_RADIUS)
+            .filter(r => !options.othersMustFit || r.candidate.fromUserHistory || r.fits)
             .sort((a, b) => a.score - b.score);
 
-        // Da regra mais exigente para a mais solta; fica na primeira que tiver música no raio.
+        // Da regra mais exigente para a mais solta; fica na primeira que tiver música que sirva.
         const layers = [
             ranked.filter(r => r.artistCount < MAX_PER_ARTIST && r.artist !== previousArtist),
             ranked.filter(r => r.artistCount < MAX_PER_ARTIST),
             ranked,
         ];
-        const layer = layers.find(l => l.some(r => r.distance <= FIT_RADIUS)) ?? layers.find(l => l.length) ?? [];
-        let fit = layer.filter(r => r.distance <= FIT_RADIUS);
+        const layer = layers.find(l => l.some(r => r.fits)) ?? layers.find(l => l.length) ?? [];
+        let fit = layer.filter(r => r.fits);
 
         const novelBehind = novelPicked < Math.round(noveltyShare * (stop + 1));
         const novelFit = fit.filter(r => isNovel(r.candidate, fatigue));
@@ -189,7 +222,7 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
         used.add(songKey(best.candidate));
         perArtist.set(best.artist, (perArtist.get(best.artist) ?? 0) + 1);
         if (isNovel(best.candidate, fatigue)) novelPicked++;
-        picks.push({ candidate: best.candidate, stop, distance: best.distance, approximate: best.distance > FIT_RADIUS });
+        picks.push({ candidate: best.candidate, stop, distance: best.distance, approximate: !best.fits });
     });
 
     return picks;
@@ -207,6 +240,25 @@ export function buildJourney(
     candidates: JourneyCandidate[],
     options: PickOptions = {},
 ): JourneyPick[] {
+    return fitToDuration(stops => buildPath(from, to, stops), durationMin, candidates, options);
+}
+
+// Playlist por quadrante: o caminho passa pelos humores dele em ordem (quadrantRoute).
+export function buildRouteJourney(
+    route: Vector[],
+    durationMin: number,
+    candidates: JourneyCandidate[],
+    options: PickOptions = {},
+): JourneyPick[] {
+    return fitToDuration(stops => buildPolyline(route, stops), durationMin, candidates, options);
+}
+
+function fitToDuration(
+    pathFor: (stops: number) => Vector[],
+    durationMin: number,
+    candidates: JourneyCandidate[],
+    options: PickOptions,
+): JourneyPick[] {
     const targetMs = durationMin * 60_000;
     let stops = stopCountForDuration(durationMin);
     let best: JourneyPick[] = [];
@@ -214,7 +266,7 @@ export function buildJourney(
 
     while (!tried.has(stops) && stops >= MIN_STOPS && stops <= MAX_STOPS) {
         tried.add(stops);
-        const picks = pickAlongPath(buildPath(from, to, stops), candidates, options);
+        const picks = pickAlongPath(pathFor(stops), candidates, options);
         const diff = totalDurationMs(picks) - targetMs;
 
         if (!best.length || Math.abs(diff) < Math.abs(totalDurationMs(best) - targetMs)) best = picks;

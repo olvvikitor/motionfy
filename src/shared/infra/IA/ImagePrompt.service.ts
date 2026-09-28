@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 
+// Foto de referência da capa: pessoa (selfie, retrato, amigos) vira personagem; qualquer outra
+// coisa (paisagem, lugar, objeto, bicho) vira o cenário. `description` vem da leitura da foto.
+export type CoverReference = { kind: 'person' | 'scene'; description?: string | null };
+
 export type HybridPromptInput = {
     sentiment: string;
     ativacao: number;
-    faceReferencePath?: string | null;
+    reference?: CoverReference | null;
     // O que a playlist tem de concreto: é daqui que sai a variedade (o humor sozinho se repete).
     title?: string | null;
     subgenres?: string[];
@@ -156,6 +160,9 @@ const COMPOSITIONS: { text: string; person: boolean; social?: boolean }[] = [
     { text: "A small group of friends in the scene; the connection between them is the subject.", person: true, social: true },
 ];
 
+const STYLE = "Original 2D anime illustration in the style of Kyoto Animation: soft diffused light, richly detailed everyday backgrounds, subtle acting in the eyes and hands. Style reference only; every character and design is original.";
+const OUTPUT = "OUTPUT: Square 1:1 album cover, 2D anime, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.";
+
 const AVOID = "school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
 
 function energy(ativacao: number): string {
@@ -172,9 +179,33 @@ export class ImagePromptService {
     build(data: HybridPromptInput) {
         const moodKey = this.normalizeMoodKey(data.sentiment);
         const mood = MOODS[moodKey];
-        const hasFace = Boolean(data.faceReferencePath);
+        const reference = data.reference ?? null;
 
         const subgenres = (data.subgenres ?? []).filter(Boolean).slice(0, 3);
+        const music = [
+            data.title ? `Playlist title: "${data.title}".` : "",
+            subgenres.length ? `Genres: ${subgenres.join(", ")}.` : "",
+            data.songs?.length ? `Songs: ${data.songs.slice(0, 6).join("; ")}.` : "",
+        ].filter(Boolean).join(" ");
+
+        const scene = reference?.kind === 'scene'
+            ? this.sceneFromPhoto(mood, music, reference.description)
+            : this.sceneFromMusic(mood, music, subgenres, reference?.kind === 'person');
+
+        // Estilo, humor, luz, energia e proibições são os mesmos com ou sem foto: só a cena muda.
+        return `${STYLE}
+
+MOOD: ${mood.feeling}.
+${scene}
+LIGHT AND COLOR: ${this.random(mood.palettes)}, coming from real light sources in the scene; natural colors elsewhere.
+ENERGY: ${energy(data.ativacao ?? 0)}.
+AVOID: ${AVOID}. For this mood also avoid: ${mood.cliches}.
+
+${OUTPUT}`.trim();
+    }
+
+    // Sem foto ou com selfie: o cenário vem do gênero e a composição é sorteada (com rosto, sempre com a pessoa).
+    private sceneFromMusic(mood: MoodSpec, music: string, subgenres: string[], hasFace: boolean): string {
         const world = this.random(this.worldsFor(subgenres));
         const composition = this.random(COMPOSITIONS.filter(c =>
             (!hasFace || c.person) && (!c.social || mood.social)));
@@ -182,26 +213,21 @@ export class ImagePromptService {
         const subject = !composition.person
             ? ""
             : hasFace
-                ? " The main character is the person in the reference photo, redrawn in this anime style (not photorealistic)."
+                ? " The main character is the person in the reference photo (or the people, if there are several), redrawn in this anime style (not photorealistic) and keeping their likeness."
                 : " Characters are original young adults with distinct, specific looks (hair, clothes, build).";
 
-        const music = [
-            data.title ? `Playlist title: "${data.title}".` : "",
-            subgenres.length ? `Genres: ${subgenres.join(", ")}.` : "",
-            data.songs?.length ? `Songs: ${data.songs.slice(0, 6).join("; ")}.` : "",
-        ].filter(Boolean).join(" ");
-
-        return `Original 2D anime illustration in the style of Kyoto Animation: soft diffused light, richly detailed everyday backgrounds, subtle acting in the eyes and hands. Style reference only; every character and design is original.
-
-MOOD: ${mood.feeling}.
-${music ? `MUSIC: ${music} Let this music decide the setting, clothes, objects and props — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
+        return `${music ? `MUSIC: ${music} Let this music decide the setting, clothes, objects and props — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
 SCENE: ${world}. ${composition.text}${subject}${composition.person ? ` Gesture: ${this.random(mood.gestures)}.` : ""}
-KEY DETAIL: ${this.random(mood.symbols)}, placed where the eye lands.
-LIGHT AND COLOR: ${this.random(mood.palettes)}, coming from real light sources in the scene; natural colors elsewhere.
-ENERGY: ${energy(data.ativacao ?? 0)}.
-AVOID: ${AVOID}. For this mood also avoid: ${mood.cliches}.
+KEY DETAIL: ${this.random(mood.symbols)}, placed where the eye lands.`;
+    }
 
-OUTPUT: Square 1:1 album cover, 2D anime, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.`.trim();
+    // Paisagem, lugar ou objeto: a foto é o cenário (sem sortear mundo nem composição), redesenhada no
+    // estilo do Mofy. A luz e a cor da foto não passam: quem manda é a paleta do humor.
+    private sceneFromPhoto(mood: MoodSpec, music: string, description?: string | null): string {
+        return `REFERENCE: the attached photo${description ? ` shows ${description}` : ""}. Redraw it as the heart of this cover: keep its place or subject, its framing and its recognizable details, translated into this anime style (not photorealistic, not a filter over the photo). Its original light and colors do not carry over: follow LIGHT AND COLOR below.
+${music ? `MUSIC: ${music} Let this music add objects and small details to the place — the image should feel like it belongs to these songs. Do not draw the artists.\n` : ""}
+SCENE: the place or subject from the photo. People only if they are in the photo; no new characters.
+KEY DETAIL: ${this.random(mood.symbols)}, placed naturally inside the photo's scene where the eye lands.`;
     }
 
     private worldsFor(subgenres: string[]): string[] {

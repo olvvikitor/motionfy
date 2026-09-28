@@ -1,8 +1,39 @@
-import { bpmRangeOf, buildFacets, hasFilters, matchesFilters } from './journey-filters';
+import { bpmRangeOf, buildFacets, chosenGenres, hasFilters, matchesFilters, matchesNational } from './journey-filters';
 
 const rock = { genre: 'Rock', subgenre: 'Indie Rock', bpm: 128 };
 const mpb = { genre: 'MPB', subgenre: 'Bossa Nova', bpm: 84 };
 const noBpm = { genre: 'Rock', subgenre: 'Grunge', bpm: null };
+
+describe('música nacional', () => {
+    it('o país do artista decide, não o gênero', () => {
+        expect(matchesFilters({ ...rock, artistCountry: 'BR' }, { national: 'only' })).toBe(true);
+        expect(matchesFilters({ ...mpb, artistCountry: 'PT' }, { national: 'only' })).toBe(false);
+        expect(matchesFilters({ ...mpb, artistCountry: 'BR' }, { national: 'exclude' })).toBe(false);
+        expect(matchesFilters({ ...rock, artistCountry: 'US' }, { national: 'exclude' })).toBe(true);
+    });
+
+    it('com o filtro ligado, artista sem país conhecido fica de fora', () => {
+        for (const option of ['exclude', 'only'] as const) {
+            expect(matchesNational(undefined, option)).toBe(false); // ainda não consultado
+            expect(matchesNational(null, option)).toBe(false); // consultado, sem resposta
+        }
+    });
+
+    it('include (ou sem filtro) deixa tudo, com ou sem país', () => {
+        expect(hasFilters({ national: 'include' })).toBe(false);
+        expect(hasFilters({ national: 'exclude' })).toBe(true);
+        expect(matchesNational(undefined, 'include')).toBe(true);
+        expect(matchesNational(null, undefined)).toBe(true);
+        expect(matchesFilters(mpb, {})).toBe(true);
+    });
+});
+
+describe('chosenGenres', () => {
+    it('gênero afunilado por um subgênero sai; os outros ficam', () => {
+        expect(chosenGenres({ genres: ['Rock', 'MPB'], subgenres: ['Indie Rock'] })).toEqual(['Indie Rock', 'MPB']);
+        expect(chosenGenres({ bpm: ['fast'] })).toEqual([]);
+    });
+});
 
 describe('matchesFilters', () => {
     it('sem filtro, tudo entra', () => {

@@ -1,6 +1,7 @@
 import {
     buildJourney,
     buildPath,
+    buildPolyline,
     distance,
     findGaps,
     FIT_RADIUS,
@@ -49,6 +50,24 @@ describe('journey-path', () => {
         for (let i = 1; i < path.length; i++) {
             expect(distance(path[i], TO)).toBeLessThan(distance(path[i - 1], TO));
         }
+    });
+
+    it('buildPolyline passa por todos os pontos, do primeiro ao último', () => {
+        const mid: Vector = { a: 0.5, b: 0.5 };
+        const path = buildPolyline([FROM, mid, TO], 5);
+        expect(path).toHaveLength(5);
+        expect(path[0]).toEqual(FROM);
+        expect(path[2]).toEqual(mid);
+        expect(path[4]).toEqual(TO);
+        expect(buildPolyline([FROM], 3)).toEqual([FROM, FROM, FROM]);
+    });
+
+    it('pickAlongPath com `fits` aceita qualquer música que sirva, longe ou perto da parada', () => {
+        const far = candidate('far', { a: 5, b: 5 }, { dominantSentiment: 'Paz' });
+        const near = candidate('near', FROM, { dominantSentiment: 'Tristeza' });
+        const picks = pickAlongPath(buildPath(FROM, TO, 1), [near, far], { fits: c => c.dominantSentiment === 'Paz' });
+        expect(picks[0].candidate.spotifyId).toBe('far');
+        expect(picks[0].approximate).toBe(false);
     });
 
     it('stopCountForDuration respeita o mínimo de 3 paradas', () => {

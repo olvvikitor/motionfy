@@ -138,6 +138,25 @@ export class LastFmProvider implements MusicProviderInterface {
         return this.toTracks(top, () => new Date());
     }
 
+    // Mais tocadas de um gênero (tag do Last.fm), das mais populares; `page` de `limit` itens.
+    // Só a chave do app: vale para qualquer usuário (Spotify ou Last.fm).
+    async popularByTag(tag: string, limit = 50, page = 1): Promise<SongRef[]> {
+        const data = await this.call('tag.getTopTracks', { tag, limit, page });
+        return asArray<LastFmScrobble>(data.tracks?.track).map(toSongRef);
+    }
+
+    // Mais tocadas de um artista (os sucessos dele).
+    async popularByArtist(artist: string, limit = 10): Promise<SongRef[]> {
+        const data = await this.call('artist.getTopTracks', { artist, limit, autocorrect: 1 });
+        return asArray<LastFmScrobble>(data.toptracks?.track).map(toSongRef);
+    }
+
+    // Faixa do Spotify de cada música (as que não achar ficam de fora). `maxLookups` limita as buscas no
+    // Spotify; as já salvas no banco não contam.
+    async resolvePopular(songs: SongRef[], maxLookups: number): Promise<TrackInput[]> {
+        return (await this.catalog.resolveSongs(songs, maxLookups)).filter((t): t is TrackInput => Boolean(t));
+    }
+
     private async listPaged(method: string, root: string, params: Record<string, string>, limit: number): Promise<LastFmScrobble[]> {
         const items: LastFmScrobble[] = [];
         for (let page = 1; items.length < limit; page++) {
@@ -164,7 +183,7 @@ export class LastFmProvider implements MusicProviderInterface {
 
     // Cada scrobble vira a faixa do Spotify correspondente; o que não for achado fica de fora.
     private async toTracks(scrobbles: LastFmScrobble[], dateOf: (s: LastFmScrobble) => Date): Promise<TrackInput[]> {
-        const refs: SongRef[] = scrobbles.map(s => ({ title: s.name, artist: s.artist['#text'] ?? s.artist.name ?? '' }));
+        const refs: SongRef[] = scrobbles.map(toSongRef);
         const unique = [...new Map(refs.map(r => [`${r.artist}|${r.title}`.toLowerCase(), r])).values()];
         const found = await this.catalog.resolveSongs(unique);
         const byKey = new Map(unique.map((r, i) => [`${r.artist}|${r.title}`.toLowerCase(), found[i]]));
@@ -220,6 +239,10 @@ export class LastFmProvider implements MusicProviderInterface {
 // O login por senha usa o mesmo cálculo: o usuário digita o nome do Last.fm.
 export function lastFmUserId(username: string): string {
     return `lastfm-${String(username).trim().toLowerCase()}`;
+}
+
+function toSongRef(s: LastFmScrobble): SongRef {
+    return { title: s.name, artist: s.artist['#text'] ?? s.artist.name ?? '' };
 }
 
 // O Last.fm devolve objeto (não lista) quando há um item só.

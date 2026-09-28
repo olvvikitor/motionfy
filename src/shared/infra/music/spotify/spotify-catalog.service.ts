@@ -40,13 +40,21 @@ export class SpotifyCatalogService {
 
     // Acha a faixa do Spotify de cada música (mesma ordem; null quando não encontra).
     // Com o Spotify bloqueado, só resolve pelo banco (as já conhecidas) e deixa o resto de fora.
-    async resolveSongs(songs: SongRef[]): Promise<(TrackInput | null)[]> {
+    // `maxLookups`: no máximo tantas músicas buscadas no Spotify (as do banco/memória não contam); as
+    // que passarem disso ficam null, sem ir para a memória (podem ser buscadas numa próxima vez).
+    async resolveSongs(songs: SongRef[], maxLookups = Infinity): Promise<(TrackInput | null)[]> {
         const results: (TrackInput | null)[] = new Array(songs.length).fill(null);
         // Uma consulta ao banco para o lote todo (o banco fica longe: ~230 ms por consulta).
         const known = await this.findKnownMany(songs.filter((song) => !this.resolved.has(songKey(song))));
         let blockedSkips = 0;
+        let lookups = 0;
         for (let i = 0; i < songs.length; i += RESOLVE_CONCURRENCY) {
             await Promise.all(songs.slice(i, i + RESOLVE_CONCURRENCY).map(async (song, j) => {
+                const key = songKey(song);
+                if (!this.resolved.has(key) && !known.has(key)) {
+                    if (lookups >= maxLookups) return;
+                    lookups++;
+                }
                 results[i + j] = await this.resolveSong(song, known).catch((err) => {
                     if (err instanceof CatalogBlockedError) { blockedSkips++; return null; }
                     console.error(`[SpotifyCatalog] falha ao buscar "${song.title}" de ${song.artist}:`, err?.message ?? err);

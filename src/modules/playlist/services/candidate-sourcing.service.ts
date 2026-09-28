@@ -2,100 +2,146 @@ import { Injectable } from "@nestjs/common";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
 import { AiTextService } from "src/shared/infra/IA/AiText.service";
 import { EMOTION_CLUSTERS, getClusterVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { LastFmProvider } from "src/shared/infra/music/lastfm/lastfm.service";
 import { MusicProviderInterface } from "src/shared/infra/music/music.provider.interface";
+import { SongRef } from "src/shared/infra/music/spotify/spotify-catalog.service";
 import { TrackInput } from "src/shared/types/TrackInput";
+import { PlaylistRepository } from "../repository/playlist.repository";
 import { SENTIMENT_SEARCH_TERMS } from "../sentiment-search-terms";
-import { distance, FIT_RADIUS, JourneyCandidate, primaryArtist, Vector } from "./journey-path";
+import { distance, FIT_RADIUS, JourneyCandidate, shuffle, Vector } from "./journey-path";
 
 const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por playlist
 const PER_QUERY = 5; // novas por busca, para espalhar o orçamento entre as paradas
 const JEV_CONCURRENCY = 5;
-const ARTIST_QUERIES = 4; // buscas por parada: o limite de chamadas ao Spotify é baixo
-// Artista com alguma música do usuário perto do humor da parada é buscado primeiro.
-const ARTIST_NEAR_RADIUS = 0.6;
+// Populares ("Descobrir"): gêneros e artistas consultados no Last.fm, quantas de cada e o teto de buscas
+// no catálogo do Spotify (as já salvas no banco não contam; o limite de chamadas é baixo e compartilhado).
+const POPULAR_TAGS = 4;
+const POPULAR_PER_TAG = 50;
+const POPULAR_TAG_PAGES = 2; // página sorteada entre as 2 primeiras: variedade sem sair das mais tocadas
+const POPULAR_ARTISTS = 5;
+const POPULAR_PER_ARTIST = 10;
+const MAX_CATALOG_LOOKUPS = 24;
+// Classificações pelo Jev por música que falta (nem toda popular do gênero cai no humor pedido).
+const CLASSIFY_PER_NEEDED = 3;
 const REQUEST_PAGES = 3; // páginas de 10 por termo buscado a partir do pedido
 const MAX_REQUEST_RESULTS = 60;
 const RANDOM_PAGE_SPREAD = 5; // a busca começa numa página sorteada entre as 5 primeiras
 export const REQUEST_MATCH_THRESHOLD = 0.5;
 
-function shuffle<T>(items: T[]): T[] {
-    const copy = [...items];
-    for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-}
-
 function randomPage(): number {
     return Math.floor(Math.random() * RANDOM_PAGE_SPREAD);
 }
 
-export type SourcingContext = {
-    provider: MusicProviderInterface;
-    accessToken: string;
-    knownIds: Set<string>;
-    // Artistas que o usuário ouve (histórico + biblioteca): as músicas novas só podem ser deles.
+// Uma de cada lista por vez (todo gênero/artista contribui), sem repetir a mesma música.
+function interleave(lists: SongRef[][]): SongRef[] {
+    const seen = new Set<string>();
+    const out: SongRef[] = [];
+    for (let i = 0; i < Math.max(0, ...lists.map(l => l.length)); i++) {
+        for (const list of lists) {
+            const ref = list[i];
+            const key = ref && `${ref.artist}|${ref.title}`.toLowerCase();
+            if (ref && !seen.has(key)) { seen.add(key); out.push(ref); }
+        }
+    }
+    return out;
+}
+
+type SearchContext = { provider: MusicProviderInterface; accessToken: string };
+
+export type PopularContext = {
+    // Gêneros/subgêneros (nomes do Jev) de onde vêm as populares: os escolhidos nos filtros ou, sem
+    // filtro, os principais do usuário.
+    genres: string[];
+    // Artistas do usuário, os que combinam com o humor pedido primeiro: entram os sucessos deles.
     artists: string[];
-    // Músicas do usuário: dizem quais artistas combinam com o humor de cada parada.
-    userTracks: JourneyCandidate[];
+    // Acervo já carregado (não busca de novo) e músicas do usuário.
+    analyzed: Map<string, JourneyCandidate>;
+    tasteIds: Set<string>;
+    // A música serve para a playlist (humor da parada ou do quadrante) e está no gênero.
+    fits: (candidate: JourneyCandidate) => boolean;
+    inScope: (candidate: JourneyCandidate) => boolean;
+    // Completa dados que o `inScope` usa (país do artista, no filtro de música nacional), antes do teste.
+    annotate?: (candidates: JourneyCandidate[]) => Promise<void>;
+    // Músicas novas que valem a análise do Jev (as outras sairiam no `inScope` de qualquer jeito).
+    eligible?: (tracks: TrackInput[]) => Promise<TrackInput[]>;
+    // Quantas músicas novas que sirvam ainda faltam. 0 = só as populares já analisadas (sem Spotify nem Jev).
+    needed: number;
+};
+
+// Gêneros do Jev com tag diferente no Last.fm (o resto vai em minúsculas).
+const LASTFM_TAGS: Record<string, string> = {
+    'Rock Alternativo': 'alternative rock',
+    'Rock Nacional': 'rock nacional',
+    'Rap Nacional': 'rap nacional',
+    'Trap BR': 'trap brasileiro',
+    'Hip Hop': 'hip-hop',
+    'Synth-pop': 'synthpop',
+    'R&B/Soul': 'soul',
+    'Eletrônica': 'electronic',
+    'Funk': 'funk carioca',
+    'Samba/Pagode': 'pagode',
+    'Sertanejo Universitário': 'sertanejo universitario',
+    'Sertanejo Raiz': 'sertanejo raiz',
+    'Forró': 'forro',
+    'Axé': 'axe',
+    'Latina': 'latin',
+    'Clássica': 'classical',
 };
 
 // ---------------------------------------------------------------------------
-// Preenche lacunas do caminho buscando faixas novas no Spotify, classificando
-// com o Jev e salvando no acervo (ficam disponíveis para as próximas playlists).
+// Músicas de fora do acervo: populares do gênero (Descobrir) ou buscadas pelo pedido.
+// As novas são classificadas pelo Jev e salvas no acervo (ficam para as próximas playlists).
 // ---------------------------------------------------------------------------
 @Injectable()
 export class CandidateSourcingService {
     constructor(
         private readonly aiText: AiTextService,
         private readonly trackRepository: TrackRepository,
+        private readonly playlistRepository: PlaylistRepository,
+        private readonly lastfm: LastFmProvider,
     ) { }
 
-    async fillGaps(gapStops: Vector[], ctx: SourcingContext): Promise<JourneyCandidate[]> {
-        const found: JourneyCandidate[] = [];
-        const seen = new Set(ctx.knownIds);
+    // "Descobrir": as mais tocadas dos gêneros (paradas do Last.fm por gênero) e os sucessos dos artistas do
+    // usuário. As já analisadas entram de graça; as outras só quando falta música (`needed`), com teto de
+    // buscas no Spotify e de classificações no Jev. Só volta o que está no gênero (`inScope`).
+    async popular(ctx: PopularContext): Promise<{ candidates: JourneyCandidate[]; classified: number }> {
+        const lists = await Promise.all([
+            ...shuffle(this.tagsFor(ctx.genres)).slice(0, POPULAR_TAGS).map(tag =>
+                this.lastfm.popularByTag(tag, POPULAR_PER_TAG, 1 + Math.floor(Math.random() * POPULAR_TAG_PAGES)).catch((): SongRef[] => [])),
+            ...ctx.artists.slice(0, POPULAR_ARTISTS).map(artist =>
+                this.lastfm.popularByArtist(artist, POPULAR_PER_ARTIST).catch((): SongRef[] => [])),
+        ]);
+        const refs = interleave(lists.map(shuffle));
+        if (!refs.length) return { candidates: [], classified: 0 };
 
-        for (const stop of gapStops) {
-            if (found.length >= MAX_NEW_CANDIDATES) break;
-            if (found.some(c => distance(stop, c.vector) <= FIT_RADIUS)) continue; // já coberta por outra busca
+        const tracks = await this.lastfm.resolvePopular(refs, ctx.needed > 0 ? MAX_CATALOG_LOOKUPS : 0);
+        const unique = [...new Map(tracks.map(t => [t.spotifyId, t])).values()];
 
-            for (const query of this.queriesFor(stop, ctx)) {
-                const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - found.length);
-                if (budget <= 0) break;
+        const inPool = unique.flatMap(t => ctx.analyzed.get(t.spotifyId) ?? []);
+        const outside = unique.filter(t => !ctx.analyzed.has(t.spotifyId));
+        const fromDb = await this.playlistRepository.getAnalyzedCandidates(outside.map(t => t.spotifyId), ctx.tasteIds);
+        const known = [...inPool, ...fromDb];
+        await ctx.annotate?.(known);
+        const knownIds = new Set(known.map(c => c.spotifyId));
 
-                const results = await this.searchOnce(query, ctx);
-                const fresh = results.filter(t => !seen.has(t.spotifyId) && this.byKnownArtist(t, ctx)).slice(0, budget);
-                fresh.forEach(t => seen.add(t.spotifyId));
-
-                const classified = await this.classifyAndSave(fresh);
-                found.push(...classified);
-
-                if (classified.some(c => distance(stop, c.vector) <= FIT_RADIUS)) break;
-            }
+        // Novas: em lotes, até as populares que servem cobrirem o que falta ou acabar o orçamento do Jev.
+        // O que já dá para descartar sem o Jev (artista sem país, com o filtro de música nacional) sai antes.
+        const budget = Math.min(MAX_NEW_CANDIDATES, ctx.needed * CLASSIFY_PER_NEEDED);
+        const unknown = outside.filter(t => !knownIds.has(t.spotifyId));
+        const toClassify = (ctx.eligible ? await ctx.eligible(unknown) : unknown).slice(0, budget);
+        const classified: JourneyCandidate[] = [];
+        const fitting = () => [...known, ...classified].filter(c => ctx.inScope(c) && ctx.fits(c)).length;
+        for (let i = 0; i < toClassify.length && fitting() < ctx.needed; i += JEV_CONCURRENCY) {
+            const batch = await this.classifyAndSave(toClassify.slice(i, i + JEV_CONCURRENCY));
+            await ctx.annotate?.(batch);
+            classified.push(...batch);
         }
 
-        return found;
+        return { candidates: [...known, ...classified].filter(ctx.inScope), classified: classified.length };
     }
 
-    // Playlist de um humor só: todas as paradas caem no mesmo ponto, então precisa de
-    // `needed` músicas perto dele (fillGaps para na primeira). Mesmo teto de classificações.
-    async fillPoint(point: Vector, needed: number, ctx: SourcingContext): Promise<JourneyCandidate[]> {
-        const found: JourneyCandidate[] = [];
-        const seen = new Set(ctx.knownIds);
-        const nearCount = () => found.filter(c => distance(point, c.vector) <= FIT_RADIUS).length;
-
-        for (const query of this.queriesFor(point, ctx)) {
-            if (nearCount() >= needed || found.length >= MAX_NEW_CANDIDATES) break;
-            const budget = Math.min(PER_QUERY, MAX_NEW_CANDIDATES - found.length);
-
-            const results = await this.searchOnce(query, ctx);
-            const fresh = results.filter(t => !seen.has(t.spotifyId) && this.byKnownArtist(t, ctx)).slice(0, budget);
-            fresh.forEach(t => seen.add(t.spotifyId));
-            found.push(...await this.classifyAndSave(fresh));
-        }
-
-        return found;
+    private tagsFor(genres: string[]): string[] {
+        return [...new Set(genres.map(g => LASTFM_TAGS[g] ?? g.toLowerCase()))];
     }
 
     // Modo "Eu escolho" com estilo: só busca no Spotify (o acervo do usuário não é
@@ -103,7 +149,7 @@ export class CandidateSourcingService {
     // aleatória delas vira candidata. Músicas já analisadas reaproveitam a análise.
     async fromRequest(
         request: string,
-        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        ctx: SearchContext,
         analyzed: JourneyCandidate[],
         genre: string | null = null,
     ): Promise<{ candidates: JourneyCandidate[]; checked: number }> {
@@ -133,7 +179,7 @@ export class CandidateSourcingService {
     // aleatórias. Não usa artistas nem gêneros do usuário.
     async searchForJourney(
         stops: Vector[],
-        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        ctx: SearchContext,
         analyzed: JourneyCandidate[],
     ): Promise<JourneyCandidate[]> {
         const analyzedById = new Map(analyzed.map(c => [c.spotifyId, c]));
@@ -162,20 +208,11 @@ export class CandidateSourcingService {
         return [...found.values()];
     }
 
-    // Uma página sorteada (pedir o mesmo humor de novo não traz sempre as mesmas);
-    // se vier vazia (termo com poucos resultados), a primeira.
-    private async searchOnce(query: string, ctx: Pick<SourcingContext, 'provider' | 'accessToken'>): Promise<TrackInput[]> {
-        const page = randomPage();
-        const results = await ctx.provider.searchTracks!(ctx.accessToken, query, page * 10).catch((): TrackInput[] => []);
-        if (results.length || page === 0) return results;
-        return ctx.provider.searchTracks!(ctx.accessToken, query, 0).catch((): TrackInput[] => []);
-    }
-
     // Busca `pages` páginas a partir de uma página sorteada; se ela vier vazia
     // (poucos resultados para o termo), recomeça da primeira.
     private async searchPages(
         query: string,
-        ctx: Pick<SourcingContext, 'provider' | 'accessToken'>,
+        ctx: SearchContext,
         pages = REQUEST_PAGES,
         start = randomPage(),
     ): Promise<TrackInput[]> {
@@ -203,25 +240,6 @@ export class CandidateSourcingService {
 
     private plain(text: string): string {
         return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    }
-
-    // Só artistas que o usuário já ouve. Primeiro os que têm música dele perto do humor da parada
-    // (sorteados), depois os outros; ARTIST_QUERIES buscas por parada.
-    private queriesFor(stop: Vector, ctx: SourcingContext): string[] {
-        const near = new Set(ctx.userTracks
-            .filter(c => distance(stop, c.vector) <= ARTIST_NEAR_RADIUS)
-            .map(c => primaryArtist(c.artist)));
-        const isNear = (artist: string) => near.has(primaryArtist(artist));
-
-        return [...shuffle(ctx.artists.filter(isNear)), ...shuffle(ctx.artists.filter(a => !isNear(a)))]
-            .slice(0, ARTIST_QUERIES)
-            .map(artist => `artist:"${artist.replace(/"/g, '')}"`);
-    }
-
-    // A busca por artista também traz homônimos e participações: fica só quem o usuário ouve.
-    private byKnownArtist(track: TrackInput, ctx: SourcingContext): boolean {
-        const artist = primaryArtist(track.artist);
-        return ctx.artists.some(a => primaryArtist(a) === artist);
     }
 
     private nearestSentiment(point: Vector): string {
@@ -275,6 +293,7 @@ export class CandidateSourcingService {
                     genre: analysis.genre,
                     subgenre: analysis.subgenre,
                     bpm: analysis.bpm,
+                    isrc: track.isrc ?? null,
                 } satisfies JourneyCandidate;
             }));
 

@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import OpenAI, { toFile } from "openai";
-import { HybridPromptInput, ImagePromptService } from './ImagePrompt.service';
+import { CoverReference, HybridPromptInput, ImagePromptService } from './ImagePrompt.service';
 import { promises as fs } from 'fs';
 import { extname, join } from 'path';
 import * as https from 'https';
 import * as http from 'http';
+
+export type ReferenceImage = { buffer: Buffer; mimeType: string };
+
+// Só lê a foto de referência (pessoa ou cenário + descrição curta); barato, imagem em baixa resolução.
+const VISION_MODEL = "gpt-4.1-mini";
 
 @Injectable()
 export class AiImageService {
@@ -20,51 +25,65 @@ export class AiImageService {
     return this.imagePromptService.build(input);
   }
 
-  // Capa de playlist: sempre quadrada, a mesma imagem no Spotify e no card do perfil (sem recorte).
-  async generateImage(prompt: string, facePhotoPath?: string, size: "1024x1024" = "1024x1024"): Promise<Buffer> {
-    const fullPrompt = prompt;
-
-    let faceFile: Awaited<ReturnType<typeof toFile>> | null = null;
-
-    if (facePhotoPath) {
-      try {
-        const localPath = this.resolveLocalUploadPath(facePhotoPath);
-
-        let buffer: Buffer;
-        let mimeType: string;
-
-        if (localPath) {
-          buffer = await fs.readFile(localPath);
-          mimeType = this.getMimeTypeByExt(localPath);
-        } else {
-          const remoteUrl = new URL(facePhotoPath);
-          const downloaded = await this.downloadRemoteImage(remoteUrl);
-          buffer = downloaded.buffer;
-          mimeType = downloaded.mimeType as string;
-        }
-
-        const ext = mimeType.split('/')[1] || 'png';
-        faceFile = await toFile(buffer, `face.${ext}`, { type: mimeType });
-
-      } catch (error) {
-        console.warn('Erro ao carregar imagem:', error);
-      }
+  // Foto do rosto guardada no perfil (upload local ou storage permitido). Falhou, segue sem referência.
+  async loadReference(facePhotoPath: string): Promise<ReferenceImage | null> {
+    try {
+      const localPath = this.resolveLocalUploadPath(facePhotoPath);
+      if (localPath) return { buffer: await fs.readFile(localPath), mimeType: this.getMimeTypeByExt(localPath) };
+      const downloaded = await this.downloadRemoteImage(new URL(facePhotoPath));
+      return { buffer: downloaded.buffer, mimeType: downloaded.mimeType ?? 'image/jpeg' };
+    } catch (error) {
+      console.warn('Erro ao carregar imagem:', error);
+      return null;
     }
+  }
 
+  // Lê a foto de referência: pessoa (selfie, retrato, amigos) ou cenário (paisagem, lugar, objeto, bicho),
+  // com uma descrição curta para o prompt. Falhou, trata como cenário sem descrição: o prompt de cenário
+  // manda manter o que está na foto, então uma selfie ainda sai com a pessoa.
+  async describeReference(image: ReferenceImage): Promise<CoverReference> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: VISION_MODEL,
+        response_format: { type: 'json_object' },
+        max_tokens: 120,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'This photo will be the reference for an illustrated album cover. Reply only with JSON: {"kind": "person" | "scene", "description": "..."}. kind is "person" when one or more people are the main subject (selfie, portrait, friends); otherwise "scene" (landscape, place, object, food, animal...). description: what is shown, in English, at most 25 words, no names, no mood words.',
+            },
+            { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`, detail: 'low' } },
+          ],
+        }],
+      });
+      const parsed = JSON.parse(response.choices[0]?.message?.content ?? '{}') as { kind?: unknown; description?: unknown };
+      const description = typeof parsed.description === 'string' ? parsed.description.trim().slice(0, 200) || null : null;
+      return { kind: parsed.kind === 'person' ? 'person' : 'scene', description };
+    } catch (error) {
+      console.warn('[AiImage] não deu para ler a foto de referência:', error?.message ?? error);
+      return { kind: 'scene', description: null };
+    }
+  }
+
+  // Capa de playlist: sempre quadrada, a mesma imagem no Spotify e no card do perfil (sem recorte).
+  // Com referência (selfie, paisagem, objeto), vai pelo images.edit, que recebe a foto.
+  async generateImage(prompt: string, reference?: ReferenceImage | null, size: "1024x1024" = "1024x1024"): Promise<Buffer> {
     let result: any;
 
-    if (faceFile) {
-      // images.edit aceita o parâmetro 'image' para referência facial
+    if (reference) {
+      const ext = reference.mimeType.split('/')[1] || 'png';
       result = await this.openai.images.edit({
         model: "gpt-image-1-mini",
-        prompt: fullPrompt,
-        image: faceFile,
+        prompt,
+        image: await toFile(reference.buffer, `reference.${ext}`, { type: reference.mimeType }),
         size,
       });
     } else {
       result = await this.openai.images.generate({
         model: "gpt-image-1-mini",
-        prompt: fullPrompt,
+        prompt,
         size,
       });
     }

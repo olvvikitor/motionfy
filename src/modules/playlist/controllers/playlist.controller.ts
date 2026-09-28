@@ -1,12 +1,21 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req, StreamableFile, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { UploadFile } from 'src/shared/infra/storage/interfaces/file-storage.interface';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 import type { MRequest } from 'src/modules/user/controllers/user.controller';
-import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, MofyPlaylistIdParamDto, PlaylistIdParamDto, QueueJourneyDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
+import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, MofyPlaylistIdParamDto, PlaylistIdParamDto, QueueJourneyDto, ReuseCoverDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
 import { JourneyPlaylistService } from '../services/journey-playlist.service';
 import { MofyPlaylistService } from '../services/mofy-playlist.service';
 import { PlaylistCoverService } from '../services/playlist-cover.service';
+
+// Imagem enviada (capa pronta ou foto de referência): JPEG, PNG ou WEBP até 5 MB.
+const IMAGE_UPLOAD = {
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req: unknown, file: { mimetype: string }, cb: (error: Error | null, accept: boolean) => void) => {
+        if (!/^image\/(jpeg|png|webp)$/.test(file.mimetype)) return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
+        cb(null, true);
+    },
+};
 
 @Controller('user')
 export class PlaylistController {
@@ -71,6 +80,21 @@ export class PlaylistController {
         return await this.mofyPlaylist.open(req.user!.id, params.id);
     }
 
+    // Capas que o usuário já criou, para usar numa playlist nova.
+    @Get('mofy-playlists/covers')
+    @UseGuards(JwtAuthGuard)
+    async listCovers(@Req() req: MRequest) {
+        return await this.cover.saved(req.user!.id);
+    }
+
+    // Baixar a capa guardada de uma playlist (JPEG).
+    @Get('mofy-playlists/:id/cover')
+    @UseGuards(JwtAuthGuard)
+    async downloadCover(@Req() req: MRequest, @Param() params: MofyPlaylistIdParamDto) {
+        const image = await this.cover.download(req.user!.id, params.id);
+        return new StreamableFile(image, { type: 'image/jpeg', disposition: 'attachment; filename="mofy-capa.jpg"' });
+    }
+
     // Gera de novo no Spotify (mesmas músicas, título e capa) uma playlist que já saiu da conta do Mofy.
     @Post('mofy-playlists/:id/recreate')
     @UseGuards(JwtAuthGuard)
@@ -81,23 +105,28 @@ export class PlaylistController {
     // Capa da playlist criada: imagem do usuário (multipart "file")...
     @Post('journey-playlist/spotify-playlist/:playlistId/cover')
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('file', {
-        limits: { fileSize: 5 * 1024 * 1024 },
-        fileFilter: (_req, file, cb) => {
-            if (!/^image\/(jpeg|png|webp)$/.test(file.mimetype)) return cb(new BadRequestException('Apenas imagens JPEG, PNG ou WEBP.'), false);
-            cb(null, true);
-        },
-    }))
+    @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD))
     async uploadCover(@Req() req: MRequest, @Param() params: PlaylistIdParamDto, @UploadedFile() file: UploadFile) {
         if (!file) throw new BadRequestException('Arquivo de imagem não enviado.');
         return await this.cover.upload(req.user!.id, params.playlistId, file);
     }
 
-    // ...ou gerada pela IA a partir do humor da playlist (1 crédito).
+    // ...ou gerada pela IA a partir do humor da playlist (1 crédito), com a foto do perfil, uma foto
+    // enviada agora ("file": selfie vira personagem, paisagem/objeto vira cenário) ou sem foto.
     @Post('journey-playlist/spotify-playlist/:playlistId/cover/generate')
     @UseGuards(JwtAuthGuard)
-    async generateCover(@Req() req: MRequest, @Param() params: PlaylistIdParamDto, @Body() dto: GenerateCoverDto) {
-        return await this.cover.generate(req.user!.id, params.playlistId, dto.sentiment);
+    @UseInterceptors(FileInterceptor('file', IMAGE_UPLOAD))
+    async generateCover(@Req() req: MRequest, @Param() params: PlaylistIdParamDto, @Body() dto: GenerateCoverDto, @UploadedFile() file?: UploadFile) {
+        const reference = dto.reference ?? 'profile';
+        if (reference === 'photo' && !file) throw new BadRequestException('Foto de referência não enviada.');
+        return await this.cover.generate(req.user!.id, params.playlistId, dto.sentiment, reference === 'photo' ? { photo: file! } : reference);
+    }
+
+    // ...ou uma capa que o usuário já criou em outra playlist (grátis).
+    @Post('journey-playlist/spotify-playlist/:playlistId/cover/reuse')
+    @UseGuards(JwtAuthGuard)
+    async reuseCover(@Req() req: MRequest, @Param() params: PlaylistIdParamDto, @Body() dto: ReuseCoverDto) {
+        return await this.cover.reuse(req.user!.id, params.playlistId, dto.fromId);
     }
 
     // Depois da revisão: só as músicas escolhidas vão para a fila.

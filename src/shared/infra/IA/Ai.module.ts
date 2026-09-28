@@ -7,6 +7,6 @@ import { TrackEnrichmentService } from "./track-enrichment.service";
 
 @Module({
     providers: [AiTextService, AiImageService, EmotionAnalysisService, ImagePromptService, TrackEnrichmentService],
-    exports: [AiTextService, AiImageService, ImagePromptService, EmotionAnalysisService],
+    exports: [AiTextService, AiImageService, ImagePromptService, EmotionAnalysisService, TrackEnrichmentService],
 })
 export class AiModule {}

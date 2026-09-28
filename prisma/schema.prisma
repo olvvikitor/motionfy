@@ -126,6 +126,15 @@ model TracksAnalysis {
   analyzedAt        DateTime @default(now())
 }
 
+// País de cada artista (filtro de música nacional). Um por artista principal, consultado uma vez
+// (MusicBrainz; sem país lá, tags do Last.fm). country null = não descoberto (vale o ISRC/gênero).
+model ArtistInfo {
+  name      String   @id // artista principal em minúsculas
+  country   String? // ISO 3166 alfa-2, ex. "BR"
+  source    String // "musicbrainz" | "lastfm" | "none"
+  checkedAt DateTime @default(now())
+}
+
 model MoodAnalysis {
   id              String   @id @default(uuid())
   moodScore       Float

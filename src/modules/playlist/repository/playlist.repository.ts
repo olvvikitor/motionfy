@@ -5,6 +5,7 @@ import { JourneyCandidate, Vector } from "../services/journey-path";
 
 const POOL_LIMIT = 5000;
 const TASTE_CHUNK = 1000;
+const ANALYSIS_SELECT = { spotifyid: true, emotionalVector: true, dominantSentiment: true, genre: true, subgenre: true, bpm: true } as const;
 
 export type UserTaste = {
     // Faixas que o usuário ouviu ou curtiu — recebem preferência na jornada.
@@ -114,6 +115,16 @@ export class PlaylistRepository {
         await this.prisma.mofyPlaylist.update({ where: { id }, data: { spotifyPlaylistId, url, removedAt: null, createdAt: new Date() } });
     }
 
+    // Playlists do usuário com capa guardada, das mais novas (capas para reaproveitar).
+    async listUserCovers(userId: string, take: number) {
+        return this.prisma.mofyPlaylist.findMany({
+            where: { userId, coverUrl: { not: null } },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take,
+            select: { id: true, coverUrl: true, title: true, sentiment: true },
+        });
+    }
+
     async setMofyPlaylistCover(userId: string, spotifyPlaylistId: string, coverUrl: string): Promise<void> {
         await this.prisma.mofyPlaylist.updateMany({ where: { userId, spotifyPlaylistId, removedAt: null }, data: { coverUrl } });
     }
@@ -168,6 +179,26 @@ export class PlaylistRepository {
         };
     }
 
+    // País já consultado de cada artista (nome em minúsculas → país, ou null se ninguém soube dizer).
+    // Artista fora do mapa = ainda não consultado.
+    async getArtistCountries(names: string[]): Promise<Map<string, string | null>> {
+        if (!names.length) return new Map();
+        const chunks = Array.from({ length: Math.ceil(names.length / TASTE_CHUNK) }, (_, i) => names.slice(i * TASTE_CHUNK, (i + 1) * TASTE_CHUNK));
+        const rows = (await Promise.all(chunks.map(chunk => this.prisma.artistInfo.findMany({
+            where: { name: { in: chunk } },
+            select: { name: true, country: true },
+        })))).flat();
+        return new Map(rows.map(r => [r.name, r.country]));
+    }
+
+    async saveArtistCountry(name: string, country: string | null, source: string): Promise<void> {
+        await this.prisma.artistInfo.upsert({
+            where: { name },
+            create: { name, country, source },
+            update: { country, source, checkedAt: new Date() },
+        });
+    }
+
     // Gênero, subgênero e BPM das músicas do usuário: opções dos filtros da playlist.
     async getTasteFacetRows(tasteIds: Set<string>) {
         const ids = [...tasteIds];
@@ -181,17 +212,28 @@ export class PlaylistRepository {
     // Acervo analisado: as POOL_LIMIT mais recentes (de todos os usuários) + todas as do usuário,
     // senão as curtidas antigas sumiriam quando o acervo passasse do limite.
     async getAnalyzedPool(tasteIds: Set<string>): Promise<JourneyCandidate[]> {
-        const select = { spotifyid: true, emotionalVector: true, dominantSentiment: true, genre: true, subgenre: true, bpm: true } as const;
-        const recent = await this.prisma.tracksAnalysis.findMany({ select, orderBy: { analyzedAt: 'desc' }, take: POOL_LIMIT });
+        const recent = await this.prisma.tracksAnalysis.findMany({ select: ANALYSIS_SELECT, orderBy: { analyzedAt: 'desc' }, take: POOL_LIMIT });
         const recentIds = new Set(recent.map(a => a.spotifyid));
         const missing = [...tasteIds].filter(id => !recentIds.has(id));
         const chunks = Array.from({ length: Math.ceil(missing.length / TASTE_CHUNK) }, (_, i) => missing.slice(i * TASTE_CHUNK, (i + 1) * TASTE_CHUNK));
-        const tasteAnalyses = (await Promise.all(chunks.map(ids => this.prisma.tracksAnalysis.findMany({ where: { spotifyid: { in: ids } }, select })))).flat();
-        const analyses = [...recent, ...tasteAnalyses];
+        const tasteAnalyses = (await Promise.all(chunks.map(ids => this.prisma.tracksAnalysis.findMany({ where: { spotifyid: { in: ids } }, select: ANALYSIS_SELECT })))).flat();
+        return this.toCandidates([...recent, ...tasteAnalyses], tasteIds);
+    }
 
+    // Músicas já analisadas entre `spotifyIds` (as populares buscadas fora do acervo): não passam pelo Jev de novo.
+    async getAnalyzedCandidates(spotifyIds: string[], tasteIds: Set<string>): Promise<JourneyCandidate[]> {
+        if (!spotifyIds.length) return [];
+        const analyses = await this.prisma.tracksAnalysis.findMany({ where: { spotifyid: { in: spotifyIds } }, select: ANALYSIS_SELECT });
+        return this.toCandidates(analyses, tasteIds);
+    }
+
+    private async toCandidates(
+        analyses: { spotifyid: string; emotionalVector: unknown; dominantSentiment: string; genre: string | null; subgenre: string | null; bpm: number | null }[],
+        tasteIds: Set<string>,
+    ): Promise<JourneyCandidate[]> {
         const tracks = await this.prisma.track.findMany({
             where: { spotifyId: { in: analyses.map(a => a.spotifyid) } },
-            select: { spotifyId: true, title: true, artist: true, img_url: true, durationMs: true },
+            select: { spotifyId: true, title: true, artist: true, img_url: true, durationMs: true, isrc: true },
         });
         const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
 
@@ -212,6 +254,7 @@ export class PlaylistRepository {
                 genre: analysis.genre,
                 subgenre: analysis.subgenre,
                 bpm: analysis.bpm,
+                isrc: track.isrc,
             }];
         });
     }

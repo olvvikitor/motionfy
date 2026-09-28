@@ -3,8 +3,9 @@ import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString,
 
 const REQUEST_MESSAGE = 'Diga o que você quer ouvir (de 2 a 200 caracteres).';
 import { EMOTION_CLUSTERS } from 'src/shared/infra/IA/emotion-analysis.service';
-import { BPM_RANGE_KEYS, type BpmRange } from '../services/journey-filters';
+import { BPM_RANGE_KEYS, NATIONAL_OPTIONS, type BpmRange, type NationalOption } from '../services/journey-filters';
 import { PLAYLIST_DURATIONS } from '../services/playlist-pricing';
+import { QUADRANTS, type Quadrant } from '../services/quadrants';
 
 export const JOURNEY_SOURCES = ['all', 'saved', 'custom'] as const;
 export type JourneySource = typeof JOURNEY_SOURCES[number];
@@ -12,15 +13,22 @@ export type JourneySource = typeof JOURNEY_SOURCES[number];
 export const REQUEST_SOURCES = ['search'] as const;
 export type RequestSource = typeof REQUEST_SOURCES[number];
 
+// Jornada (all/saved): partida e chegada. Quadrante: só `quadrant`. Pedido (custom): o Jev decide.
+const needsJourney = (dto: JourneyPlaylistDto) => dto.source !== 'custom' && !dto.quadrant;
+
 export class JourneyPlaylistDto {
-    // No modo custom o Jev decide partida e chegada a partir do pedido.
-    @ValidateIf((dto: JourneyPlaylistDto) => dto.source !== 'custom')
+    @ValidateIf(needsJourney)
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de partida inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     from?: string;
 
-    @ValidateIf((dto: JourneyPlaylistDto) => dto.source !== 'custom')
+    @ValidateIf(needsJourney)
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de chegada inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     to?: string;
+
+    // Playlist de um quadrante inteiro (qualquer humor dele), no lugar de partida → chegada. Modos all/saved.
+    @IsOptional()
+    @IsIn(QUADRANTS, { message: `Quadrante inválido. Use um de: ${QUADRANTS.join(', ')}.` })
+    quadrant?: Quadrant;
 
     // Acima de 45 min a geração custa créditos (playlist-pricing.ts).
     @IsIn(PLAYLIST_DURATIONS, { message: `Duração inválida. Use uma de: ${PLAYLIST_DURATIONS.join(', ')} minutos.` })
@@ -60,6 +68,11 @@ export class JourneyPlaylistDto {
     @IsArray()
     @IsIn(BPM_RANGE_KEYS, { each: true, message: `Faixa de BPM inválida. Use: ${BPM_RANGE_KEYS.join(', ')}.` })
     bpm?: BpmRange[];
+
+    // Música nacional (artista brasileiro): include (padrão), exclude = sem, only = só nacional.
+    @IsOptional()
+    @IsIn(NATIONAL_OPTIONS, { message: `Opção de música nacional inválida. Use: ${NATIONAL_OPTIONS.join(', ')}.` })
+    national?: NationalOption;
 }
 
 const TRACK_IDS_MESSAGE = 'Escolha de 1 a 60 músicas para adicionar à fila.';
@@ -116,10 +129,25 @@ export class MofyPlaylistIdParamDto {
     id!: string;
 }
 
-// Capa gerada pela IA a partir do humor da playlist.
+// Base da capa gerada: a foto do rosto do perfil, uma foto enviada agora (tirada ou da galeria,
+// no campo "file") ou nenhuma (só humor e músicas).
+export const COVER_REFERENCES = ['profile', 'photo', 'none'] as const;
+export type CoverReferenceSource = typeof COVER_REFERENCES[number];
+
+// Capa gerada pela IA a partir do humor da playlist (multipart: a foto, se houver, vai em "file").
 export class GenerateCoverDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Humor inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     sentiment!: string;
+
+    @IsOptional()
+    @IsIn(COVER_REFERENCES, { message: 'Referência inválida.' })
+    reference?: CoverReferenceSource;
+}
+
+// Capa de outra playlist do usuário (id do Mofy), reaproveitada na playlist nova.
+export class ReuseCoverDto {
+    @IsUUID('4', { message: 'Capa inválida.' })
+    fromId!: string;
 }
 
 // Trajeto de sentimentos entre partida e chegada (só para desenhar na UI).

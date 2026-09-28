@@ -31,10 +31,26 @@ describe('ImagePromptService', () => {
 
     it('com foto de referência, a composição sempre mostra a pessoa', () => {
         for (let i = 0; i < 30; i++) {
-            const prompt = service.build({ ...base, sentiment: 'Paz', faceReferencePath: '/uploads/me.jpg' });
+            const prompt = service.build({ ...base, sentiment: 'Paz', reference: { kind: 'person' } });
             expect(prompt).not.toContain('No people');
             expect(prompt).toContain('reference photo');
         }
+    });
+
+    it('com paisagem/objeto, a foto é o cenário e o resto da direção é o mesmo', () => {
+        const prompt = service.build({
+            ...base, sentiment: 'Melancolia', subgenres: ['Bossa Nova'],
+            reference: { kind: 'scene', description: 'a beach at dusk with a lifeguard tower' },
+        });
+        expect(prompt).toContain('shows a beach at dusk with a lifeguard tower');
+        expect(prompt).toContain('no new characters');
+        expect(prompt).not.toMatch(/Brazilian city|boardwalk|balcony/); // o mundo do gênero não entra
+        expect(prompt).not.toContain('Gesture:');
+        expect(prompt).toContain('Kyoto Animation');
+        expect(prompt).toContain('MOOD: bittersweet nostalgia');
+        expect(prompt).toMatch(/LIGHT AND COLOR: .*coming from real light sources/);
+        expect(prompt).toContain('For this mood also avoid:');
+        expect(prompt).toContain('Square 1:1');
     });
 
     it('Celebração: fogos de artifício só aparecem como proibição', () => {

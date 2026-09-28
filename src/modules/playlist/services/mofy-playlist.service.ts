@@ -5,7 +5,7 @@ import { SpotifyMofyAccountService } from "src/shared/infra/music/spotify/spotif
 import { SpotifyPlaylistDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { Vector } from "./journey-path";
-import { toSpotifyCover } from "./playlist-cover.service";
+import { fetchCover, toSpotifyCover } from "./playlist-cover.service";
 import { showcaseStats, ShowcaseStats } from "./playlist-showcase";
 
 const DAILY_LIMIT = 10; // por usuário: a conta do Mofy é uma só para todos
@@ -229,9 +229,7 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
     }
 
     private async restoreCover(spotifyPlaylistId: string, coverUrl: string): Promise<void> {
-        const response = await fetch(coverUrl);
-        if (!response.ok) throw new Error(`capa indisponível (${response.status})`);
-        await this.account.setCover(spotifyPlaylistId, await toSpotifyCover(Buffer.from(await response.arrayBuffer())));
+        await this.account.setCover(spotifyPlaylistId, await toSpotifyCover(await fetchCover(coverUrl)));
     }
 
     private assertConfigured(): void {
