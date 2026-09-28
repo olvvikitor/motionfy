@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
 
 // Foto de referência da capa: pessoa (selfie, retrato, amigos) vira personagem; qualquer outra
-// coisa (paisagem, lugar, objeto, bicho) vira o cenário. `description` vem da leitura da foto.
-export type CoverReference = { kind: 'person' | 'scene'; description?: string | null };
+// coisa (paisagem, lugar, objeto, bicho) vira o cenário. `description` vem da leitura da foto;
+// `people` diz se aparece alguém nela (rua cheia, gente ao fundo): sem ninguém, a capa não pode ter gente.
+export type CoverReference = { kind: 'person' | 'scene'; description?: string | null; people?: boolean };
 
 export type HybridPromptInput = {
     sentiment: string;
@@ -156,18 +157,32 @@ const COMPOSITIONS: { text: string; person: boolean; social?: boolean }[] = [
     { text: "Wide shot: the person is small inside a large space; the place tells the story.", person: true },
     { text: "Seen from behind or in profile, face partly hidden; posture tells the emotion.", person: true },
     { text: "Unusual angle (from below, from above, or through a window/reflection).", person: true },
-    { text: "No people: a still life of the place and objects, with a trace of someone who was just there.", person: false },
+    { text: "No people: a still life of the place and objects, with a trace of someone who was just there (a left-behind object, never the person).", person: false },
     { text: "A small group of friends in the scene; the connection between them is the subject.", person: true, social: true },
 ];
 
 const STYLE = "Original 2D anime illustration in the style of Kyoto Animation: soft diffused light, richly detailed everyday backgrounds, subtle acting in the eyes and hands. Style reference only; every character and design is original.";
+// Cena sem gente: o estilo não pode falar de olhos, mãos nem personagens (o modelo lê como pedido de personagem).
+const STYLE_NO_PEOPLE = "Original 2D anime background art in the style of Kyoto Animation: soft diffused light, richly detailed places and objects. Style reference only; every design is original.";
+const NO_PEOPLE = "The frame is completely empty of people: no characters, figures, silhouettes, faces, hands or reflections of someone, not even small in the distance. The emotion comes only from the place, the light, the weather and the objects.";
+// Símbolos e paletas que só existem com alguém em cena (cabeça, rosto, pele...): ficam fora quando a cena é sem gente.
+const NEEDS_PERSON = /\b(people|head|face|neck|skin|planted|looks back|shoelaces)\b/;
 const OUTPUT = "OUTPUT: Square 1:1 album cover, 2D anime, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.";
 
+// Com foto, o modelo de edição tende a devolver a própria foto com filtro. "Not photorealistic" sozinho não
+// segura: o que segura é descrever o traço (linha, cor chapada, sombra dura) e dizer que a foto é só o layout
+// — o que está nela e onde fica continua, a superfície é pintada do zero.
+const FROM_PHOTO = "TRANSFORM: convert the attached photo into a hand-drawn anime frame. The photo is only the layout: keep what is in it and where it is (composition, shapes, objects, landmarks, recognizable details), but repaint every surface from scratch. Nothing of the photo's pixels, textures or lighting survives.";
+const RENDERING = "RENDERING: clean ink outlines of even weight around every shape; flat cel-shaded color with two or three hard-edged shadow tones; skies, walls, foliage and water painted like anime film background art, with simplified brush textures; small details simplified into drawn shapes.";
+const AVOID_PHOTO = "photorealism, photographic textures (film grain, fine noise, skin pores, lens blur, HDR), a photo with a filter or an anime overlay, 3D render";
+const OUTPUT_PHOTO = "It must read as a drawn and painted still from an anime film, not as a photograph.";
+
+const AVOID_PEOPLE = "people of any kind (characters, figures, silhouettes, crowds, faces, hands, reflections of someone)";
 const AVOID = "school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
 
 function energy(ativacao: number): string {
     if (ativacao > 0.6) return "high: motion blur, dynamic angle, compressed time";
-    if (ativacao > 0.2) return "moderate: the scene is in motion, the person is engaged";
+    if (ativacao > 0.2) return "moderate: the scene is in motion, things are happening";
     if (ativacao > -0.2) return "balanced: subtle movement, composed";
     if (ativacao > -0.6) return "low: slow, contemplative, absorbed";
     return "almost still: dust in a beam of light, stillness is the theme";
@@ -188,24 +203,28 @@ export class ImagePromptService {
             data.songs?.length ? `Songs: ${data.songs.slice(0, 6).join("; ")}.` : "",
         ].filter(Boolean).join(" ");
 
-        const scene = reference?.kind === 'scene'
-            ? this.sceneFromPhoto(mood, music, reference.description)
+        const { text: scene, people } = reference?.kind === 'scene'
+            ? this.sceneFromPhoto(mood, music, reference)
             : this.sceneFromMusic(mood, music, subgenres, reference?.kind === 'person');
 
-        // Estilo, humor, luz, energia e proibições são os mesmos com ou sem foto: só a cena muda.
-        return `${STYLE}
-
+        // Humor, luz, energia e proibições são os mesmos com ou sem foto: só a cena muda. Sem gente na cena,
+        // o estilo não fala de personagem e pessoas entram no AVOID (senão o modelo põe alguém "para dar vida").
+        // Com foto (rosto ou cenário), o estilo abre e fecha o prompt, com o traço descrito: é o que o modelo
+        // de edição mais ignora.
+        const photo = !!reference;
+        return `${photo ? `${FROM_PHOTO}\n` : ""}${people ? STYLE : STYLE_NO_PEOPLE}
+${photo ? `${RENDERING}\n` : ""}
 MOOD: ${mood.feeling}.
 ${scene}
-LIGHT AND COLOR: ${this.random(mood.palettes)}, coming from real light sources in the scene; natural colors elsewhere.
+LIGHT AND COLOR: ${this.random(this.withoutPeople(mood.palettes, people))}, coming from real light sources in the scene; natural colors elsewhere.
 ENERGY: ${energy(data.ativacao ?? 0)}.
-AVOID: ${AVOID}. For this mood also avoid: ${mood.cliches}.
+AVOID: ${people ? "" : `${AVOID_PEOPLE}, `}${photo ? `${AVOID_PHOTO}, ` : ""}${AVOID}. For this mood also avoid: ${mood.cliches}.
 
-${OUTPUT}`.trim();
+${OUTPUT}${photo ? ` ${OUTPUT_PHOTO}` : ""}`.trim();
     }
 
     // Sem foto ou com selfie: o cenário vem do gênero e a composição é sorteada (com rosto, sempre com a pessoa).
-    private sceneFromMusic(mood: MoodSpec, music: string, subgenres: string[], hasFace: boolean): string {
+    private sceneFromMusic(mood: MoodSpec, music: string, subgenres: string[], hasFace: boolean): { text: string; people: boolean } {
         const world = this.random(this.worldsFor(subgenres));
         const composition = this.random(COMPOSITIONS.filter(c =>
             (!hasFace || c.person) && (!c.social || mood.social)));
@@ -213,21 +232,28 @@ ${OUTPUT}`.trim();
         const subject = !composition.person
             ? ""
             : hasFace
-                ? " The main character is the person in the reference photo (or the people, if there are several), redrawn in this anime style (not photorealistic) and keeping their likeness."
+                ? " The main character is the person in the reference photo (or the people, if there are several), redrawn as described in RENDERING and keeping their likeness (hair, face shape, clothes)."
                 : " Characters are original young adults with distinct, specific looks (hair, clothes, build).";
 
-        return `${music ? `MUSIC: ${music} Let this music decide the setting, clothes, objects and props — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
-SCENE: ${world}. ${composition.text}${subject}${composition.person ? ` Gesture: ${this.random(mood.gestures)}.` : ""}
-KEY DETAIL: ${this.random(mood.symbols)}, placed where the eye lands.`;
+        const people = composition.person;
+        const text = `${music ? `MUSIC: ${music} Let this music decide the setting, ${people ? "clothes, " : ""}objects and props — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
+SCENE: ${world}. ${composition.text}${subject}${people ? ` Gesture: ${this.random(mood.gestures)}.` : ` ${NO_PEOPLE}`}
+KEY DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, placed where the eye lands.`;
+        return { text, people };
     }
 
     // Paisagem, lugar ou objeto: a foto é o cenário (sem sortear mundo nem composição), redesenhada no
     // estilo do Mofy. A luz e a cor da foto não passam: quem manda é a paleta do humor.
-    private sceneFromPhoto(mood: MoodSpec, music: string, description?: string | null): string {
-        return `REFERENCE: the attached photo${description ? ` shows ${description}` : ""}. Redraw it as the heart of this cover: keep its place or subject, its framing and its recognizable details, translated into this anime style (not photorealistic, not a filter over the photo). Its original light and colors do not carry over: follow LIGHT AND COLOR below.
+    private sceneFromPhoto(mood: MoodSpec, music: string, { description, people = false }: CoverReference): { text: string; people: boolean } {
+        const text = `REFERENCE: the attached photo${description ? ` shows ${description}` : ""}. Redraw it as the heart of this cover: keep its place or subject, its framing and its recognizable details, drawn as described in RENDERING. Its original light and colors do not carry over: follow LIGHT AND COLOR below.
 ${music ? `MUSIC: ${music} Let this music add objects and small details to the place — the image should feel like it belongs to these songs. Do not draw the artists.\n` : ""}
-SCENE: the place or subject from the photo. People only if they are in the photo; no new characters.
-KEY DETAIL: ${this.random(mood.symbols)}, placed naturally inside the photo's scene where the eye lands.`;
+SCENE: the place or subject from the photo. ${people ? "Only the people already in the photo; no new characters." : NO_PEOPLE}
+KEY DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, placed naturally inside the photo's scene where the eye lands.`;
+        return { text, people };
+    }
+
+    private withoutPeople(options: string[], people: boolean): string[] {
+        return people ? options : options.filter(o => !NEEDS_PERSON.test(o));
     }
 
     private worldsFor(subgenres: string[]): string[] {

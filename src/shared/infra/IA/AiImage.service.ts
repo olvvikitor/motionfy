@@ -12,20 +12,35 @@ type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
 const IMAGE_QUALITIES: ImageQuality[] = ['low', 'medium', 'high', 'auto'];
 
 // Modelos no .env (trocar sem mexer no código); sem a variável, valem os padrões.
-// OPENAI_IMAGE_MODEL: gera a capa. OPENAI_IMAGE_QUALITY: a capa vai a 640×640 no Spotify e 1024 no card,
+// OPENAI_IMAGE_MODEL: gera a capa. OPENAI_IMAGE_QUALITY: a capa vai a 640×640 no Spotify e até 1024 no card,
 // "medium" não perde nada visível e custa bem menos que "high" ("auto" pode escolher "high").
 // OPENAI_VISION_MODEL: só lê a foto de referência (pessoa ou cenário + descrição curta), em baixa resolução.
+// Valor do .env sem espaço, quebra de linha ou aspas coladas junto (painel do Render): com uma quebra
+// de linha no fim, "gpt-image-1-mini" vira um modelo que não existe e a OpenAI responde 400.
+function env(name: string): string | undefined {
+  return process.env[name]?.trim().replace(/^["']|["']$/g, '').trim() || undefined;
+}
+
 function imageQuality(): ImageQuality {
-  const value = process.env.OPENAI_IMAGE_QUALITY as ImageQuality | undefined;
+  const value = env('OPENAI_IMAGE_QUALITY') as ImageQuality | undefined;
   return value && IMAGE_QUALITIES.includes(value) ? value : 'medium';
+}
+
+// Tamanho da capa: o menor quadrado que o modelo aceita (custo e tempo sobem com os pixels). O gpt-image-2
+// aceita qualquer tamanho múltiplo de 16 a partir de 655.360 pixels: 816×816. Os gpt-image-1* só fazem 1024×1024.
+// A capa vai a 640 no Spotify e o card do perfil não amplia: 816 sobra.
+function imageSize(model: string): string {
+  return model.startsWith('gpt-image-2') ? '816x816' : '1024x1024';
 }
 
 @Injectable()
 export class AiImageService {
   private openai: OpenAI;
-  private readonly imageModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini';
+  private readonly imageModel = env('OPENAI_IMAGE_MODEL') ?? 'gpt-image-1-mini';
   private readonly imageQuality = imageQuality();
-  private readonly visionModel = process.env.OPENAI_VISION_MODEL || 'gpt-4.1-mini';
+  // O SDK só tipa os tamanhos fixos dos modelos antigos.
+  private readonly imageSize = imageSize(this.imageModel) as '1024x1024';
+  private readonly visionModel = env('OPENAI_VISION_MODEL') ?? 'gpt-4.1-mini';
 
   constructor(private readonly imagePromptService: ImagePromptService) {
     this.openai = new OpenAI({
@@ -64,15 +79,15 @@ export class AiImageService {
           content: [
             {
               type: 'text',
-              text: 'This photo will be the reference for an illustrated album cover. Reply only with JSON: {"kind": "person" | "scene", "description": "..."}. kind is "person" when one or more people are the main subject (selfie, portrait, friends); otherwise "scene" (landscape, place, object, food, animal...). description: what is shown, in English, at most 25 words, no names, no mood words.',
+              text: 'This photo will be the reference for an illustrated album cover. Reply only with JSON: {"kind": "person" | "scene", "people": true | false, "description": "..."}. kind is "person" when one or more people are the main subject (selfie, portrait, friends); otherwise "scene" (landscape, place, object, food, animal...). people: true if any person is visible anywhere in the photo, even small or in the background. description: what is shown, in English, at most 25 words, no names, no mood words.',
             },
             { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.buffer.toString('base64')}`, detail: 'low' } },
           ],
         }],
       });
-      const parsed = JSON.parse(response.choices[0]?.message?.content ?? '{}') as { kind?: unknown; description?: unknown };
+      const parsed = JSON.parse(response.choices[0]?.message?.content ?? '{}') as { kind?: unknown; people?: unknown; description?: unknown };
       const description = typeof parsed.description === 'string' ? parsed.description.trim().slice(0, 200) || null : null;
-      return { kind: parsed.kind === 'person' ? 'person' : 'scene', description };
+      return { kind: parsed.kind === 'person' ? 'person' : 'scene', description, people: parsed.people === true };
     } catch (error) {
       console.warn('[AiImage] não deu para ler a foto de referência:', error?.message ?? error);
       return { kind: 'scene', description: null };
@@ -81,7 +96,7 @@ export class AiImageService {
 
   // Capa de playlist: sempre quadrada, a mesma imagem no Spotify e no card do perfil (sem recorte).
   // Com referência (selfie, paisagem, objeto), vai pelo images.edit, que recebe a foto.
-  async generateImage(prompt: string, reference?: ReferenceImage | null, size: "1024x1024" = "1024x1024"): Promise<Buffer> {
+  async generateImage(prompt: string, reference?: ReferenceImage | null): Promise<Buffer> {
     let result: any;
 
     if (reference) {
@@ -90,14 +105,14 @@ export class AiImageService {
         model: this.imageModel,
         prompt,
         image: await toFile(reference.buffer, `reference.${ext}`, { type: reference.mimeType }),
-        size,
+        size: this.imageSize,
         quality: this.imageQuality,
       });
     } else {
       result = await this.openai.images.generate({
         model: this.imageModel,
         prompt,
-        size,
+        size: this.imageSize,
         quality: this.imageQuality,
       });
     }

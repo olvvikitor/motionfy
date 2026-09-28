@@ -43,7 +43,7 @@ describe('ImagePromptService', () => {
             reference: { kind: 'scene', description: 'a beach at dusk with a lifeguard tower' },
         });
         expect(prompt).toContain('shows a beach at dusk with a lifeguard tower');
-        expect(prompt).toContain('no new characters');
+        expect(prompt).toContain('completely empty of people');
         expect(prompt).not.toMatch(/Brazilian city|boardwalk|balcony/); // o mundo do gênero não entra
         expect(prompt).not.toContain('Gesture:');
         expect(prompt).toContain('Kyoto Animation');
@@ -51,6 +51,35 @@ describe('ImagePromptService', () => {
         expect(prompt).toMatch(/LIGHT AND COLOR: .*coming from real light sources/);
         expect(prompt).toContain('For this mood also avoid:');
         expect(prompt).toContain('Square 1:1');
+    });
+
+    it('paisagem sem ninguém: nada no prompt pede personagem, e pessoas entram no AVOID', () => {
+        for (const sentiment of EMOTION_CLUSTERS) {
+            for (let i = 0; i < 10; i++) {
+                const prompt = service.build({ ...base, sentiment, reference: { kind: 'scene', description: 'a mountain lake' } });
+                const [asked, avoided] = prompt.split('AVOID:');
+                expect(asked).not.toMatch(/character is|Characters are|eyes and hands|Gesture:|the person is|\b(head|face|neck|skin|shoelaces)\b|two people/);
+                expect(avoided).toMatch(/^ people of any kind/);
+            }
+        }
+    });
+
+    it('paisagem com gente na foto: mantém quem está nela, sem personagem novo', () => {
+        const prompt = service.build({ ...base, sentiment: 'Paz', reference: { kind: 'scene', description: 'a busy market street', people: true } });
+        expect(prompt).toContain('Only the people already in the photo; no new characters.');
+        expect(prompt.split('AVOID:')[1]).not.toContain('people of any kind');
+    });
+
+    it('com foto, o traço anime é descrito e o realismo fotográfico é proibido; sem foto, nada disso', () => {
+        for (const reference of [{ kind: 'person' as const }, { kind: 'scene' as const, description: 'a mountain lake' }]) {
+            const prompt = service.build({ ...base, sentiment: 'Paz', reference });
+            expect(prompt).toMatch(/^TRANSFORM: convert the attached photo/);
+            expect(prompt).toContain('RENDERING: clean ink outlines');
+            expect(prompt.split('AVOID:')[1]).toContain('photorealism');
+            expect(prompt).toMatch(/not as a photograph\.$/);
+        }
+        const plain = service.build({ ...base, sentiment: 'Paz' });
+        expect(plain).not.toMatch(/TRANSFORM|RENDERING|photorealism/);
     });
 
     it('Celebração: fogos de artifício só aparecem como proibição', () => {

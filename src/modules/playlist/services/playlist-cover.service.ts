@@ -13,10 +13,10 @@ const COVER_SIZE = 640;
 // O Spotify aceita até 256 KB de base64 na capa; folga para não bater no limite.
 const MAX_BASE64_LENGTH = 250 * 1024;
 const JPEG_QUALITIES = [85, 75, 65, 55, 45, 35];
-// Arte do card do perfil: quadrada, como a capa do Spotify.
+// Arte do card do perfil: quadrada, como a capa do Spotify; no máximo 1024, sem ampliar (a gerada vem com 816).
 const ART_SIZE = 1024;
-// Foto de referência: o lado maior; basta para o modelo de imagem, e o envio fica leve.
-const REFERENCE_SIZE = 1024;
+// Foto de referência: o lado maior, do tamanho da capa gerada (816); a entrada também conta no custo.
+const REFERENCE_SIZE = 816;
 
 export type CoverResponse = { preview: string; remainingCredits?: number };
 export type SavedCover = { id: string; coverUrl: string; title: string | null; sentiment: string | null };
@@ -42,10 +42,12 @@ export async function fetchCover(coverUrl: string): Promise<Buffer> {
     return Buffer.from(await response.arrayBuffer());
 }
 
-// Arte do card do perfil: o mesmo quadrado da capa do Spotify, em tamanho maior.
+// Arte do card do perfil: o mesmo quadrado da capa do Spotify, em tamanho maior (nunca maior que a imagem).
 export async function toProfileArt(image: Buffer): Promise<Buffer> {
+    const { width = ART_SIZE, height = ART_SIZE } = await sharp(image).metadata();
+    const side = Math.min(ART_SIZE, width, height);
     return sharp(image).rotate()
-        .resize(ART_SIZE, ART_SIZE, { fit: 'cover', position: sharp.strategy.attention })
+        .resize(side, side, { fit: 'cover', position: sharp.strategy.attention })
         .jpeg({ quality: 85, mozjpeg: true })
         .toBuffer();
 }
@@ -63,7 +65,7 @@ async function toReferencePhoto(image: Buffer): Promise<ReferenceImage> {
 
 // Capa das playlists criadas na conta do Mofy: imagem do usuário ou gerada pela IA
 // (mesmo estilo e mesma regra de crédito da arte do humor no perfil).
-// Uma imagem só, quadrada: vai para o Spotify (640, JPEG ≤ 256 KB) e para o card do perfil (1024).
+// Uma imagem só, quadrada: vai para o Spotify (640, JPEG ≤ 256 KB) e para o card do perfil (até 1024).
 @Injectable()
 export class PlaylistCoverService {
     constructor(
