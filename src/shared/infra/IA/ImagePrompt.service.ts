@@ -29,7 +29,7 @@ const MOODS: Record<string, MoodSpec> = {
     Euforia: {
         feeling: "the peak of a night, time suspended at its most alive",
         gestures: ["head thrown back mid-laugh, arms open", "jumping, hair and clothes caught in the air", "eyes shut, singing at full voice"],
-        symbols: ["a speaker cone shaking dust off", "a spilled drink caught mid-splash", "a sweaty wristband from tonight's show", "headphones flung around the neck, cable swinging"],
+        symbols: ["a speaker cone shaking dust off", "a drink sloshing over the rim of a cup on the bar", "a sweaty wristband from tonight's show", "headphones flung around the neck, cable swinging"],
         palettes: ["electric yellow and amber highlights against deep shadow", "hot magenta and white from a strobe against blue-black", "acid green and warm skin tones under club lights"],
         cliches: "fireworks, confetti explosions, sparklers, a concert crowd with raised arms, silhouettes against a stage light",
         social: true,
@@ -37,7 +37,7 @@ const MOODS: Record<string, MoodSpec> = {
     Celebracao: {
         feeling: "shared joy, the warmth of belonging to a group of people",
         gestures: ["arms around friends' shoulders", "raising a glass or a can in a toast", "dancing badly and not caring", "laughing so hard they have to lean on someone"],
-        symbols: ["a table crowded with half-empty cups and plates", "shoes kicked off in a pile by the door", "a phone propped up playing the music, surrounded by snacks", "a hand-written sign taped to the wall", "a group photo just taken, still on the screen"],
+        symbols: ["a table crowded with half-empty cups and plates", "jackets crowded on the hooks by the door", "a phone propped up on the table playing the music, next to a bowl of snacks", "a hand-written sign taped to the wall", "a group photo just taken, still on the screen"],
         palettes: ["warm coral and gold from lamps and string lights", "late-afternoon orange with teal shadows", "kitchen fluorescent white mixed with a colored party bulb"],
         cliches: "fireworks, sparklers, confetti, balloons, champagne spraying, birthday cake with candles, a stage crowd with raised hands",
         social: true,
@@ -66,7 +66,7 @@ const MOODS: Record<string, MoodSpec> = {
     },
     Paz: {
         feeling: "the silence before the world wakes up",
-        gestures: ["eyes closed, face tilted to the light", "lying on the floor listening to music", "slow breath, shoulders dropped"],
+        gestures: ["eyes closed, face tilted to the light", "lying on a sofa listening to music", "slow breath, shoulders dropped"],
         symbols: ["a feather floating in still air", "steam rising from a cup", "a curtain moving in a light breeze", "a cat asleep in a patch of sun"],
         palettes: ["sea-foam green and pale sky blue over cream light", "soft dawn peach and gray-blue", "white linen light with warm wood tones"],
         cliches: "lotus flowers, a meditation pose, zen stones, a Buddha, candles, a sunset over the sea",
@@ -74,7 +74,7 @@ const MOODS: Record<string, MoodSpec> = {
     Reflexao: {
         feeling: "an unanswered question, memory and present blending",
         gestures: ["chin resting on a hand, looking far away", "writing something and stopping mid-line", "turning an old photo between fingers"],
-        symbols: ["a window reflection overlapping the view outside", "an old cassette tape", "a half-written page with a pen resting on it", "a mug gone cold beside an open book"],
+        symbols: ["a window reflection overlapping the view outside", "an old cassette tape on a windowsill", "a half-written page with a pen resting on it", "a mug gone cold beside an open book"],
         palettes: ["deep indigo and lavender under a single desk lamp", "overcast afternoon gray with one warm window", "dusty ochre light through blinds"],
         cliches: "a starry night sky, a galaxy, the moon, a person looking at the stars, a thinker pose, question marks",
     },
@@ -87,22 +87,22 @@ const MOODS: Record<string, MoodSpec> = {
     },
     Revolta: {
         feeling: "anger breaking through, destruction as language",
-        gestures: ["shouting into the wind", "kicking over a trash can", "tearing a poster off a wall"],
-        symbols: ["shattered concrete with exposed rebar", "spray paint dripping down a wall", "a broken guitar string", "a smashed phone on the pavement"],
+        gestures: ["shouting into the wind", "slamming a hand against a metal door", "tearing a poster off a wall"],
+        symbols: ["a cracked concrete wall with exposed rebar", "spray paint dripping down a wall", "a broken guitar string", "a phone with a shattered screen, still lit, on a table"],
         palettes: ["blood red and obsidian with a hard rim light", "sodium orange streetlight over wet black", "harsh white flash against dirty concrete"],
         cliches: "fire, explosions, burning cars, riot police, flags, a raised fist, anarchy symbols, skulls",
     },
     Frustracao: {
         feeling: "friction between what should be and what is",
-        gestures: ["hands pulling at hair", "forehead pressed against a wall", "throwing a crumpled paper at a bin and missing"],
-        symbols: ["a clock whose hands refuse to move", "a tangled cable that won't come loose", "a vending machine that ate the coin", "a loading bar stuck on a screen"],
+        gestures: ["hands pulling at hair", "forehead pressed against a wall", "crumpling a sheet of paper in one fist"],
+        symbols: ["a clock whose hands refuse to move", "a knotted charger cable hanging from a desk", "a vending machine that ate the coin", "a loading bar stuck on a screen"],
         palettes: ["muddy amber and charcoal under harsh overhead light", "greenish office fluorescent over beige", "gray daylight and a flat blue screen glow"],
         cliches: "cartoon anger marks, steam from the ears, a storm cloud over the head, a scream",
     },
     Melancolia: {
         feeling: "bittersweet nostalgia worn down by time",
         gestures: ["looking back at a place already passed", "sitting by a window with a forgotten drink", "tracing a finger on a fogged window"],
-        symbols: ["a faded photo booth strip", "an old bus ticket", "a closed shop that used to be a favorite place", "an unwound music box"],
+        symbols: ["a faded photo booth strip pinned to a wall", "an old bus ticket tucked into a mirror frame", "a closed shop that used to be a favorite place", "an unwound music box on a dresser"],
         palettes: ["soft steel blue and lavender in misty light", "faded golden-hour light on old walls", "washed teal and dusty rose"],
         cliches: "rain on every surface, an umbrella, a tear on the cheek, autumn leaves falling, a lone figure in the rain",
     },
@@ -131,14 +131,14 @@ const MOODS: Record<string, MoodSpec> = {
 
 // Palavra-chave do subgênero (minúsculas, pt/en) → mundos visuais daquela música.
 const GENRE_WORLDS: { keys: string[]; worlds: string[] }[] = [
-    { keys: ["rock", "punk", "grunge", "emo", "metal", "hardcore", "garage"], worlds: ["a cramped rehearsal room full of amps and cables", "a small live venue seen from the side of the stage", "a garage with a drum kit and taped setlists", "a night bus stop covered in band stickers"] },
+    { keys: ["rock", "punk", "grunge", "emo", "metal", "hardcore", "garage"], worlds: ["a cramped rehearsal room with amps against the walls", "a small live venue seen from the side of the stage", "a garage with a drum kit and setlists taped to the wall", "a night bus stop covered in band stickers"] },
     { keys: ["rap", "hip hop", "hip-hop", "trap", "drill", "grime", "boom bap"], worlds: ["a basketball court under sodium streetlights", "an apartment rooftop above a dense city", "a late-night convenience store", "the stairwell of a housing block"] },
     { keys: ["funk", "baile"], worlds: ["a street party on a neighborhood court with towering speakers", "a hillside alley at night under string lights"] },
     { keys: ["house", "techno", "edm", "eletr", "electr", "drum and bass", "dubstep", "synth", "rave"], worlds: ["a warehouse club in strobe haze", "an empty subway platform at 4am after a party", "a bedroom studio full of synthesizers", "a highway at night seen from a moving car"] },
     { keys: ["mpb", "bossa", "samba", "pagode", "forró", "forro", "axé", "axe", "brasil"], worlds: ["a sidewalk bar table in a Brazilian city", "a kitchen with a radio and an open window onto a hot street", "a beach boardwalk at dusk", "a tiled apartment balcony full of plants"] },
     { keys: ["sertanejo", "country", "folk", "bluegrass", "americana"], worlds: ["a dirt road beside a sugarcane field", "the porch of a farmhouse", "the bed of a pickup truck under the stars"] },
-    { keys: ["jazz", "soul", "blues", "r&b", "rnb", "neo soul", "motown"], worlds: ["a small jazz bar lit by a single stage lamp", "a record store aisle", "an apartment at night with vinyl records on the floor"] },
-    { keys: ["lo-fi", "lofi", "indie", "bedroom", "dream pop", "shoegaze", "alternative", "alternativo"], worlds: ["a cluttered bedroom with posters and a cassette player", "a laundromat at night", "a small-town train platform", "a thrift store"] },
+    { keys: ["jazz", "soul", "blues", "r&b", "rnb", "neo soul", "motown"], worlds: ["a small jazz bar lit by a single stage lamp", "a record store aisle", "an apartment at night with a record player on a shelf"] },
+    { keys: ["lo-fi", "lofi", "indie", "bedroom", "dream pop", "shoegaze", "alternative", "alternativo"], worlds: ["a bedroom with posters on the walls and a cassette player on the desk", "a laundromat at night", "a small-town train platform", "a thrift store"] },
     { keys: ["classical", "clássic", "classic", "orchestr", "piano", "soundtrack", "trilha", "ambient"], worlds: ["an empty concert hall", "a piano beside a tall window", "a misty forest trail"] },
     { keys: ["k-pop", "kpop", "j-pop", "jpop", "pop", "dance"], worlds: ["a shopping street under bright signs", "a karaoke booth", "a dressing room mirror framed by bulbs"] },
     { keys: ["gospel", "worship"], worlds: ["a small church in morning light"] },
@@ -157,7 +157,7 @@ const COMPOSITIONS: { text: string; person: boolean; social?: boolean }[] = [
     { text: "Wide shot: the person is small inside a large space; the place tells the story.", person: true },
     { text: "Seen from behind or in profile, face partly hidden; posture tells the emotion.", person: true },
     { text: "Unusual angle (from below, from above, or through a window/reflection).", person: true },
-    { text: "No people: a still life of the place and objects, with a trace of someone who was just there (a left-behind object, never the person).", person: false },
+    { text: "No people: the place itself is the subject, with one quiet trace of someone who was just there (a lamp left on, a chair pushed back, a cup still steaming on a table), never the person.", person: false },
     { text: "A small group of friends in the scene; the connection between them is the subject.", person: true, social: true },
 ];
 
@@ -167,9 +167,12 @@ const CLEAR_LINE = "every shape outlined with a clean black ink line of one unif
 const STYLE = `STYLE: Original illustration in the European ligne claire (clear line) comic tradition: ${CLEAR_LINE}; characters slightly simplified, with specific, expressive faces (simple eyes, not anime eyes) and readable body language. Every character and design is original.`;
 // Cena sem gente: o estilo não pode falar de olhos, mãos nem personagens (o modelo lê como pedido de personagem).
 const STYLE_NO_PEOPLE = `STYLE: Original background illustration in the European ligne claire (clear line) comic tradition: ${CLEAR_LINE}. Every design is original.`;
-const NO_PEOPLE = "The frame is completely empty of people: no characters, figures, silhouettes, faces, hands or reflections of someone, not even small in the distance. The emotion comes only from the place, the light, the weather and the objects.";
+const NO_PEOPLE = "The frame is completely empty of people: no characters, figures, silhouettes, faces, hands or reflections of someone, not even small in the distance. The emotion comes only from the place, the light and the weather.";
 // Símbolos e paletas que só existem com alguém em cena (cabeça, rosto, pele...): ficam fora quando a cena é sem gente.
 const NEEDS_PERSON = /\b(people|head|face|neck|skin|planted|looks back|shoelaces)\b/;
+// O modelo enche a cena de coisas soltas pelo chão (discos, fitas, papéis, cabos) quando pode pôr "objetos":
+// cada objeto vai no lugar dele e o chão fica livre.
+const TIDY = "Only the few objects the scene needs, each resting where it naturally belongs (in hands, on a table, a shelf or a wall); the floor and the ground stay clear.";
 const OUTPUT = "OUTPUT: Square 1:1 album cover, a clear-line comic illustration with uniform black outlines and flat color, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.";
 
 // Com foto, o modelo de edição tende a devolver a própria foto com filtro. "Not photorealistic" sozinho não
@@ -181,7 +184,7 @@ const AVOID_PHOTO = "photorealism, photographic textures (film grain, fine noise
 const OUTPUT_PHOTO = "It must read as an inked and flat-colored comic illustration, not as a photograph.";
 
 const AVOID_PEOPLE = "people of any kind (characters, figures, silhouettes, crowds, faces, hands, reflections of someone)";
-const AVOID = "gradients, airbrushed or soft shading, painterly brushstrokes, watercolor washes, hatching, manga screentones, anime-style big eyes, thick-and-thin brush lines, school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
+const AVOID = "objects scattered or dropped on the floor, clutter, piles of stuff, litter, debris, loose props strewn around the scene, gradients, airbrushed or soft shading, painterly brushstrokes, watercolor washes, hatching, manga screentones, anime-style big eyes, thick-and-thin brush lines, school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
 
 function energy(ativacao: number): string {
     if (ativacao > 0.6) return "high: dynamic diagonal angle, motion shown by the pose and a few clean speed lines, compressed time";
@@ -239,8 +242,8 @@ ${OUTPUT}${photo ? ` ${OUTPUT_PHOTO}` : ""}`.trim();
                 : " Characters are original young adults with distinct, specific looks (hair, clothes, build).";
 
         const people = composition.person;
-        const text = `${music ? `MUSIC: ${music} Let this music decide the setting, ${people ? "clothes, " : ""}objects and props — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
-SCENE: ${world}. ${composition.text}${subject}${people ? ` Gesture: ${this.random(mood.gestures)}.` : ` ${NO_PEOPLE}`}
+        const text = `${music ? `MUSIC: ${music} Let this music decide the setting${people ? " and the clothes" : ""} — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists.\n` : ""}
+SCENE: ${world}. ${composition.text}${subject}${people ? ` Gesture: ${this.random(mood.gestures)}.` : ` ${NO_PEOPLE}`} ${TIDY}
 KEY DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, placed where the eye lands.`;
         return { text, people };
     }
@@ -249,8 +252,8 @@ KEY DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, placed whe
     // estilo do Mofy. A luz e a cor da foto não passam: quem manda é a paleta do humor.
     private sceneFromPhoto(mood: MoodSpec, music: string, { description, people = false }: CoverReference): { text: string; people: boolean } {
         const text = `REFERENCE: the attached photo${description ? ` shows ${description}` : ""}. Redraw it as the heart of this cover: keep its place or subject, its framing and its recognizable details, drawn as described in RENDERING. Its original light and colors do not carry over: follow LIGHT AND COLOR below.
-${music ? `MUSIC: ${music} Let this music add objects and small details to the place — the image should feel like it belongs to these songs. Do not draw the artists.\n` : ""}
-SCENE: the place or subject from the photo. ${people ? "Only the people already in the photo; no new characters." : NO_PEOPLE}
+${music ? `MUSIC: ${music} Let this music set the atmosphere of the place — the image should feel like it belongs to these songs. Do not draw the artists.\n` : ""}
+SCENE: the place or subject from the photo. ${people ? "Only the people already in the photo; no new characters." : NO_PEOPLE} Do not add objects that are not in the photo besides the key detail below; the floor and the ground stay clear.
 KEY DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, placed naturally inside the photo's scene where the eye lands.`;
         return { text, people };
     }
