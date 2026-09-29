@@ -46,7 +46,7 @@ describe('ImagePromptService', () => {
         expect(prompt).toContain('completely empty of people');
         expect(prompt).not.toMatch(/Brazilian city|boardwalk|balcony/); // o mundo do gênero não entra
         expect(prompt).not.toContain('Gesture:');
-        expect(prompt).toContain('Kyoto Animation');
+        expect(prompt).toContain('ligne claire');
         expect(prompt).toContain('MOOD: bittersweet nostalgia');
         expect(prompt).toMatch(/LIGHT AND COLOR: .*coming from real light sources/);
         expect(prompt).toContain('For this mood also avoid:');
@@ -70,11 +70,21 @@ describe('ImagePromptService', () => {
         expect(prompt.split('AVOID:')[1]).not.toContain('people of any kind');
     });
 
-    it('com foto, o traço anime é descrito e o realismo fotográfico é proibido; sem foto, nada disso', () => {
+    it('o traço da linha clara vai em toda capa, com ou sem gente', () => {
+        for (let i = 0; i < 30; i++) {
+            const prompt = service.build({ ...base, sentiment: 'Tristeza' });
+            expect(prompt).toMatch(/^STYLE: .*ligne claire/);
+            expect(prompt).toContain('black ink line of one uniform weight');
+            expect(prompt).toContain('never a gradient');
+            expect(prompt).not.toMatch(/Kyoto|soft diffused/);
+        }
+    });
+
+    it('com foto, a troca de cada superfície pelo traço é descrita e o realismo fotográfico é proibido; sem foto, nada disso', () => {
         for (const reference of [{ kind: 'person' as const }, { kind: 'scene' as const, description: 'a mountain lake' }]) {
             const prompt = service.build({ ...base, sentiment: 'Paz', reference });
             expect(prompt).toMatch(/^TRANSFORM: convert the attached photo/);
-            expect(prompt).toContain('RENDERING: clean ink outlines');
+            expect(prompt).toContain('RENDERING: every edge in the photo');
             expect(prompt.split('AVOID:')[1]).toContain('photorealism');
             expect(prompt).toMatch(/not as a photograph\.$/);
         }

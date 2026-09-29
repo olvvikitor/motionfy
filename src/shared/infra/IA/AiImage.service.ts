@@ -48,6 +48,11 @@ export class AiImageService {
     });
   }
 
+  // Modelo e qualidade em uso, para o registro de cada capa gerada.
+  get settings(): { model: string; quality: string } {
+    return { model: this.imageModel, quality: this.imageQuality };
+  }
+
   async buildHybridImagePrompt(input: HybridPromptInput): Promise<string> {
     return this.imagePromptService.build(input);
   }

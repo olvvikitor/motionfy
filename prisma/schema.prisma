@@ -26,6 +26,7 @@ model User {
   savedTracks  SavedTrack[]
   playlistSuggestions PlaylistSuggestion[]
   mofyPlaylists MofyPlaylist[]
+  coverGenerations CoverGeneration[]
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
   creditPurchases CreditPurchase[]
@@ -182,6 +183,24 @@ model MofyPlaylist {
 
   @@index([userId, createdAt])
   @@index([userId, tracksHash])
+}
+
+// Cada capa gerada pela IA: o prompt exato e onde a imagem ficou (para ver em GET admin/covers).
+model CoverGeneration {
+  id             String   @id @default(uuid())
+  userId         String
+  mofyPlaylistId String
+  title          String?
+  sentiment      String
+  reference      String   // none | person | scene
+  model          String
+  quality        String
+  prompt         String
+  imageUrl       String?  // null se a arte não foi salva no storage
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
 }
 
 // Músicas já sugeridas em playlists de jornada: as próximas evitam repetir.

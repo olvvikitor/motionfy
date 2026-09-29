@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
 import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.service";
 import { JourneyCandidate, Vector } from "../services/journey-path";
@@ -127,6 +128,22 @@ export class PlaylistRepository {
 
     async setMofyPlaylistCover(userId: string, spotifyPlaylistId: string, coverUrl: string): Promise<void> {
         await this.prisma.mofyPlaylist.updateMany({ where: { userId, spotifyPlaylistId, removedAt: null }, data: { coverUrl } });
+    }
+
+    async logCoverGeneration(data: Prisma.CoverGenerationUncheckedCreateInput): Promise<void> {
+        await this.prisma.coverGeneration.create({ data });
+    }
+
+    // Capas geradas, das mais novas, com o nome de quem gerou.
+    async listCoverGenerations(skip: number, take: number) {
+        const [rows, total] = await Promise.all([
+            this.prisma.coverGeneration.findMany({
+                orderBy: { createdAt: 'desc' }, skip, take,
+                include: { user: { select: { display_name: true } } },
+            }),
+            this.prisma.coverGeneration.count(),
+        ]);
+        return { rows, total };
     }
 
     // Análise e dados das faixas das playlists (música mais forte, subgênero, % no humor; contexto da capa gerada).

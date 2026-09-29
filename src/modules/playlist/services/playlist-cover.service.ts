@@ -153,7 +153,11 @@ export class PlaylistCoverService {
             const image = await this.aiImage.generateImage(prompt, reference?.image);
             const cover = await toSpotifyCover(image);
             await this.account.setCover(playlistId, cover);
-            await this.saveProfileArt(userId, playlistId, image);
+            const imageUrl = await this.saveProfileArt(userId, playlistId, image);
+            await this.repository.logCoverGeneration({
+                userId, mofyPlaylistId: owned.id, title: owned.title, sentiment,
+                reference: reference?.kind.kind ?? 'none', ...this.aiImage.settings, prompt, imageUrl,
+            }).catch((err) => console.error('[PlaylistCover] capa gerada, mas o registro do prompt falhou:', err?.message ?? err));
             return { preview: `data:image/jpeg;base64,${cover}`, remainingCredits: remaining };
         } catch (error) {
             await this.credits.refundCredit(userId, 'Estorno: falha na capa de playlist').catch((refundError) =>
@@ -197,14 +201,21 @@ export class PlaylistCoverService {
         return { subgenres, songs };
     }
 
-    // Guarda a arte quadrada para o card do perfil. Se falhar, a capa já está no Spotify: só registra.
-    private async saveProfileArt(userId: string, playlistId: string, image: Buffer): Promise<void> {
+    // Capas geradas (prompt, imagem, modelo), das mais novas, para a galeria do admin.
+    async generationLog(page: number, perPage: number) {
+        return await this.repository.listCoverGenerations((page - 1) * perPage, perPage);
+    }
+
+    // Guarda a arte quadrada para o card do perfil e devolve a URL. Se falhar, a capa já está no Spotify: só registra.
+    private async saveProfileArt(userId: string, playlistId: string, image: Buffer): Promise<string | null> {
         try {
             const art = await toProfileArt(image);
             const url = await this.storage.uploadPlaylistCover({ buffer: art, originalname: 'cover.jpg', mimetype: 'image/jpeg' }, userId);
             await this.repository.setMofyPlaylistCover(userId, playlistId, url);
+            return url;
         } catch (error) {
             console.error('[PlaylistCover] capa aplicada no Spotify, mas a arte do perfil não foi salva:', error?.message ?? error);
+            return null;
         }
     }
 

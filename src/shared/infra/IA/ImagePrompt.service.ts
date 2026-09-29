@@ -90,7 +90,7 @@ const MOODS: Record<string, MoodSpec> = {
         gestures: ["shouting into the wind", "kicking over a trash can", "tearing a poster off a wall"],
         symbols: ["shattered concrete with exposed rebar", "spray paint dripping down a wall", "a broken guitar string", "a smashed phone on the pavement"],
         palettes: ["blood red and obsidian with a hard rim light", "sodium orange streetlight over wet black", "harsh white flash against dirty concrete"],
-        cliches: "fire, explosions, burning cars, riot police, flags, a raised fist",
+        cliches: "fire, explosions, burning cars, riot police, flags, a raised fist, anarchy symbols, skulls",
     },
     Frustracao: {
         feeling: "friction between what should be and what is",
@@ -161,27 +161,30 @@ const COMPOSITIONS: { text: string; person: boolean; social?: boolean }[] = [
     { text: "A small group of friends in the scene; the connection between them is the subject.", person: true, social: true },
 ];
 
-const STYLE = "Original 2D anime illustration in the style of Kyoto Animation: soft diffused light, richly detailed everyday backgrounds, subtle acting in the eyes and hands. Style reference only; every character and design is original.";
+// Linha clara (ligne claire): o traço é descrito por inteiro em toda capa. Só o nome do estilo (como era com
+// "Kyoto Animation") deixava o modelo cair na média; o que dá identidade é linha, cor e sombra ditas com todas as letras.
+const CLEAR_LINE = "every shape outlined with a clean black ink line of one uniform weight (no thick-and-thin variation, no hatching, no sketchy strokes); flat, bright colors laid inside the lines with no gradients and at most one hard-edged shadow shape per surface; places and objects drawn with careful, realistic precision";
+const STYLE = `STYLE: Original illustration in the European ligne claire (clear line) comic tradition: ${CLEAR_LINE}; characters slightly simplified, with specific, expressive faces (simple eyes, not anime eyes) and readable body language. Every character and design is original.`;
 // Cena sem gente: o estilo não pode falar de olhos, mãos nem personagens (o modelo lê como pedido de personagem).
-const STYLE_NO_PEOPLE = "Original 2D anime background art in the style of Kyoto Animation: soft diffused light, richly detailed places and objects. Style reference only; every design is original.";
+const STYLE_NO_PEOPLE = `STYLE: Original background illustration in the European ligne claire (clear line) comic tradition: ${CLEAR_LINE}. Every design is original.`;
 const NO_PEOPLE = "The frame is completely empty of people: no characters, figures, silhouettes, faces, hands or reflections of someone, not even small in the distance. The emotion comes only from the place, the light, the weather and the objects.";
 // Símbolos e paletas que só existem com alguém em cena (cabeça, rosto, pele...): ficam fora quando a cena é sem gente.
 const NEEDS_PERSON = /\b(people|head|face|neck|skin|planted|looks back|shoelaces)\b/;
-const OUTPUT = "OUTPUT: Square 1:1 album cover, 2D anime, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.";
+const OUTPUT = "OUTPUT: Square 1:1 album cover, a clear-line comic illustration with uniform black outlines and flat color, never photorealistic, no text. The whole frame is shown as is (no crop): compose for the square.";
 
 // Com foto, o modelo de edição tende a devolver a própria foto com filtro. "Not photorealistic" sozinho não
 // segura: o que segura é descrever o traço (linha, cor chapada, sombra dura) e dizer que a foto é só o layout
-// — o que está nela e onde fica continua, a superfície é pintada do zero.
-const FROM_PHOTO = "TRANSFORM: convert the attached photo into a hand-drawn anime frame. The photo is only the layout: keep what is in it and where it is (composition, shapes, objects, landmarks, recognizable details), but repaint every surface from scratch. Nothing of the photo's pixels, textures or lighting survives.";
-const RENDERING = "RENDERING: clean ink outlines of even weight around every shape; flat cel-shaded color with two or three hard-edged shadow tones; skies, walls, foliage and water painted like anime film background art, with simplified brush textures; small details simplified into drawn shapes.";
-const AVOID_PHOTO = "photorealism, photographic textures (film grain, fine noise, skin pores, lens blur, HDR), a photo with a filter or an anime overlay, 3D render";
-const OUTPUT_PHOTO = "It must read as a drawn and painted still from an anime film, not as a photograph.";
+// — o que está nela e onde fica continua, a superfície é redesenhada do zero.
+const FROM_PHOTO = "TRANSFORM: convert the attached photo into a hand-inked clear-line comic panel. The photo is only the layout: keep what is in it and where it is (composition, shapes, objects, landmarks, recognizable details), but redraw every surface from scratch. Nothing of the photo's pixels, textures or lighting survives.";
+const RENDERING = "RENDERING: every edge in the photo becomes a uniform black ink outline; every texture (fabric, foliage, water, sky, walls) becomes one flat area of color with at most one hard-edged shadow shape; small details simplified into clean drawn shapes.";
+const AVOID_PHOTO = "photorealism, photographic textures (film grain, fine noise, skin pores, lens blur, HDR), a photo with a filter or a cartoon overlay, 3D render";
+const OUTPUT_PHOTO = "It must read as an inked and flat-colored comic illustration, not as a photograph.";
 
 const AVOID_PEOPLE = "people of any kind (characters, figures, silhouettes, crowds, faces, hands, reflections of someone)";
-const AVOID = "school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
+const AVOID = "gradients, airbrushed or soft shading, painterly brushstrokes, watercolor washes, hatching, manga screentones, anime-style big eyes, thick-and-thin brush lines, school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
 
 function energy(ativacao: number): string {
-    if (ativacao > 0.6) return "high: motion blur, dynamic angle, compressed time";
+    if (ativacao > 0.6) return "high: dynamic diagonal angle, motion shown by the pose and a few clean speed lines, compressed time";
     if (ativacao > 0.2) return "moderate: the scene is in motion, things are happening";
     if (ativacao > -0.2) return "balanced: subtle movement, composed";
     if (ativacao > -0.6) return "low: slow, contemplative, absorbed";
@@ -216,7 +219,7 @@ export class ImagePromptService {
 ${photo ? `${RENDERING}\n` : ""}
 MOOD: ${mood.feeling}.
 ${scene}
-LIGHT AND COLOR: ${this.random(this.withoutPeople(mood.palettes, people))}, coming from real light sources in the scene; natural colors elsewhere.
+LIGHT AND COLOR: ${this.random(this.withoutPeople(mood.palettes, people))}, coming from real light sources in the scene, painted as flat areas of color (light and shadow are separate flat shapes, never a gradient); a limited palette of about five colors across the whole image.
 ENERGY: ${energy(data.ativacao ?? 0)}.
 AVOID: ${people ? "" : `${AVOID_PEOPLE}, `}${photo ? `${AVOID_PHOTO}, ` : ""}${AVOID}. For this mood also avoid: ${mood.cliches}.
 
