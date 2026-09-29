@@ -1,4 +1,4 @@
-import { bpmRangeOf, buildFacets, chosenGenres, hasFilters, matchesFilters, matchesNational } from './journey-filters';
+import { bpmRangeOf, buildFacets, chosenGenres, eraOf, hasFilters, matchesFilters, matchesNational, yearOf } from './journey-filters';
 
 const rock = { genre: 'Rock', subgenre: 'Indie Rock', bpm: 128 };
 const mpb = { genre: 'MPB', subgenre: 'Bossa Nova', bpm: 84 };
@@ -67,6 +67,27 @@ describe('matchesFilters', () => {
         expect(bpmRangeOf(90)).toBe('medium');
         expect(bpmRangeOf(150)).toBe('veryfast');
         expect(bpmRangeOf(null)).toBeNull();
+    });
+
+    it('época restringe pelo ano; sem ano conhecido fica de fora', () => {
+        const classic = { genre: 'MPB', subgenre: 'MPB', year: 1972 };
+        const recent = { genre: 'MPB', subgenre: 'MPB', year: 2023 };
+        expect(matchesFilters(classic, { genres: ['MPB'], eras: ['pre80', '80s'] })).toBe(true);
+        expect(matchesFilters(recent, { genres: ['MPB'], eras: ['pre80', '80s'] })).toBe(false);
+        expect(matchesFilters(mpb, { eras: ['20s'] })).toBe(false); // sem ano
+        expect(matchesFilters(recent, {})).toBe(true);
+        expect(hasFilters({ eras: ['90s'] })).toBe(true);
+    });
+
+    it('ano do release_date e limites das épocas', () => {
+        expect(yearOf('1975-03-01')).toBe(1975);
+        expect(yearOf('1999')).toBe(1999);
+        expect(yearOf('')).toBeNull();
+        expect(yearOf(null)).toBeNull();
+        expect(eraOf(1979)).toBe('pre80');
+        expect(eraOf(1980)).toBe('80s');
+        expect(eraOf(2020)).toBe('20s');
+        expect(eraOf(null)).toBeNull();
     });
 });
 

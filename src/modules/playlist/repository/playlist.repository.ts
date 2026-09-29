@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "src/config/prisma.service";
 import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.service";
+import { yearOf } from "../services/journey-filters";
 import { JourneyCandidate, Vector } from "../services/journey-path";
 
 const POOL_LIMIT = 5000;
@@ -263,7 +264,7 @@ export class PlaylistRepository {
     ): Promise<JourneyCandidate[]> {
         const tracks = await this.prisma.track.findMany({
             where: { spotifyId: { in: analyses.map(a => a.spotifyid) } },
-            select: { spotifyId: true, title: true, artist: true, img_url: true, durationMs: true, isrc: true },
+            select: { spotifyId: true, title: true, artist: true, img_url: true, durationMs: true, isrc: true, releaseDate: true },
         });
         const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
 
@@ -284,6 +285,7 @@ export class PlaylistRepository {
                 genre: analysis.genre,
                 subgenre: analysis.subgenre,
                 bpm: analysis.bpm,
+                year: yearOf(track.releaseDate),
                 isrc: track.isrc,
             }];
         });

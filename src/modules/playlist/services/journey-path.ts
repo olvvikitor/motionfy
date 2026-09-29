@@ -19,6 +19,7 @@ export interface JourneyCandidate {
     genre?: string | null;
     subgenre?: string | null;
     bpm?: number | null;
+    year?: number | null; // ano de lançamento (do álbum, no Spotify)
     isrc?: string | null; // "BR…" = gravada no Brasil (filtro de música nacional)
     // País do artista principal (ArtistInfo): string = conhecido; null = consultado sem resposta;
     // ausente = ainda não consultado. Com o filtro de música nacional ligado, sem país a música fica de fora.

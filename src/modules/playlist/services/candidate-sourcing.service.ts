@@ -7,6 +7,7 @@ import { SongRef } from "src/shared/infra/music/spotify/spotify-catalog.service"
 import { TrackInput } from "src/shared/types/TrackInput";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { SENTIMENT_SEARCH_TERMS } from "../sentiment-search-terms";
+import { yearOf } from "./journey-filters";
 import { distance, FIT_RADIUS, JourneyCandidate, nearestMood, primaryArtist, shuffle, Vector } from "./journey-path";
 
 const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por playlist
@@ -305,6 +306,7 @@ export class CandidateSourcingService {
                     genre: analysis.genre,
                     subgenre: analysis.subgenre,
                     bpm: analysis.bpm,
+                    year: yearOf(track.releaseDate),
                     isrc: track.isrc ?? null,
                 } satisfies JourneyCandidate;
             }));

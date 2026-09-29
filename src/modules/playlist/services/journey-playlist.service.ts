@@ -10,7 +10,7 @@ import { ArtistCountryService } from "./artist-country.service";
 import { CandidateSourcingService } from "./candidate-sourcing.service";
 import { CreditService } from "src/modules/credits/credit.service";
 import { durationCost } from "./playlist-pricing";
-import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesFilters } from "./journey-filters";
+import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesEra, matchesFilters, yearOf } from "./journey-filters";
 import { buildJourney, buildPath, capPerArtist, distance, findGaps, FIT_RADIUS, isNovel, nearestMood, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 import { MoodCentroidsService } from "./mood-centroids.service";
 
@@ -126,9 +126,9 @@ export class JourneyPlaylistService {
         const since = new Date(Date.now() - RECENT_SUGGESTION_DAYS * 86_400_000);
         const fatigue = suggestionFatigue(await this.repository.getSuggestionHistory(userId, since), new Date());
 
-        // Filtros do usuário (gêneros, subgêneros, BPM): valem para o acervo e para as músicas novas buscadas.
+        // Filtros do usuário (gêneros, subgêneros, BPM, época): valem para o acervo e para as músicas novas buscadas.
         // O pedido em texto (custom) tem o estilo dele e não usa filtros.
-        const filters: JourneyFilters = dto.source === 'custom' ? {} : { genres: dto.genres, subgenres: dto.subgenres, bpm: dto.bpm, national: dto.national };
+        const filters: JourneyFilters = dto.source === 'custom' ? {} : { genres: dto.genres, subgenres: dto.subgenres, bpm: dto.bpm, eras: dto.eras, national: dto.national };
         const filtering = hasFilters(filters);
         // País do artista (música nacional): só quando o filtro pede.
         if (filters.national && filters.national !== 'include') await this.artistCountry.annotate(fullPool);
@@ -330,20 +330,26 @@ export class JourneyPlaylistService {
                 ];
 
                 const national = ctx.filters.national && ctx.filters.national !== 'include' ? ctx.filters.national : null;
+                const eras = ctx.filters.eras;
+                // Novas que valem o Jev: da época escolhida (o ano já vem do Spotify) e, com o filtro de música
+                // nacional, de artista com país conhecido e do lado certo.
+                const eligible = national || eras?.length
+                    ? async (tracks: TrackInput[]) => {
+                        const inEra = tracks.filter(t => matchesEra(yearOf(t.releaseDate), eras));
+                        return national ? this.artistCountry.keepMatching(inEra, national) : inEra;
+                    }
+                    : undefined;
                 const popular = await this.sourcing.popular({
                     genres: scope.genres,
                     artists,
                     analyzed: new Map(ctx.fullPool.map(c => [c.spotifyId, c])),
                     tasteIds: ctx.taste.tasteIds,
                     fits,
-                    // Gênero e os outros filtros (BPM, música nacional): não gasta o Jev com o que sairia depois.
+                    // Gênero e os outros filtros (BPM, época, música nacional): não gasta o Jev com o que sairia depois.
                     inScope: c => scope.inScope(c) && matchesFilters(c, ctx.filters),
-                    // Filtro de música nacional: o país do artista antes do teste acima e, nas novas, só as de artista
-                    // com país conhecido e do lado certo passam pelo Jev.
-                    ...(national ? {
-                        annotate: (list: JourneyCandidate[]) => this.artistCountry.annotate(list),
-                        eligible: (tracks: TrackInput[]) => this.artistCountry.keepMatching(tracks, national),
-                    } : {}),
+                    // Filtro de música nacional: o país do artista antes do teste acima.
+                    ...(national ? { annotate: (list: JourneyCandidate[]) => this.artistCountry.annotate(list) } : {}),
+                    eligible,
                     needed,
                 });
                 const candidates = [...new Map([...base, ...popular.candidates].map(c => [c.spotifyId, c])).values()];
