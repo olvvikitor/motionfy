@@ -1,10 +1,11 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { createHash } from "crypto";
-import { EMOTIONAL_DIMENSIONS, getClusterVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.service";
 import { SpotifyMofyAccountService } from "src/shared/infra/music/spotify/spotify-mofy-account.service";
 import { SpotifyPlaylistDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { Vector } from "./journey-path";
+import { MoodCentroidsService } from "./mood-centroids.service";
 import { fetchCover, toSpotifyCover } from "./playlist-cover.service";
 import { showcaseStats, ShowcaseStats } from "./playlist-showcase";
 
@@ -67,6 +68,7 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
     constructor(
         private readonly repository: PlaylistRepository,
         private readonly account: SpotifyMofyAccountService,
+        private readonly centroids: MoodCentroidsService,
     ) { }
 
     // Limpeza periódica (além da que roda a cada criação): sem ela, sem novas criações nada sairia.
@@ -120,6 +122,7 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
         const { analyses, tracks } = allIds.length ? await this.repository.getTracksForShowcase(allIds) : { analyses: [], tracks: [] };
         const analysisById = new Map(analyses.map(a => [a.spotifyid, a]));
         const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
+        const clusters = await this.centroids.clusters();
 
         const playlists: ShowcasePlaylist[] = rows.map(row => {
             const ids = trackIdsOf(row.trackIds);
@@ -147,7 +150,7 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
                 coverUrl: row.coverUrl,
                 trackCount: ids.length,
                 createdAt: row.createdAt,
-                ...showcaseStats(row.sentiment ? getClusterVector(row.sentiment) ?? null : null, items),
+                ...showcaseStats(row.sentiment ? clusters[row.sentiment] ?? null : null, items),
             };
         });
 

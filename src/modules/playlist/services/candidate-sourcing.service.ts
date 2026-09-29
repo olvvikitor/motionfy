@@ -1,14 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
 import { AiTextService } from "src/shared/infra/IA/AiText.service";
-import { EMOTION_CLUSTERS, getClusterVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { LastFmProvider } from "src/shared/infra/music/lastfm/lastfm.service";
 import { MusicProviderInterface } from "src/shared/infra/music/music.provider.interface";
 import { SongRef } from "src/shared/infra/music/spotify/spotify-catalog.service";
 import { TrackInput } from "src/shared/types/TrackInput";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { SENTIMENT_SEARCH_TERMS } from "../sentiment-search-terms";
-import { distance, FIT_RADIUS, JourneyCandidate, shuffle, Vector } from "./journey-path";
+import { distance, FIT_RADIUS, JourneyCandidate, nearestMood, primaryArtist, shuffle, Vector } from "./journey-path";
 
 const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por playlist
 const PER_QUERY = 5; // novas por busca, para espalhar o orçamento entre as paradas
@@ -20,6 +19,11 @@ const POPULAR_PER_TAG = 50;
 const POPULAR_TAG_PAGES = 2; // página sorteada entre as 2 primeiras: variedade sem sair das mais tocadas
 const POPULAR_ARTISTS = 5;
 const POPULAR_PER_ARTIST = 10;
+// Descoberta: artistas parecidos (Last.fm) com os artistas dele que servem, que ele ainda não ouve.
+const SIMILAR_SEEDS = 3;
+const SIMILAR_PER_SEED = 10;
+const SIMILAR_ARTISTS = 5;
+const SIMILAR_PER_ARTIST = 5;
 const MAX_CATALOG_LOOKUPS = 24;
 // Classificações pelo Jev por música que falta (nem toda popular do gênero cai no humor pedido).
 const CLASSIFY_PER_NEEDED = 3;
@@ -101,8 +105,8 @@ export class CandidateSourcingService {
         private readonly lastfm: LastFmProvider,
     ) { }
 
-    // "Descobrir": as mais tocadas dos gêneros (paradas do Last.fm por gênero) e os sucessos dos artistas do
-    // usuário. As já analisadas entram de graça; as outras só quando falta música (`needed`), com teto de
+    // "Descobrir": as mais tocadas dos gêneros (paradas do Last.fm por gênero), os sucessos dos artistas do
+    // usuário e os de artistas parecidos com eles que ele ainda não ouve. As já analisadas entram de graça; as outras só quando falta música (`needed`), com teto de
     // buscas no Spotify e de classificações no Jev. Só volta o que está no gênero (`inScope`).
     async popular(ctx: PopularContext): Promise<{ candidates: JourneyCandidate[]; classified: number }> {
         const lists = await Promise.all([
@@ -110,6 +114,8 @@ export class CandidateSourcingService {
                 this.lastfm.popularByTag(tag, POPULAR_PER_TAG, 1 + Math.floor(Math.random() * POPULAR_TAG_PAGES)).catch((): SongRef[] => [])),
             ...ctx.artists.slice(0, POPULAR_ARTISTS).map(artist =>
                 this.lastfm.popularByArtist(artist, POPULAR_PER_ARTIST).catch((): SongRef[] => [])),
+            ...(await this.similarArtists(ctx.artists)).map(artist =>
+                this.lastfm.popularByArtist(artist, SIMILAR_PER_ARTIST).catch((): SongRef[] => [])),
         ]);
         const refs = interleave(lists.map(shuffle));
         if (!refs.length) return { candidates: [], classified: 0 };
@@ -138,6 +144,15 @@ export class CandidateSourcingService {
         }
 
         return { candidates: [...known, ...classified].filter(ctx.inScope), classified: classified.length };
+    }
+
+    // Parecidos com os primeiros artistas (os que servem para o humor vêm antes), sem os que ele já ouve.
+    private async similarArtists(artists: string[]): Promise<string[]> {
+        const known = new Set(artists.map(primaryArtist));
+        const lists = await Promise.all(artists.slice(0, SIMILAR_SEEDS).map(artist =>
+            this.lastfm.similarArtists(artist, SIMILAR_PER_SEED).catch((): string[] => [])));
+        const fresh = [...new Set(lists.flat())].filter(name => !known.has(primaryArtist(name)));
+        return shuffle(fresh).slice(0, SIMILAR_ARTISTS);
     }
 
     private tagsFor(genres: string[]): string[] {
@@ -181,15 +196,18 @@ export class CandidateSourcingService {
         stops: Vector[],
         ctx: SearchContext,
         analyzed: JourneyCandidate[],
+        clusters: Record<string, Vector>,
     ): Promise<JourneyCandidate[]> {
         const analyzedById = new Map(analyzed.map(c => [c.spotifyId, c]));
         const found = new Map<string, JourneyCandidate>();
         let classifiedCount = 0;
 
         for (const stop of stops) {
-            if ([...found.values()].some(c => distance(stop, c.vector) <= FIT_RADIUS)) continue;
+            const mood = nearestMood(stop, clusters);
+            const covered = () => [...found.values()].some(c => c.dominantSentiment === mood || distance(stop, c.vector) <= FIT_RADIUS);
+            if (covered()) continue;
 
-            for (const query of shuffle(SENTIMENT_SEARCH_TERMS[this.nearestSentiment(stop)] ?? [])) {
+            for (const query of shuffle(SENTIMENT_SEARCH_TERMS[mood] ?? [])) {
                 const results = shuffle(await this.searchPages(query, ctx, 1)).filter(t => !found.has(t.spotifyId));
 
                 results.filter(t => analyzedById.has(t.spotifyId)).forEach(t => found.set(t.spotifyId, analyzedById.get(t.spotifyId)!));
@@ -200,7 +218,7 @@ export class CandidateSourcingService {
                 classifiedCount += toClassify.length;
                 classified.forEach(c => found.set(c.spotifyId, c));
 
-                if ([...found.values()].some(c => distance(stop, c.vector) <= FIT_RADIUS)) break;
+                if (covered()) break;
                 if (classifiedCount >= MAX_NEW_CANDIDATES) break;
             }
         }
@@ -240,12 +258,6 @@ export class CandidateSourcingService {
 
     private plain(text: string): string {
         return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    }
-
-    private nearestSentiment(point: Vector): string {
-        return EMOTION_CLUSTERS
-            .map(label => ({ label, d: distance(point, getClusterVector(label)!) }))
-            .sort((a, b) => a.d - b.d)[0].label;
     }
 
     private async classifyAndSave(tracks: TrackInput[]): Promise<JourneyCandidate[]> {

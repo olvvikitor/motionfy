@@ -4,7 +4,10 @@ import {
     distance,
     findGaps,
     FIT_RADIUS,
+    capPerArtist,
     isNovel,
+    NEIGHBOR_RADIUS,
+    songKey,
     moodAreas,
     JourneyCandidate,
     pickAlongPath,
@@ -315,19 +318,73 @@ describe('waypointsAlong', () => {
 });
 
 describe('moodAreas', () => {
-    const r = FIT_RADIUS;
+    const r = NEIGHBOR_RADIUS;
     const clusters: Record<string, Vector> = {
         A: { a: 0, b: 0 },
-        perto: { a: 2 * r - 0.1, b: 0 },  // alcançável: há música a até FIT_RADIUS de A que é mais perto dele
-        meio: { a: r, b: 0 },
-        longe: { a: 2 * r + 0.1, b: 0 },
+        perto: { a: r - 0.05, b: 0 },
+        meio: { a: r / 2, b: 0 },
+        longe: { a: r + 0.05, b: 0 },
     };
 
-    it('traz os humores a menos de 2 × FIT_RADIUS, do mais perto ao mais longe', () => {
+    it('traz os humores a até NEIGHBOR_RADIUS, do mais perto ao mais longe', () => {
         expect(moodAreas(clusters).A).toEqual(['meio', 'perto']);
     });
 
     it('não inclui o próprio humor', () => {
         expect(moodAreas(clusters).longe).not.toContain('longe');
+    });
+});
+
+describe('humor da parada (moodOf)', () => {
+    it('prefere a do humor da parada, mesmo mais longe, a uma de outro humor mais perto', () => {
+        const near = candidate('near', FROM, { dominantSentiment: 'Confianca' });
+        const own = candidate('own', { a: 0.3, b: 0.9 }, { dominantSentiment: 'Energia' });
+        const picks = pickAlongPath(buildPath(FROM, TO, 1), [near, own], { moodOf: () => 'Energia' });
+        expect(picks[0].candidate.spotifyId).toBe('own');
+    });
+
+    it('a cota de novas não troca uma do humor por uma nova de outro humor', () => {
+        const mine = candidate('mine', FROM, { dominantSentiment: 'Paz', fromUserHistory: true });
+        const novelOther = candidate('novel', FROM, { dominantSentiment: 'Amor' });
+        const picks = pickAlongPath(buildPath(FROM, TO, 1), [mine, novelOther], {
+            moodOf: () => 'Paz', noveltyShare: 1, fits: c => ['Paz', 'Amor'].includes(c.dominantSentiment),
+        });
+        expect(picks[0].candidate.spotifyId).toBe('mine');
+    });
+
+    it('usa um humor próximo quando acabam as do humor escolhido', () => {
+        const own = candidate('own', FROM, { dominantSentiment: 'Paz' });
+        const other = candidate('other', FROM, { dominantSentiment: 'Amor', artist: 'Outro' });
+        const picks = pickAlongPath([FROM, FROM], [own, other], { moodOf: () => 'Paz', fits: () => true });
+        expect(picks.map(p => p.candidate.spotifyId)).toEqual(['own', 'other']);
+    });
+
+    it('findGaps conta como coberta a parada com música do humor dela, mesmo longe', () => {
+        const far = candidate('far', { a: 9, b: 9 }, { dominantSentiment: 'Paz' });
+        expect(findGaps([FROM], [far], () => 'Paz')).toEqual([]);
+        expect(findGaps([FROM], [far])).toEqual([0]);
+    });
+});
+
+describe('fluxo entre músicas', () => {
+    it('depois de um gênero, prefere seguir nele a trocar', () => {
+        const first = candidate('first', FROM, { genre: 'Rock', artist: 'A' });
+        const rock = candidate('rock', { a: 0.02, b: 0.98 }, { genre: 'Rock', artist: 'B' });
+        const trap = candidate('trap', FROM, { genre: 'Hip Hop', artist: 'C' });
+        const picks = pickAlongPath([FROM, FROM], [first, rock, trap]);
+        expect(picks[1].candidate.spotifyId).toBe('rock');
+    });
+});
+
+describe('capPerArtist e songKey', () => {
+    it('deixa no máximo 2 por artista', () => {
+        const list = [1, 2, 3, 4].map(i => candidate(String(i), FROM, { artist: 'Raça Negra' }));
+        expect(capPerArtist(list)).toHaveLength(2);
+    });
+
+    it('versão ao vivo/remaster/feat conta como a mesma música', () => {
+        const base = candidate('a', FROM, { title: 'É O Amor', artist: 'Raça Negra' });
+        expect(songKey(candidate('b', FROM, { title: 'É O Amor - Ao Vivo', artist: 'Raça Negra' }))).toBe(songKey(base));
+        expect(songKey(candidate('c', FROM, { title: 'É O Amor (feat. X)', artist: 'Raça Negra, X' }))).toBe(songKey(base));
     });
 });

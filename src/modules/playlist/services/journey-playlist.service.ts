@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException, UnprocessableEntityException } from "@nestjs/common";
 import { AiTextService } from "src/shared/infra/IA/AiText.service";
-import { EMOTION_CLUSTERS, getClusterVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { EMOTION_CLUSTERS } from "src/shared/infra/IA/emotion-analysis.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
 import { MusicProviderInterface } from "src/shared/infra/music/music.provider.interface";
 import { JourneyPathQueryDto, JourneyPlaylistDto, JourneySource, QueueJourneyDto } from "../dtos/journey-playlist.dto";
@@ -11,7 +11,8 @@ import { CandidateSourcingService } from "./candidate-sourcing.service";
 import { CreditService } from "src/modules/credits/credit.service";
 import { durationCost } from "./playlist-pricing";
 import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesFilters } from "./journey-filters";
-import { buildJourney, buildPath, distance, findGaps, FIT_RADIUS, isNovel, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildJourney, buildPath, capPerArtist, distance, findGaps, FIT_RADIUS, isNovel, nearestMood, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { MoodCentroidsService } from "./mood-centroids.service";
 
 export type JourneyPlaylistResponse = {
     // Um humor: partida = chegada = o humor escolhido (capa e cor).
@@ -79,6 +80,7 @@ export class JourneyPlaylistService {
         private readonly aiText: AiTextService,
         private readonly credits: CreditService,
         private readonly artistCountry: ArtistCountryService,
+        private readonly centroids: MoodCentroidsService,
     ) { }
 
     // Só sugere as músicas. Nada vai para a fila até o usuário revisar e chamar queue().
@@ -101,7 +103,8 @@ export class JourneyPlaylistService {
     }
 
     private async compose(userId: string, dto: JourneyPlaylistDto): Promise<JourneyPlaylistResponse> {
-        const journey = await this.resolveJourney(userId, dto);
+        const clusters = await this.centroids.clusters();
+        const journey = await this.resolveJourney(userId, dto, clusters);
 
         const user = await this.repository.getUser(userId);
         if (!user) throw new NotFoundException('Usuário não encontrado');
@@ -112,8 +115,10 @@ export class JourneyPlaylistService {
             throw new BadRequestException('Playlist de jornada disponível apenas para contas do Spotify ou Last.fm.');
         }
 
-        const from = getClusterVector(journey.from)!;
-        const to = getClusterVector(journey.to)!;
+        const from = clusters[journey.from];
+        const to = clusters[journey.to];
+        // Humor de cada parada: o escolhido (um humor) ou o do centro mais perto do ponto do caminho.
+        const moodOf = journey.moods ? () => journey.from : (point: Vector) => nearestMood(point, clusters);
         const accessToken = await provider.refreshToken(user.refreshToken!);
 
         const taste = await this.repository.getUserTaste(userId);
@@ -130,20 +135,22 @@ export class JourneyPlaylistService {
         const pool = filtering ? fullPool.filter(c => matchesFilters(c, filters)) : fullPool;
 
         const moods = journey.moods;
-        const collected = await this.collectCandidates(dto, journey, { from, to, pool, fullPool, taste, provider, accessToken, fatigue, filters });
+        const collected = await this.collectCandidates(dto, journey, { from, to, moodOf, clusters, pool, fullPool, taste, provider, accessToken, fatigue, filters });
         // Um humor: só músicas dele ou de um humor próximo (nada de "aproximada" de humor longe).
         const candidates = collected.candidates.filter(c =>
             (!filtering || matchesFilters(c, filters)) && (!moods || moods.includes(c.dominantSentiment)));
         const { newTracksAnalyzed } = collected;
 
-        // Sorteio com peso entre as que combinam com cada parada; as sugeridas muitas vezes/há pouco
-        // perdem posição e, no "Descobrir", ~metade vem de músicas novas para o usuário.
+        // Sorteio com peso entre as que combinam com cada parada, as do humor da parada primeiro (rótulo do Jev)
+        // e sem troca brusca de gênero/andamento; as sugeridas muitas vezes/há pouco perdem posição e, no
+        // "Descobrir", ~60% vem de músicas novas para o usuário.
         // "Descobrir": músicas de outros usuários/novidades só se se encaixarem no humor da parada.
         // "Minha biblioteca" já só tem as do usuário; o pedido em texto só busca no Spotify.
-        // Um humor: todas as paradas no humor escolhido e qualquer música dele ou de um próximo serve (a
-        // distância só ordena, então as do escolhido vêm antes).
+        // Um humor: todas as paradas no humor escolhido e qualquer música dele ou de um próximo serve, mas as
+        // de um próximo só entram quando acabam as dele.
         const options = {
             sample: true,
+            moodOf,
             fatigue,
             othersMustFit: dto.source === 'all',
             noveltyShare: dto.source === 'all' ? NOVELTY_SHARE : 0,
@@ -187,13 +194,13 @@ export class JourneyPlaylistService {
     }
 
     // Sentimentos por onde a playlist passa entre partida e chegada (mesmo caminho do build).
-    path(dto: JourneyPathQueryDto): { path: string[] } {
-        return { path: waypointsAlong(dto.from, dto.to, clusterVectors()) };
+    async path(dto: JourneyPathQueryDto): Promise<{ path: string[] }> {
+        return { path: waypointsAlong(dto.from, dto.to, await this.centroids.clusters()) };
     }
 
     // Humores que podem vir junto com cada um (área no mapa do seletor).
-    areas(): { areas: Record<string, string[]> } {
-        return { areas: moodAreas(clusterVectors()) };
+    async areas(): Promise<{ areas: Record<string, string[]> }> {
+        return { areas: moodAreas(await this.centroids.clusters()) };
     }
 
     // Adiciona à fila do Spotify só as músicas que o usuário manteve, na ordem recebida.
@@ -214,10 +221,10 @@ export class JourneyPlaylistService {
     // Modos all/saved: o usuário escolhe partida e chegada. Modo custom: o Jev
     // lê o pedido e decide o destino; a partida vem do pedido, do humor atual
     // do usuário ou, em último caso, do palpite do Jev.
-    private async resolveJourney(userId: string, dto: JourneyPlaylistDto): Promise<ResolvedJourney> {
+    private async resolveJourney(userId: string, dto: JourneyPlaylistDto, clusters: Record<string, Vector>): Promise<ResolvedJourney> {
         if (dto.source !== 'custom') {
             if (dto.mood) {
-                return { from: dto.mood, to: dto.mood, moods: [dto.mood, ...(moodAreas(clusterVectors())[dto.mood] ?? [])] };
+                return { from: dto.mood, to: dto.mood, moods: [dto.mood, ...(moodAreas(clusters)[dto.mood] ?? [])] };
             }
             if (!dto.from || !dto.to) throw new BadRequestException('Escolha o sentimento de partida e o de chegada.');
             return { from: dto.from, to: dto.to };
@@ -246,6 +253,8 @@ export class JourneyPlaylistService {
     private async collectCandidates(dto: JourneyPlaylistDto, journey: ResolvedJourney, ctx: {
         from: Vector;
         to: Vector;
+        moodOf: (point: Vector) => string;
+        clusters: Record<string, Vector>;
         pool: JourneyCandidate[]; // acervo já com os filtros
         fullPool: JourneyCandidate[];
         taste: UserTaste;
@@ -264,7 +273,7 @@ export class JourneyPlaylistService {
             case 'custom': {
                 const found = journey.style
                     ? (await this.sourcing.fromRequest(journey.style.request, ctx, ctx.pool, journey.style.genre)).candidates
-                    : await this.sourcing.searchForJourney(buildPath(ctx.from, ctx.to, stopCountForDuration(dto.durationMin)), ctx, ctx.pool);
+                    : await this.sourcing.searchForJourney(buildPath(ctx.from, ctx.to, stopCountForDuration(dto.durationMin)), ctx, ctx.pool, ctx.clusters);
 
                 const knownIds = new Set(ctx.pool.map(p => p.spotifyId));
                 return {
@@ -289,18 +298,21 @@ export class JourneyPlaylistService {
                 let fits: (c: JourneyCandidate) => boolean;
                 let needed: number;
                 const moods = journey.moods;
+                // Cobertura contada com o limite por artista: 8 músicas do mesmo artista valem 2 na playlist.
                 if (moods) {
-                    // Um humor: qualquer música dele ou de um próximo serve; falta uma por parada (e a cota de novas).
-                    fits = c => moods.includes(c.dominantSentiment);
-                    const count = (list: JourneyCandidate[]) => list.filter(fits).length;
+                    // Um humor: falta uma do próprio humor por parada (e a cota de novas). As dos próximos só
+                    // completam, então não contam como cobertura nem guiam a busca de novas.
+                    fits = c => c.dominantSentiment === journey.from;
+                    const count = (list: JourneyCandidate[]) => capPerArtist(list.filter(fits)).length;
                     needed = Math.max(0, stops - count(rested), quota - count(novel));
                 } else {
-                    // Jornada: paradas sem música por perto, mais as que faltam para a cota de novas
+                    // Jornada: paradas sem música que sirva, mais as que faltam para a cota de novas
                     // (espalhadas pelo caminho primeiro).
                     const path = buildPath(ctx.from, ctx.to, stops);
-                    fits = c => path.some(p => distance(p, c.vector) <= FIT_RADIUS);
-                    const gaps = new Set(findGaps(path, rested));
-                    const novelGaps = findGaps(path, novel);
+                    const moodsOnPath = new Set(path.map(ctx.moodOf));
+                    fits = c => moodsOnPath.has(c.dominantSentiment) || path.some(p => distance(p, c.vector) <= FIT_RADIUS);
+                    const gaps = new Set(findGaps(path, capPerArtist(rested), ctx.moodOf));
+                    const novelGaps = findGaps(path, capPerArtist(novel), ctx.moodOf);
                     const deficit = quota - (stops - novelGaps.length);
                     if (deficit > 0) {
                         const spread = new Set(Array.from({ length: quota }, (_, i) => Math.floor((i * stops) / quota)));
@@ -387,8 +399,4 @@ export class JourneyPlaylistService {
         }
         return 'Não encontrei músicas para montar essa jornada. Ouça mais algumas músicas e tente de novo.';
     }
-}
-
-function clusterVectors(): Record<string, Vector> {
-    return Object.fromEntries(EMOTION_CLUSTERS.map(label => [label, getClusterVector(label)!]));
 }

@@ -33,9 +33,12 @@ export interface JourneyPick {
 }
 
 export const DEFAULT_TRACK_MS = 210_000; // 3,5 min, usado quando a faixa não tem duração salva
-// Música "combina" com a parada. Menor que a distância entre humores vizinhos
-// (Tensão↔Frustração 0,42; Tristeza↔Melancolia 0,51): 0,6 aceitava música de outro humor.
+// Música "combina" com a parada pela distância (a do humor da parada, pelo rótulo do Jev, combina sempre).
+// Com os centros aprendidos, ~metade das músicas de cada humor fica a até 0,45 do centro dele.
 export const FIT_RADIUS = 0.45;
+// Humores vizinhos (podem vir junto): centros a até isso um do outro (centros aprendidos, mood-centroids.ts).
+// Com 0,58: Celebração ↔ Euforia/Energia/Confiança, Paz ↔ Amor/Ambivalente/Reflexão; Revolta fica sozinha.
+export const NEIGHBOR_RADIUS = 0.58;
 export const MIN_STOPS = 3;
 // Preferência leve pelas músicas do usuário: com bônus grande elas ganhavam sempre e, como são
 // poucas perto de cada humor, toda playlist repetia as mesmas.
@@ -48,6 +51,13 @@ const ARTIST_PENALTY = 0.15; // por música do mesmo artista já escolhida
 const MAX_PER_ARTIST = 2; // só passa disso se não sobrar outra
 const SIMILAR_DISTANCE = 0.08; // vetor quase igual a uma já escolhida
 const SIMILAR_PENALTY = 0.1;
+// Música de outro humor que não o da parada (pelo rótulo do Jev): só entra quando não sobra do humor.
+const OFF_MOOD_PENALTY = 0.2;
+// Fluxo: troca brusca em relação à música anterior (gênero, subgênero, andamento).
+const GENRE_SHIFT = 0.06;
+const SUBGENRE_SHIFT = 0.03;
+const BPM_SHIFT = 0.03;
+const BPM_JUMP = 30;
 // Sorteio com peso exp(-score/T): quanto menor, mais concentrado na melhor.
 const SAMPLE_TEMPERATURE = 0.08;
 const DURATION_TOLERANCE_MS = 120_000;
@@ -85,21 +95,43 @@ export function buildPath(from: Vector, to: Vector, stops: number): Vector[] {
     });
 }
 
-// Paradas sem nenhuma candidata dentro do raio.
-export function findGaps(path: Vector[], candidates: JourneyCandidate[]): number[] {
+// Paradas sem nenhuma candidata que sirva: dentro do raio ou, com `moodOf`, com o rótulo do humor da parada.
+export function findGaps(path: Vector[], candidates: JourneyCandidate[], moodOf?: (point: Vector) => string): number[] {
     return path
-        .map((point, index) => ({ index, nearest: Math.min(Infinity, ...candidates.map(c => distance(point, c.vector))) }))
-        .filter(({ nearest }) => nearest > FIT_RADIUS)
+        .map((point, index) => ({ index, mood: moodOf?.(point) }))
+        .filter(({ index, mood }) => !candidates.some(c => c.dominantSentiment === mood || distance(path[index], c.vector) <= FIT_RADIUS))
         .map(({ index }) => index);
+}
+
+// No máximo MAX_PER_ARTIST por artista: quantas a playlist consegue usar de fato (contagem de cobertura).
+export function capPerArtist(candidates: JourneyCandidate[]): JourneyCandidate[] {
+    const count = new Map<string, number>();
+    return candidates.filter(c => {
+        const n = count.get(artistKey(c)) ?? 0;
+        count.set(artistKey(c), n + 1);
+        return n < MAX_PER_ARTIST;
+    });
 }
 
 export function trackDuration(candidate: JourneyCandidate): number {
     return candidate.durationMs ?? DEFAULT_TRACK_MS;
 }
 
-// A mesma música pode existir em vários lançamentos (single, álbum, ao vivo…) com ids diferentes.
-function songKey(candidate: JourneyCandidate): string {
-    return `${candidate.title}|${candidate.artist}`.toLowerCase().trim();
+// A mesma música pode existir em vários lançamentos (single, álbum, ao vivo, remaster…) com ids diferentes:
+// o título sem o que vem depois de " - " e sem parênteses/colchetes, com o artista principal.
+export function songKey(candidate: JourneyCandidate): string {
+    const title = candidate.title.toLowerCase().split(' - ')[0].replace(/\s*[([].*?[)\]]/g, '').trim();
+    return `${title}|${primaryArtist(candidate.artist)}`;
+}
+
+// Quanto a troca da música anterior para esta quebra o clima (gênero, subgênero, andamento).
+function shiftPenalty(previous: JourneyCandidate | undefined, c: JourneyCandidate): number {
+    if (!previous) return 0;
+    let penalty = 0;
+    if (previous.genre && c.genre && previous.genre !== c.genre) penalty += GENRE_SHIFT;
+    else if (previous.subgenre && c.subgenre && previous.subgenre !== c.subgenre) penalty += SUBGENRE_SHIFT;
+    if (previous.bpm && c.bpm && Math.abs(previous.bpm - c.bpm) > BPM_JUMP) penalty += BPM_SHIFT;
+    return penalty;
 }
 
 // "A, B" (colaboração) conta como o artista principal.
@@ -150,12 +182,15 @@ export type PickOptions = {
     fatigue?: Map<string, number>;
     // Parte da playlist reservada a músicas novas para o usuário (isNovel), quando houver no raio.
     noveltyShare?: number;
-    // Quando a música "serve" para a parada. Padrão: estar a até FIT_RADIUS dela. Playlist de um humor:
-    // ser dele ou de um humor próximo (a distância à parada só ordena).
-    fits?: (candidate: JourneyCandidate, distance: number) => boolean;
+    // Humor de cada parada (o do centro mais perto). As do humor da parada vêm antes; as de outro humor
+    // só entram quando não sobra nenhuma dele que sirva.
+    moodOf?: (point: Vector) => string;
+    // Quando a música "serve" para a parada. Padrão: ser do humor da parada (rótulo do Jev) ou estar a até
+    // FIT_RADIUS dela. Playlist de um humor: ser dele ou de um humor próximo.
+    fits?: (candidate: JourneyCandidate, distance: number, stopMood?: string) => boolean;
 };
 
-const withinRadius = (_: JourneyCandidate, d: number) => d <= FIT_RADIUS;
+const defaultFits = (c: JourneyCandidate, d: number, stopMood?: string) => d <= FIT_RADIUS || c.dominantSentiment === stopMood;
 
 // Escolhe, em ordem, uma música para cada parada: sem repetir música, no máximo MAX_PER_ARTIST
 // por artista e evitando o mesmo artista em sequência (a menos que não haja outra opção).
@@ -163,14 +198,17 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
     const rng = options.rng ?? Math.random;
     const fatigue = options.fatigue ?? new Map<string, number>();
     const noveltyShare = options.noveltyShare ?? 0;
-    const fits = options.fits ?? withinRadius;
+    const fits = options.fits ?? defaultFits;
     const used = new Set<string>();
     const perArtist = new Map<string, number>();
     const picks: JourneyPick[] = [];
     let novelPicked = 0;
 
     path.forEach((point, stop) => {
-        const previousArtist = picks.length ? artistKey(picks[picks.length - 1].candidate) : undefined;
+        const previous = picks.length ? picks[picks.length - 1].candidate : undefined;
+        const previousArtist = previous && artistKey(previous);
+        const stopMood = options.moodOf?.(point);
+        const offMood = (c: JourneyCandidate) => Boolean(stopMood) && c.dominantSentiment !== stopMood;
         const ranked = candidates
             .filter(c => !used.has(c.spotifyId) && !used.has(songKey(c)))
             .map(c => {
@@ -182,8 +220,10 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
                     - (c.fromUserHistory ? HISTORY_BONUS : 0)
                     + (fatigue.get(c.spotifyId) ?? 0)
                     + artistCount * ARTIST_PENALTY
-                    + (similar ? SIMILAR_PENALTY : 0);
-                return { candidate: c, distance: d, score, artist, artistCount, fits: fits(c, d) };
+                    + (similar ? SIMILAR_PENALTY : 0)
+                    + (offMood(c) ? OFF_MOOD_PENALTY : 0)
+                    + shiftPenalty(previous, c);
+                return { candidate: c, distance: d, score, artist, artistCount, fits: fits(c, d, stopMood) };
             })
             .filter(r => !options.othersMustFit || r.candidate.fromUserHistory || r.fits)
             .sort((a, b) => a.score - b.score);
@@ -196,7 +236,10 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
         ];
         const layer = layers.find(l => l.some(r => r.fits)) ?? layers.find(l => l.length) ?? [];
         let fit = layer.filter(r => r.fits);
+        const onMood = fit.filter(r => !offMood(r.candidate));
+        if (onMood.length) fit = onMood;
 
+        // A cota de novas não troca uma do humor por uma de outro (fit já está no nível certo).
         const novelBehind = novelPicked < Math.round(noveltyShare * (stop + 1));
         const novelFit = fit.filter(r => isNovel(r.candidate, fatigue));
         if (novelBehind && novelFit.length) fit = novelFit;
@@ -254,6 +297,12 @@ function fitToDuration(
     return best;
 }
 
+// Humor cujo centro está mais perto do ponto.
+export function nearestMood(point: Vector, clusters: Record<string, Vector>): string {
+    const labels = Object.keys(clusters);
+    return labels.reduce((best, label) => (distance(point, clusters[label]) < distance(point, clusters[best]) ? label : best), labels[0]);
+}
+
 // Sentimentos por onde a linha reta de `from` a `to` passa (o sentimento mais próximo de cada
 // ponto amostrado), na ordem. Começa em `fromLabel` e termina em `toLabel`. É o mesmo caminho
 // que a playlist percorre, resumido em sentimentos (usado para desenhar o trajeto na UI).
@@ -267,28 +316,23 @@ export function waypointsAlong(
     const to = clusters[toLabel];
     if (!from || !to) return [fromLabel, toLabel];
 
-    const labels = Object.keys(clusters);
-    const nearest = (point: Vector) =>
-        labels.reduce((best, label) => (distance(point, clusters[label]) < distance(point, clusters[best]) ? label : best), labels[0]);
-
     const sequence: string[] = [fromLabel];
     for (const point of buildPath(from, to, samples).slice(1, -1)) {
-        const label = nearest(point);
+        const label = nearestMood(point, clusters);
         if (label !== fromLabel && label !== toLabel && label !== sequence[sequence.length - 1]) sequence.push(label);
     }
     sequence.push(toLabel);
     return sequence;
 }
 
-// Área de cada humor: os outros humores que podem vir junto quando a playlist pede esse humor. Uma música
-// entra na parada se estiver a até FIT_RADIUS dele; ela pode ser de outro humor B (o mais perto dela) quando
-// B está a menos de 2 × FIT_RADIUS. Do mais perto ao mais longe (usado para desenhar a área no mapa).
+// Área de cada humor: os outros humores que podem vir junto quando a playlist pede esse humor (centro a até
+// NEIGHBOR_RADIUS). Do mais perto ao mais longe ("Pode vir junto" no seletor).
 export function moodAreas(clusters: Record<string, Vector>): Record<string, string[]> {
     const labels = Object.keys(clusters);
     return Object.fromEntries(labels.map(label => [
         label,
         labels
-            .filter(other => other !== label && distance(clusters[label], clusters[other]) < 2 * FIT_RADIUS)
+            .filter(other => other !== label && distance(clusters[label], clusters[other]) <= NEIGHBOR_RADIUS)
             .sort((a, b) => distance(clusters[label], clusters[a]) - distance(clusters[label], clusters[b])),
     ]));
 }

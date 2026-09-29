@@ -151,6 +151,12 @@ export class LastFmProvider implements MusicProviderInterface {
         return asArray<LastFmScrobble>(data.toptracks?.track).map(toSongRef);
     }
 
+    // Artistas parecidos com um artista (do mais parecido ao menos), pelo que os ouvintes do Last.fm escutam juntos.
+    async similarArtists(artist: string, limit = 10): Promise<string[]> {
+        const data = await this.call('artist.getSimilar', { artist, limit, autocorrect: 1 });
+        return asArray<{ name: string }>(data.similarartists?.artist).map(a => a.name).filter(Boolean);
+    }
+
     // Faixa do Spotify de cada música (as que não achar ficam de fora). `maxLookups` limita as buscas no
     // Spotify; as já salvas no banco não contam.
     async resolvePopular(songs: SongRef[], maxLookups: number): Promise<TrackInput[]> {

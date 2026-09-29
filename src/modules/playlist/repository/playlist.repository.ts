@@ -220,6 +220,19 @@ export class PlaylistRepository {
         return this.toCandidates([...recent, ...tasteAnalyses], tasteIds);
     }
 
+    // Vetor e humor das análises mais recentes (de todos os usuários): de onde saem os centros dos humores.
+    async getMoodVectors(): Promise<{ vector: Vector; sentiment: string }[]> {
+        const rows = await this.prisma.tracksAnalysis.findMany({
+            select: { emotionalVector: true, dominantSentiment: true },
+            orderBy: { analyzedAt: 'desc' },
+            take: POOL_LIMIT,
+        });
+        return rows.flatMap(r => {
+            const vector = this.toVector(r.emotionalVector);
+            return vector ? [{ vector, sentiment: r.dominantSentiment }] : [];
+        });
+    }
+
     // Músicas já analisadas entre `spotifyIds` (as populares buscadas fora do acervo): não passam pelo Jev de novo.
     async getAnalyzedCandidates(spotifyIds: string[], tasteIds: Set<string>): Promise<JourneyCandidate[]> {
         if (!spotifyIds.length) return [];
