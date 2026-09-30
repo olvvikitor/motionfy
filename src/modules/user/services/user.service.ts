@@ -4,15 +4,15 @@ import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
 import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
-import { AiTextService, ResponseAi, SUBGENRE_TO_GENRE } from "src/shared/infra/IA/AiText.service";
+import { AiTextService, ResponseAi } from "src/shared/infra/IA/AiText.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
 
-// O humor é recalculado a cada música nova, com as músicas das últimas 3h. Sem nenhuma nesse
+// O humor é recalculado a cada música nova, com as músicas dos últimos 45 min. Sem nenhuma nesse
 // período, fica "sem sentimento definido" (idle) e nenhum humor é criado.
-const MOOD_WINDOW_HOURS = 3;
-const MOOD_WINDOW_MS = MOOD_WINDOW_HOURS * 60 * 60 * 1000;
+const MOOD_WINDOW_MINUTES = 45;
+const MOOD_WINDOW_MS = MOOD_WINDOW_MINUTES * 60 * 1000;
 // Histórico sincronizado há menos que isso é reaproveitado (a tela abre várias consultas juntas
 // e o app confere a cada minuto).
 const HISTORY_SYNC_TTL_MS = 45 * 1000;
@@ -121,11 +121,11 @@ export class UserService {
         return { vector, sentiment };
     }
 
-    private computeMostListened(tracks: any[]): { mostListenedGenre?: string, mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
+    private computeMostListened(tracks: any[]): { mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
         if (!tracks || !tracks.length) return {};
         const trackCounts = new Map<string, number>();
         const subgenreCounts = new Map<string, number>();
-        const genreCounts = new Map<string, number>();
+
 
         tracks.forEach(t => {
             const songKey = t.id || t.spotifyId;
@@ -133,16 +133,7 @@ export class UserService {
 
             const sg = t.subgenre || t.subGenre || t.sub_genero;
             if (sg) subgenreCounts.set(sg, (subgenreCounts.get(sg) || 0) + 1);
-            // Gênero contado à parte (3 Indie Rock + 2 Hard Rock ganham de 4 Pop): é o que veste o bichinho.
-            const genre = t.genre || (sg ? SUBGENRE_TO_GENRE[sg] : undefined);
-            if (genre && genre !== "Unknown") genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
         });
-
-        let mostListenedGenre: string | undefined;
-        let maxGenreCount = 0;
-        for (const [genre, count] of genreCounts.entries()) {
-            if (count > maxGenreCount) { maxGenreCount = count; mostListenedGenre = genre; }
-        }
 
         let topSongId = "";
         let maxSongCount = 0;
@@ -173,7 +164,7 @@ export class UserService {
             }
         }
 
-        return { mostListenedGenre, mostListenedSubgenre, mostListenedSong };
+        return { mostListenedSubgenre, mostListenedSong };
     }
 
     private toAnalyzedTrack(track: Track, analysis: TrackAnalysisReadItem | undefined) {
@@ -280,7 +271,7 @@ export class UserService {
         return run;
     }
 
-    // Recalcula o humor agora (cadastro). null = nenhuma música nas últimas 3h (sem sentimento definido).
+    // Recalcula o humor agora (cadastro). null = nenhuma música nos últimos 45 min (sem sentimento definido).
     async RefreshMoodUserToday(id: string): Promise<ResponseAi | null> {
         await this.lastTracks(id);
         return this.recomputeMood(id);
@@ -292,10 +283,10 @@ export class UserService {
     private readonly moodInputs = new Map<string, string>();
 
     // Chamado pelo app a cada minuto com o dashboard aberto: recalcula a cada música nova (ou quando
-    // uma sai da janela de 3h). Sem nenhuma na janela, o humor fica indefinido e nada é salvo.
+    // uma sai da janela de 45 min). Sem nenhuma na janela, o humor fica indefinido e nada é salvo.
     async autoRefreshMood(id: string): Promise<{ updated: boolean }> {
         await this.lastTracks(id);
-        const history = await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
+        const history = await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_MINUTES / 60);
         const newest = history.reduce((max, h) => Math.max(max, new Date(h.playedAt).getTime()), 0);
         const inputs = `${history.length}:${newest}`;
         if (this.moodInputs.get(id) === inputs) return { updated: false };
@@ -312,7 +303,7 @@ export class UserService {
         id: string,
         history?: Awaited<ReturnType<TrackRepository["getListenedLastHours"]>>,
     ): Promise<ResponseAi | null> {
-        const historyMusic = history ?? await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_HOURS);
+        const historyMusic = history ?? await this.trackRepository.getListenedLastHours(id, MOOD_WINDOW_MINUTES / 60);
 
         const tracks = historyMusic
             .map((entry) => entry.track)
@@ -344,7 +335,7 @@ export class UserService {
         return response;
     }
 
-    // `idle`: nenhuma música nas últimas 3h. O app mostra "sem sentimento definido" no lugar do humor.
+    // `idle`: nenhuma música nos últimos 45 min. O app mostra "sem sentimento definido" no lugar do humor.
     async getMoodUserToday(id: string): Promise<any> {
         const mood = await this.userRepository.getMoodUser(id);
         if (!mood) return mood;
@@ -380,6 +371,54 @@ export class UserService {
         return { applicable: true, lastScrobbleAt: last?.toISOString() ?? null };
     }
 
+    // Análise da música tocando, por spotifyId, enquanto o Jev roda (o app consulta a cada 30 s e o feed de
+    // amigos também; várias chamadas para a mesma música esperam a mesma análise).
+    private readonly playingRuns = new Map<string, Promise<ResponseAi>>();
+
+    // A música tocando usa a análise já guardada (TracksAnalysis); só música nunca analisada vai ao Jev,
+    // e a análise nova é guardada — a próxima consulta (e o histórico, quando ela entrar nele) a reaproveita.
+    private async analyzePlaying(track: Track): Promise<ResponseAi> {
+        const spotifyId = track.spotifyId!;
+        const [stored] = await this.trackRepository.getTrackAnalysesByMusicIds([spotifyId]);
+        const known = this.toAnalyzedTrack(track, stored);
+        if (known) {
+            return {
+                moodScore: known.moodScore,
+                dominantSentiment: known.dominantSentiment,
+                emotionalVector: known.emotionalVector,
+                coreAxes: known.coreAxes,
+                reasoning: known.reasoning,
+                image_mood: '',
+                tracks: [known],
+            };
+        }
+
+        const running = this.playingRuns.get(spotifyId);
+        if (running) return running;
+        const run = (async () => {
+            const analysis = await this.aiTextService.analyzeMusicMoodByHistoryToday([track]);
+            const analyzed = analysis.tracks[0];
+            // Sem faixa = o Jev falhou (veio o vetor reserva): não guarda, tenta de novo na próxima.
+            if (analyzed) {
+                await this.trackRepository.saveTrackAnalysesBulk([{
+                    spotifyid: spotifyId,
+                    moodScore: analyzed.moodScore,
+                    dominantSentiment: analyzed.dominantSentiment,
+                    coreAxes: analyzed.coreAxes,
+                    emotionalVector: analyzed.emotionalVector,
+                    reasoning: analyzed.reasoning ?? "",
+                    genre: analyzed.genre ?? "Unknown",
+                    subgenre: analyzed.subgenre ?? "Unknown",
+                    bpm: analyzed.bpm ?? null,
+                    analyzedAt: new Date(),
+                }]).catch((error) => console.error("Erro ao guardar análise da faixa atual:", error?.message ?? error));
+            }
+            return analysis;
+        })().finally(() => this.playingRuns.delete(spotifyId));
+        this.playingRuns.set(spotifyId, run);
+        return run;
+    }
+
     async listeningNow(id: string): Promise<ListeningNowResponse> {
         const user = await this.userRepository.getUserById(id);
         if (!user) throw new NotFoundException('Usuario não encontrado');
@@ -400,8 +439,7 @@ export class UserService {
             createdAt: currentTrack.createdAt ?? new Date(),
         };
         try {
-            const analysis = await this.aiTextService.analyzeMusicMoodByHistoryToday([trackToAnalyze]);
-            return { isPlaying: true, ...analysis };
+            return { isPlaying: true, ...(await this.analyzePlaying(trackToAnalyze)) };
         } catch (error) {
             console.error("Erro ao analisar faixa atual:", error);
             const fallbackVector = this.emotionAnalysis.buildFallbackVector();
