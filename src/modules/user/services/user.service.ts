@@ -4,7 +4,7 @@ import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
 import SaveTracks from "src/modules/tracks/services/saveTracks";
 import { TrackRepository } from "src/modules/tracks/repository/TrackRepository";
-import { AiTextService, ResponseAi } from "src/shared/infra/IA/AiText.service";
+import { AiTextService, ResponseAi, SUBGENRE_TO_GENRE } from "src/shared/infra/IA/AiText.service";
 import { MusicProviderFactory } from "src/shared/infra/music/music.provider.factory";
 import { EMOTIONAL_DIMENSIONS, EmotionAnalysisService, EmotionalVector } from "src/shared/infra/IA/emotion-analysis.service";
 import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackRepository";
@@ -121,10 +121,11 @@ export class UserService {
         return { vector, sentiment };
     }
 
-    private computeMostListened(tracks: any[]): { mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
+    private computeMostListened(tracks: any[]): { mostListenedGenre?: string, mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
         if (!tracks || !tracks.length) return {};
         const trackCounts = new Map<string, number>();
         const subgenreCounts = new Map<string, number>();
+        const genreCounts = new Map<string, number>();
 
         tracks.forEach(t => {
             const songKey = t.id || t.spotifyId;
@@ -132,7 +133,16 @@ export class UserService {
 
             const sg = t.subgenre || t.subGenre || t.sub_genero;
             if (sg) subgenreCounts.set(sg, (subgenreCounts.get(sg) || 0) + 1);
+            // Gênero contado à parte (3 Indie Rock + 2 Hard Rock ganham de 4 Pop): é o que veste o bichinho.
+            const genre = t.genre || (sg ? SUBGENRE_TO_GENRE[sg] : undefined);
+            if (genre && genre !== "Unknown") genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
         });
+
+        let mostListenedGenre: string | undefined;
+        let maxGenreCount = 0;
+        for (const [genre, count] of genreCounts.entries()) {
+            if (count > maxGenreCount) { maxGenreCount = count; mostListenedGenre = genre; }
+        }
 
         let topSongId = "";
         let maxSongCount = 0;
@@ -163,8 +173,7 @@ export class UserService {
             }
         }
 
-        console.log("DEBUG mostListened computed:", { mostListenedSubgenre, mostListenedSong: mostListenedSong?.name });
-        return { mostListenedSubgenre, mostListenedSong };
+        return { mostListenedGenre, mostListenedSubgenre, mostListenedSong };
     }
 
     private toAnalyzedTrack(track: Track, analysis: TrackAnalysisReadItem | undefined) {
