@@ -82,7 +82,7 @@ export class UserService {
             dominantSentiment: string;
             coreAxes: { polaridade: number; ativacao: number };
         }>
-    ): EmotionalVector {
+    ): { vector: EmotionalVector; sentiment: string | null } {
         const weightedTracks = tracks.map((track, index) => ({
             track,
             weight: this.getTrackAggregationWeight(track, index, tracks.length),
@@ -112,9 +112,13 @@ export class UserService {
             }
         }
 
-        return Object.fromEntries(
+        const vector = Object.fromEntries(
             EMOTIONAL_DIMENSIONS.map((d) => [d, sums[d] / totalWeight]),
         ) as EmotionalVector;
+        // O humor é o rótulo que o Jev deu ao grupo que venceu (só quando ele tem 2+ músicas).
+        // Reclassificar a média pelos perfis à mão trocava o humor: 20 de 22 "Confianca" viravam "Energia".
+        const sentiment = finalSet === selected ? selected[0].track.dominantSentiment : null;
+        return { vector, sentiment };
     }
 
     private computeMostListened(tracks: any[]): { mostListenedSubgenre?: string, mostListenedSong?: { name: string, artist: string, img_url: string } } {
@@ -193,14 +197,14 @@ export class UserService {
 
         if (!mergedTracks.length) return null;
 
-        const avgVector = this.aggregateMoodVector(mergedTracks);
+        const { vector: avgVector, sentiment } = this.aggregateMoodVector(mergedTracks);
         const classification = this.emotionAnalysis.classifyEmotion(avgVector);
 
         const mostListened = this.computeMostListened(mergedTracks);
 
         return {
             moodScore: classification.moodScore,
-            dominantSentiment: classification.dominantSentiment,
+            dominantSentiment: sentiment ?? classification.dominantSentiment,
             emotionalVector: avgVector,
             reasoning: `Baseado em ${mergedTracks.length} faixas analisadas`,
             coreAxes: classification.coreAxes,
