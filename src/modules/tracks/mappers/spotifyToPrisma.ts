@@ -1,5 +1,5 @@
 import { TrackInput } from "src/shared/types/TrackInput";
-import { SpotifyRecentlyPlayedItem, SpotifySavedTracksItem } from "src/shared/types/TrackResponseSpotify";
+import { SpotifyRecentlyPlayedItem } from "src/shared/types/TrackResponseSpotify";
 
 export const mapSpotifyHistoryToPrisma = (items: SpotifyRecentlyPlayedItem[]): TrackInput[] => {
   return items.map((item) => ({
@@ -17,22 +17,5 @@ export const mapSpotifyHistoryToPrisma = (items: SpotifyRecentlyPlayedItem[]): T
 
     // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
     createdAt: new Date(item.played_at as string),
-  }));
-};
-export const mapSpotifySavedTracksToPrisma = (items: SpotifySavedTracksItem[]): TrackInput[] => {
-  return items.map((item) => ({
-    spotifyId: item.track.id,
-    title: item.track.name,
-    // Une múltiplos artistas em uma string separada por vírgula
-    artist: item.track.artists.map((a) => a.name).join(", "),
-    album: item.track.album.name,
-    img_url: item.track.album.images[2].url,
-    isrc: item.track.external_ids?.isrc ?? null,
-    explicit: item.track.explicit ?? null,
-    releaseDate: item.track.album.release_date ?? null,
-    durationMs: item.track.duration_ms ?? null,
-
-    // Converte a string ISO do Spotify para um objeto Date do JS/Prisma
-    createdAt: new Date(item.added_at as string),
   }));
 };

@@ -33,7 +33,7 @@ export class JourneyPlaylistDto {
     @IsIn(PLAYLIST_DURATIONS, { message: `Duração inválida. Use uma de: ${PLAYLIST_DURATIONS.join(', ')} minutos.` })
     durationMin!: number;
 
-    // all = acervo + busca automática; saved = só a biblioteca do usuário (SavedTrack); custom = o que o usuário pedir em `request`.
+    // all = acervo + busca automática; saved = só as músicas que o usuário já ouviu (histórico); custom = o que o usuário pedir em `request`.
     @IsOptional()
     @IsIn(JOURNEY_SOURCES, { message: 'Origem inválida. Use all, saved ou custom.' })
     source: JourneySource = 'all';

@@ -2,22 +2,11 @@ import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nes
 import axios, { AxiosError } from "axios";
 import { createHash } from "crypto";
 import { TrackInput } from "src/shared/types/TrackInput";
-import { LibrarySources, MusicProviderInterface, ProviderUserProfile } from "../music.provider.interface";
+import { MusicProviderInterface, ProviderUserProfile } from "../music.provider.interface";
 import { SongRef, SpotifyCatalogService } from "../spotify/spotify-catalog.service";
 
 const API_URL = 'https://ws.audioscrobbler.com/2.0/';
 const RECENT_LIMIT = 50;
-const PAGE_SIZE = 50;
-// Cada música vira uma busca no catálogo do Spotify: limite menor que o do Spotify (500).
-const SOURCE_MAX = 200;
-
-// Origens da biblioteca com as mais ouvidas (os ids passam pelo SOURCE_PATTERN do library.dto).
-export const TOP_PERIODS = [
-    { id: 'top-7day', period: '7day', name: 'Mais ouvidas · 7 dias' },
-    { id: 'top-1month', period: '1month', name: 'Mais ouvidas · 1 mês' },
-    { id: 'top-12month', period: '12month', name: 'Mais ouvidas · 1 ano' },
-    { id: 'top-overall', period: 'overall', name: 'Mais ouvidas · sempre' },
-] as const;
 const PRIVATE_HISTORY_ERROR = 17; // "Login: User required to be logged in" (histórico oculto)
 
 type LastFmScrobble = {
@@ -104,40 +93,6 @@ export class LastFmProvider implements MusicProviderInterface {
         return this.catalog.searchTracks(query, offset);
     }
 
-    // Recebem o nome de usuário (saída de refreshToken).
-    // O Last.fm não tem playlists: no lugar delas entram as mais ouvidas de cada período.
-    async getLibrarySources(username: string): Promise<LibrarySources> {
-        const [loved, ...tops] = await Promise.all([
-            this.call('user.getLovedTracks', { user: username, limit: 1 }),
-            ...TOP_PERIODS.map(p => this.call('user.getTopTracks', { user: username, period: p.period, limit: 1 })),
-        ]);
-
-        const playlists = TOP_PERIODS.map((p, i) => ({
-            id: p.id,
-            name: p.name,
-            imageUrl: '',
-            // A lista para em SOURCE_MAX; mostra o que dá para abrir.
-            total: Math.min(Number(tops[i].toptracks?.['@attr']?.total ?? 0), SOURCE_MAX),
-        })).filter(p => p.total > 0);
-
-        return { likedTotal: Number(loved.lovedtracks?.['@attr']?.total ?? 0), playlists, hiddenPlaylists: 0 };
-    }
-
-    // "Músicas amadas" do Last.fm, da mais recente para a mais antiga.
-    async getSavedTracks(username: string, max: number): Promise<TrackInput[]> {
-        const loved = await this.listPaged('user.getLovedTracks', 'lovedtracks', { user: username }, Math.min(max, SOURCE_MAX));
-        return this.toTracks(loved, s => (s.date ? new Date(Number(s.date.uts) * 1000) : new Date()));
-    }
-
-    // Mais ouvidas de um período (id "top-1month" etc.), da mais tocada para a menos.
-    async getPlaylistTracks(username: string, sourceId: string, max: number): Promise<TrackInput[]> {
-        const period = TOP_PERIODS.find(p => p.id === sourceId);
-        if (!period) throw new BadRequestException('O Last.fm não tem playlists. Use as mais ouvidas ou as músicas amadas.');
-
-        const top = await this.listPaged('user.getTopTracks', 'toptracks', { user: username, period: period.period }, Math.min(max, SOURCE_MAX));
-        return this.toTracks(top, () => new Date());
-    }
-
     // Mais tocadas de um gênero (tag do Last.fm), das mais populares; `page` de `limit` itens.
     // Só a chave do app: vale para qualquer usuário (Spotify ou Last.fm).
     async popularByTag(tag: string, limit = 50, page = 1): Promise<SongRef[]> {
@@ -161,17 +116,6 @@ export class LastFmProvider implements MusicProviderInterface {
     // Spotify; as já salvas no banco não contam.
     async resolvePopular(songs: SongRef[], maxLookups: number): Promise<TrackInput[]> {
         return (await this.catalog.resolveSongs(songs, maxLookups)).filter((t): t is TrackInput => Boolean(t));
-    }
-
-    private async listPaged(method: string, root: string, params: Record<string, string>, limit: number): Promise<LastFmScrobble[]> {
-        const items: LastFmScrobble[] = [];
-        for (let page = 1; items.length < limit; page++) {
-            const data = await this.call(method, { ...params, limit: PAGE_SIZE, page });
-            const pageItems = asArray<LastFmScrobble>(data[root]?.track);
-            items.push(...pageItems);
-            if (pageItems.length < PAGE_SIZE || page >= Number(data[root]?.['@attr']?.totalPages ?? 1)) break;
-        }
-        return items.slice(0, limit);
     }
 
     private async recentScrobbles(sessionKey: string, limit: number): Promise<LastFmScrobble[]> {

@@ -23,7 +23,6 @@ model User {
   notificateWeek  Boolean @default(false)
 
   histories    ListeningHistory[]
-  savedTracks  SavedTrack[]
   playlistSuggestions PlaylistSuggestion[]
   mofyPlaylists MofyPlaylist[]
   coverGenerations CoverGeneration[]
@@ -110,7 +109,6 @@ model Track {
   durationMs  Int?
   createdAt DateTime           @default(now())
   histories ListeningHistory[]
-  savedBy   SavedTrack[]
 }
 
 model TracksAnalysis {
@@ -149,18 +147,6 @@ model MoodAnalysis {
   user            User           @relation(fields: [userId], references: [id])
   reactions       MoodReaction[]
   comments        MoodComment[]
-}
-
-// Biblioteca do usuário: músicas que ele escolheu das curtidas/playlists do provedor (módulo library).
-model SavedTrack {
-  id      String   @id @default(uuid())
-  userId  String
-  trackId String
-  addedAt DateTime
-  user    User     @relation(fields: [userId], references: [id])
-  track   Track    @relation(fields: [trackId], references: [spotifyId])
-
-  @@unique([userId, trackId])
 }
 
 // Playlists criadas na conta do Mofy no Spotify (o usuário recebe o link; não precisa de login no Spotify).

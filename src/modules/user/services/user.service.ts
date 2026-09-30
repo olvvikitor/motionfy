@@ -232,8 +232,6 @@ export class UserService {
     async lastTracks(id: string): Promise<void> {
         await this.syncHistory(id);
         await this.analyzeHistory(id);
-        // A biblioteca (curtidas/playlists) não é mais puxada aqui: o usuário escolhe o que
-        // entra pela tela de biblioteca (módulo library).
     }
 
     // Uma sincronização por usuário: quem chega enquanto uma roda espera a mesma, e a de menos de

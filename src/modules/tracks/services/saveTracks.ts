@@ -103,33 +103,6 @@ export default class SaveTracks {
         await this.trackRepository.saveTrackAnalysesBulk(Array.from(analysesMap.values()));
     }
 
-    // Salva na biblioteca do usuário as músicas que ele escolheu (curtidas ou playlists).
-    // Devolve as faixas salvas; a análise fica com analyzeLibraryTracks.
-    async addLibraryTracks(idUser: string, tracks: TrackInput[]): Promise<Track[]> {
-        const saved: Track[] = [];
-
-        for (const chunk of this.chunkArray(tracks, 10)) {
-            const results = await Promise.allSettled(chunk.map((trackData) => this.trackRepository.createNewTrack(trackData)));
-            results.forEach((result, i) => {
-                if (result.status === "fulfilled") saved.push(result.value);
-                else console.error(`Erro ao salvar a faixa curtida ${chunk[i].title}:`, result.reason?.message);
-            });
-        }
-
-        const addedAtById = new Map(tracks.map((t) => [t.spotifyId, t.createdAt]));
-        await this.trackRepository.saveSavedTracks(
-            idUser,
-            saved.map((track) => ({ trackId: track.spotifyId!, addedAt: addedAtById.get(track.spotifyId!) ?? new Date() })),
-        );
-
-        return saved;
-    }
-
-    // Analisa com o Jev as faixas da biblioteca que ainda não têm análise.
-    async analyzeLibraryTracks(idUser: string, tracks: Track[]): Promise<void> {
-        await this.analyzeMissingTracks(idUser, tracks, "library");
-    }
-
     // Só salva faixas e histórico. A análise roda à parte (UserService.analyzeHistory).
     async saveMusicsHistoryLine(tracks: TrackInput[], idUser: string): Promise<void> {
 

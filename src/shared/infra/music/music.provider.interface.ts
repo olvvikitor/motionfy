@@ -25,27 +25,9 @@ export  interface MusicProviderInterface{
     addToQueue?(accessToken: string, trackId: string): Promise<void>;
     // Recebem access token já renovado (uma renovação por fluxo, não por chamada).
     searchTracks?(accessToken: string, query: string, offset?: number): Promise<TrackInput[]>;
-    getSavedTracks?(accessToken: string, max: number): Promise<TrackInput[]>;
-    getLibrarySources?(accessToken: string): Promise<LibrarySources>;
-    getPlaylistTracks?(accessToken: string, playlistId: string, max: number): Promise<TrackInput[]>;
     addTracksToQueue?(accessToken: string, trackIds: string[]): Promise<QueueResult>;
     // Quando o provedor recebeu a última música (Last.fm: último scrobble). null = nunca.
     getLastActivity?(refreshToken: string): Promise<Date | null>;
-}
-
-export interface LibraryPlaylist {
-  id: string;
-  name: string;
-  imageUrl: string;
-  total: number;
-}
-
-// De onde o usuário pode puxar músicas para a biblioteca.
-export interface LibrarySources {
-  likedTotal: number;
-  playlists: LibraryPlaylist[];
-  // Playlists seguidas de outras pessoas: o provedor só entrega os metadados, não as músicas.
-  hiddenPlaylists: number;
 }
 
 export interface QueueResult {

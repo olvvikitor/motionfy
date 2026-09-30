@@ -264,9 +264,9 @@ export class JourneyPlaylistService {
         filters: JourneyFilters;
     }): Promise<{ candidates: JourneyCandidate[]; newTracksAnalyzed: number }> {
         switch (dto.source) {
-            // Só as curtidas já analisadas; nada de busca externa.
+            // Só as músicas que o usuário já ouviu (já analisadas); nada de busca externa.
             case 'saved':
-                return { candidates: ctx.pool.filter(c => ctx.taste.savedIds.has(c.spotifyId)), newTracksAnalyzed: 0 };
+                return { candidates: ctx.pool.filter(c => ctx.taste.tasteIds.has(c.spotifyId)), newTracksAnalyzed: 0 };
 
             // Só busca no Spotify (requestSource "search"). O acervo serve apenas para
             // reaproveitar análises; músicas do usuário não ganham preferência aqui.
@@ -398,7 +398,7 @@ export class JourneyPlaylistService {
         }
         if (filtering) return 'Nenhuma música combina com esses filtros e com esse humor. Tire algum filtro e tente de novo.';
         if (dto.source === 'saved') {
-            return 'Ainda não há músicas curtidas analisadas. Elas são importadas logo após o login — tente de novo em alguns minutos.';
+            return 'Ainda não há músicas suas analisadas. Elas entram conforme você ouve — tente de novo em alguns minutos.';
         }
         if (dto.source === 'custom') {
             return `Não encontrei músicas de "${dto.request}" que o Jev confirmasse. Tente escrever de outro jeito.`;

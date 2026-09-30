@@ -10,9 +10,8 @@ const TASTE_CHUNK = 1000;
 const ANALYSIS_SELECT = { spotifyid: true, emotionalVector: true, dominantSentiment: true, genre: true, subgenre: true, bpm: true } as const;
 
 export type UserTaste = {
-    // Faixas que o usuário ouviu ou curtiu — recebem preferência na jornada.
+    // Todas as faixas que o usuário já ouviu — recebem preferência na jornada.
     tasteIds: Set<string>;
-    savedIds: Set<string>;
     topArtists: string[]; // artista principal, dos mais ouvidos aos menos
 };
 
@@ -182,17 +181,11 @@ export class PlaylistRepository {
             select: { track: { select: { spotifyId: true, artist: true } } },
         });
 
-        const saved = await this.prisma.savedTrack.findMany({
-            where: { userId },
-            select: { track: { select: { spotifyId: true, artist: true } } },
-        });
-
-        const tasteTracks = [...history, ...saved].map(item => item.track);
+        const tasteTracks = history.map(item => item.track);
         const tasteIds = new Set(tasteTracks.map(t => t.spotifyId).filter((id): id is string => Boolean(id)));
 
         return {
             tasteIds,
-            savedIds: new Set(saved.map(s => s.track.spotifyId).filter((id): id is string => Boolean(id))),
             topArtists: this.rankByCount(tasteTracks.map(t => t.artist.split(', ')[0])),
         };
     }
