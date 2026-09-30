@@ -10,6 +10,7 @@ import { FriendshipModule } from './modules/friendship/friendship.module';
 import { CreditModule } from './modules/credits/credit.module';
 import { PlaylistModule } from './modules/playlist/playlist.module';
 import { LibraryModule } from './modules/library/library.module';
+import { PetModule } from './modules/pet/pet.module';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { LibraryModule } from './modules/library/library.module';
         CreditModule,
         PlaylistModule,
         LibraryModule,
+        PetModule,
     ],
     controllers: [],
     providers: [],

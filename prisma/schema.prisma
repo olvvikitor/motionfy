@@ -29,6 +29,7 @@ model User {
   moodAnalyses MoodAnalysis[]
   creditLogs   CreditLog[]
   creditPurchases CreditPurchase[]
+  pet          Pet?
   reactions    MoodReaction[]
   comments     MoodComment[]
 
@@ -233,4 +234,16 @@ model MoodComment {
 
   moodAnalysis   MoodAnalysis @relation(fields: [moodAnalysisId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Bichinho do usuário (card do humor atual). Um por conta; as ações vêm do humor, não ficam guardadas.
+model Pet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  name      String
+  species   String // gota | gato | coelho | broto
+  color     String // menta | lilas | rosa | pessego | ceu | grafite
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 }
