@@ -3,6 +3,7 @@
 // - música mais forte: a mais perto do humor da playlist no espaço emocional
 // - subgênero: o que mais aparece entre as faixas
 // ---------------------------------------------------------------------------
+import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.service";
 import { distance, Vector } from "./journey-path";
 
 export type ShowcaseTrack = { spotifyId: string; title: string; artist: string; imgUrl: string; vector: Vector | null; subgenre: string | null };
@@ -24,6 +25,22 @@ export function showcaseStats(moodVector: Vector | null, tracks: ShowcaseTrack[]
         strongestTrack: strongest && { spotifyId: strongest.spotifyId, title: strongest.title, artist: strongest.artist, imgUrl: strongest.imgUrl },
         subgenre: mostCommon(tracks.map(t => t.subgenre).filter((s): s is string => Boolean(s) && s !== 'Unknown')),
     };
+}
+
+export function trackIdsOf(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+export function toVector(value: unknown): Vector | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const raw = value as Record<string, unknown>;
+    const vector: Vector = {};
+    for (const dimension of EMOTIONAL_DIMENSIONS) {
+        const n = raw[dimension];
+        if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+        vector[dimension] = n;
+    }
+    return vector;
 }
 
 function mostCommon(values: string[]): string | null {

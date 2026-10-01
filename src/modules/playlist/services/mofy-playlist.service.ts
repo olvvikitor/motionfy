@@ -1,13 +1,11 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { createHash } from "crypto";
-import { EMOTIONAL_DIMENSIONS } from "src/shared/infra/IA/emotion-analysis.service";
 import { SpotifyMofyAccountService } from "src/shared/infra/music/spotify/spotify-mofy-account.service";
 import { SpotifyPlaylistDto } from "../dtos/journey-playlist.dto";
 import { PlaylistRepository } from "../repository/playlist.repository";
-import { Vector } from "./journey-path";
 import { MoodCentroidsService } from "./mood-centroids.service";
 import { fetchCover, toSpotifyCover } from "./playlist-cover.service";
-import { showcaseStats, ShowcaseStats } from "./playlist-showcase";
+import { showcaseStats, ShowcaseStats, toVector, trackIdsOf } from "./playlist-showcase";
 
 const DAILY_LIMIT = 10; // por usuário: a conta do Mofy é uma só para todos
 // A conta do Mofy no Spotify é uma só para todos: cada playlist fica lá só por 1 dia e sempre é apagada
@@ -274,20 +272,4 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
             this.pruning = false;
         }
     }
-}
-
-function trackIdsOf(value: unknown): string[] {
-    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
-}
-
-function toVector(value: unknown): Vector | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const raw = value as Record<string, unknown>;
-    const vector: Vector = {};
-    for (const dimension of EMOTIONAL_DIMENSIONS) {
-        const n = raw[dimension];
-        if (typeof n !== 'number' || !Number.isFinite(n)) return null;
-        vector[dimension] = n;
-    }
-    return vector;
 }

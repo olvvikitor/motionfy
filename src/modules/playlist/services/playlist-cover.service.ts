@@ -2,12 +2,15 @@ import { BadRequestException, HttpException, Inject, Injectable, NotFoundExcepti
 import sharp from "sharp";
 import { CreditService } from "src/modules/credits/credit.service";
 import { AiImageService, type ReferenceImage } from "src/shared/infra/IA/AiImage.service";
-import type { CoverReference } from "src/shared/infra/IA/ImagePrompt.service";
+import type { CoverReference, HybridPromptInput } from "src/shared/infra/IA/ImagePrompt.service";
 import { EMOTION_CLUSTERS, EmotionAnalysisService, getClusterVector } from "src/shared/infra/IA/emotion-analysis.service";
+import { TrackEnrichmentService } from "src/shared/infra/IA/track-enrichment.service";
 import { SpotifyMofyAccountService } from "src/shared/infra/music/spotify/spotify-mofy-account.service";
 import { FILE_STORAGE } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import type { FileStorageService, UploadFile } from "src/shared/infra/storage/interfaces/file-storage.interface";
 import { PlaylistRepository } from "../repository/playlist.repository";
+import { MoodCentroidsService } from "./mood-centroids.service";
+import { showcaseStats, toVector, trackIdsOf } from "./playlist-showcase";
 
 const COVER_SIZE = 640;
 // O Spotify aceita até 256 KB de base64 na capa; folga para não bater no limite.
@@ -74,6 +77,8 @@ export class PlaylistCoverService {
         private readonly aiImage: AiImageService,
         private readonly emotionAnalysis: EmotionAnalysisService,
         private readonly credits: CreditService,
+        private readonly centroids: MoodCentroidsService,
+        private readonly enrichment: TrackEnrichmentService,
         @Inject(FILE_STORAGE) private readonly storage: FileStorageService,
     ) { }
 
@@ -136,7 +141,7 @@ export class PlaylistCoverService {
         const sentiment = owned.sentiment ?? requested;
         if (!EMOTION_CLUSTERS.includes(sentiment)) throw new BadRequestException('Humor inválido para a capa.');
         const photo = typeof source === 'object' ? await toReferencePhoto(source.photo.buffer) : null;
-        const music = await this.musicContext(owned.trackIds);
+        const music = await this.musicContext(owned.trackIds, sentiment);
 
         const { remaining } = await this.credits.consumeCredit(userId, `Capa de playlist ${sentiment}`);
         try {
@@ -146,7 +151,6 @@ export class PlaylistCoverService {
                 ativacao: mood.coreAxes.ativacao,
                 sentiment,
                 reference: reference?.kind ?? null,
-                title: owned.title,
                 ...music,
             });
             // Uma chamada só, já quadrada: a mesma imagem vai para o Spotify e para o card.
@@ -180,25 +184,37 @@ export class PlaylistCoverService {
         return image ? { image, kind: { kind: 'person' } } : null;
     }
 
-    // O que a playlist tem de concreto, para a arte não depender só do humor:
-    // subgêneros mais comuns e algumas músicas (primeiro artista — título).
-    private async musicContext(trackIds: unknown): Promise<{ subgenres: string[]; songs: string[] }> {
-        const ids = Array.isArray(trackIds) ? trackIds.filter((id): id is string => typeof id === 'string') : [];
-        if (!ids.length) return { subgenres: [], songs: [] };
-        const { analyses, tracks } = await this.repository.getTracksForShowcase(ids);
-
-        const counts = new Map<string, number>();
-        for (const { subgenre } of analyses) {
-            if (subgenre && subgenre !== 'Unknown') counts.set(subgenre, (counts.get(subgenre) ?? 0) + 1);
-        }
-        const subgenres = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
-
-        const byId = new Map(tracks.map(t => [t.spotifyId, t]));
-        const songs = ids.flatMap(id => {
-            const track = byId.get(id);
-            return track ? [`${track.artist.split(', ')[0]} — ${track.title}`] : [];
+    // O que a playlist tem de concreto, para a arte não depender só do humor: o subgênero que mais aparece e
+    // UMA música, a mais forte (a mais perto do humor), com poucas linhas da letra. Título da playlist e lista
+    // de músicas ficam fora: o modelo de imagem pesava demais neles. Música explícita vai sem letra (a
+    // moderação da imagem recusa o prompt).
+    private async musicContext(trackIds: unknown, sentiment: string): Promise<Pick<HybridPromptInput, 'subgenre' | 'song'>> {
+        const ids = trackIdsOf(trackIds);
+        if (!ids.length) return {};
+        const [{ analyses, tracks }, clusters] = await Promise.all([
+            this.repository.getTracksForShowcase(ids),
+            this.centroids.clusters(),
+        ]);
+        const analysisById = new Map(analyses.map(a => [a.spotifyid, a]));
+        const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
+        const items = ids.flatMap(id => {
+            const track = trackById.get(id);
+            if (!track) return [];
+            const analysis = analysisById.get(id);
+            return [{
+                spotifyId: id, title: track.title, artist: track.artist, imgUrl: track.img_url ?? '',
+                vector: toVector(analysis?.emotionalVector), subgenre: analysis?.subgenre ?? null,
+            }];
         });
-        return { subgenres, songs };
+        const { strongestTrack, subgenre } = showcaseStats(clusters[sentiment] ?? null, items);
+        if (!strongestTrack) return { subgenre };
+
+        const track = trackById.get(strongestTrack.spotifyId)!;
+        const lyrics = track.explicit ? [] : await this.enrichment.lyricLines(track);
+        return {
+            subgenre,
+            song: { title: track.title, artist: track.artist.split(', ')[0], lyrics },
+        };
     }
 
     // Capas geradas (prompt, imagem, modelo), das mais novas, para a galeria do admin.

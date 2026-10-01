@@ -10,9 +10,10 @@ export type HybridPromptInput = {
     ativacao: number;
     reference?: CoverReference | null;
     // O que a playlist tem de concreto: é daqui que sai a variedade (o humor sozinho se repete).
-    title?: string | null;
-    subgenres?: string[];
-    songs?: string[]; // "Artista — Música"
+    // Só o subgênero principal e UMA música (com poucas linhas da letra): título da playlist e lista de
+    // músicas pesavam demais e o modelo desenhava o título/as músicas em vez da cena.
+    subgenre?: string | null;
+    song?: { title: string; artist: string; lyrics?: string[] } | null;
 };
 
 // O prompt vai em inglês: o modelo de imagem segue instruções em inglês com mais precisão.
@@ -176,6 +177,8 @@ const TIDY = "Only the few objects the scene needs, each resting where it natura
 // A música entra pelo lugar e pelo clima, nunca como objeto: sem isso o modelo "ilustra música" com instrumentos,
 // notas, discos e fones mesmo quando nada na cena pede.
 const NO_MUSIC_OBJECTS = "Show the music through the place, the clothes and the mood only: no musical instruments, music notes, records, cassettes, headphones, speakers or microphones.";
+// A música é um toque, não o tema: com título de playlist e várias músicas o modelo pesava demais nelas.
+const MUSIC_WEIGHT = "Use it only as a light hint for the atmosphere (time of day, weather, the feeling of the place); MOOD and SCENE come first. Do not illustrate the words literally, do not write them, do not draw the artist.";
 // O detalhe do humor faz parte do lugar. Sorteado sem olhar o cenário e "onde o olho cai", virava um objeto solto
 // em primeiro plano (bola quicando numa loja de conveniência, copo transbordando "no bar" onde não há bar).
 const DETAIL_RULE = "part of the place itself (a wall, a window, a table or the light), in the background or middle ground, never a loose object on the floor or in the air; if it cannot exist in this place, leave it out";
@@ -192,12 +195,25 @@ const OUTPUT_PHOTO = "It must read as an inked and flat-colored comic illustrati
 const AVOID_PEOPLE = "people of any kind (characters, figures, silhouettes, crowds, faces, hands, reflections of someone)";
 const AVOID = "objects scattered or dropped on the floor, objects floating, flying, bouncing or falling in mid-air, musical instruments, music notes, vinyl records, cassette tapes, headphones, speakers, microphones, clutter, piles of stuff, litter, debris, loose props strewn around the scene, gradients, airbrushed or soft shading, painterly brushstrokes, watercolor washes, hatching, manga screentones, anime-style big eyes, thick-and-thin brush lines, school uniforms, classrooms, cherry blossoms, generic sunset, a character smiling at the viewer, centered pin-up pose, lens flare, glow, heavy bokeh, a single color filter over the whole image, text, logos, album covers, real people or existing characters";
 
-function energy(ativacao: number): string {
-    if (ativacao > 0.6) return "high: dynamic diagonal angle, motion shown by the people, the light and a few clean speed lines (objects stay put)";
-    if (ativacao > 0.2) return "moderate: the scene is in motion, things are happening";
-    if (ativacao > -0.2) return "balanced: subtle movement, composed";
-    if (ativacao > -0.6) return "low: slow, contemplative, absorbed";
-    return "almost still: dust in a beam of light, stillness is the theme";
+// Ritmo da cena, só em pose, gesto e enquadramento. Era "ENERGY: moderate", que o modelo lia como luz/eletricidade
+// (postes, neon) e puxava a capa para a noite; aqui nada fala de luz, e a linha diz que não decide luz nem hora.
+const MOVEMENT_NOTE = "(this is only about motion and posture; it does not decide the light, the weather or the time of day)";
+
+// Sem gente na cena, o movimento vem do vento e do enquadramento (falar de pessoas trazia alguém de volta).
+function movement(ativacao: number, people: boolean): string {
+    if (ativacao > 0.6) return people
+        ? "fast: dynamic diagonal framing, bodies caught mid-action, a few clean speed lines (objects stay put)"
+        : "fast: dynamic diagonal framing, strong wind bending trees, curtains or flags, a few clean speed lines (objects stay put)";
+    if (ativacao > 0.2) return people
+        ? "lively: people walking, turning, gesturing; the moment is mid-action"
+        : "lively: a breeze moving curtains, leaves or clothes on a line; the place feels mid-action";
+    if (ativacao > -0.2) return people
+        ? "steady: relaxed postures, small gestures, a composed frame"
+        : "steady: a light breeze, a composed frame";
+    if (ativacao > -0.6) return people
+        ? "slow: unhurried postures, someone absorbed in what they are doing"
+        : "slow: almost no wind, a calm, settled place";
+    return "still: everything at rest, a held, quiet moment";
 }
 
 @Injectable()
@@ -208,16 +224,10 @@ export class ImagePromptService {
         const mood = MOODS[moodKey];
         const reference = data.reference ?? null;
 
-        const subgenres = (data.subgenres ?? []).filter(Boolean).slice(0, 3);
-        const music = [
-            data.title ? `Playlist title: "${data.title}".` : "",
-            subgenres.length ? `Genres: ${subgenres.join(", ")}.` : "",
-            data.songs?.length ? `Songs: ${data.songs.slice(0, 6).join("; ")}.` : "",
-        ].filter(Boolean).join(" ");
-
+        const music = this.music(data);
         const { text: scene, people } = reference?.kind === 'scene'
             ? this.sceneFromPhoto(mood, music, reference)
-            : this.sceneFromMusic(mood, music, subgenres, reference?.kind === 'person');
+            : this.sceneFromMusic(mood, music, data.subgenre ?? null, reference?.kind === 'person');
 
         // Humor, luz, energia e proibições são os mesmos com ou sem foto: só a cena muda. Sem gente na cena,
         // o estilo não fala de personagem e pessoas entram no AVOID (senão o modelo põe alguém "para dar vida").
@@ -229,15 +239,15 @@ ${photo ? `${RENDERING}\n` : ""}
 MOOD: ${mood.feeling}.
 ${scene}
 LIGHT AND COLOR: ${this.random(this.withoutPeople(mood.palettes, people))}, coming from real light sources in the scene, painted as flat areas of color (light and shadow are separate flat shapes, never a gradient); a limited palette of about five colors across the whole image.
-ENERGY: ${energy(data.ativacao ?? 0)}.
+MOVEMENT: ${movement(data.ativacao ?? 0, people)} ${MOVEMENT_NOTE}.
 AVOID: ${people ? "" : `${AVOID_PEOPLE}, `}${photo ? `${AVOID_PHOTO}, ` : ""}${AVOID}. For this mood also avoid: ${mood.cliches}.
 
 ${OUTPUT}${photo ? ` ${OUTPUT_PHOTO}` : ""}`.trim();
     }
 
     // Sem foto ou com selfie: o cenário vem do gênero e a composição é sorteada (com rosto, sempre com a pessoa).
-    private sceneFromMusic(mood: MoodSpec, music: string, subgenres: string[], hasFace: boolean): { text: string; people: boolean } {
-        const world = this.random(this.worldsFor(subgenres));
+    private sceneFromMusic(mood: MoodSpec, music: string, subgenre: string | null, hasFace: boolean): { text: string; people: boolean } {
+        const world = this.random(this.worldsFor(subgenre));
         const composition = this.random(COMPOSITIONS.filter(c =>
             (!hasFace || c.person) && (!c.social || mood.social)));
 
@@ -248,7 +258,7 @@ ${OUTPUT}${photo ? ` ${OUTPUT_PHOTO}` : ""}`.trim();
                 : " Characters are original young adults with distinct, specific looks (hair, clothes, build).";
 
         const people = composition.person;
-        const text = `${music ? `MUSIC: ${music} Let this music decide the setting${people ? " and the clothes" : ""} — the image should feel like it belongs to these songs, not to any playlist. Do not draw the artists. ${NO_MUSIC_OBJECTS}\n` : ""}
+        const text = `${music ? `MUSIC: ${music} ${MUSIC_WEIGHT}${people ? " The genre may suggest the clothes." : ""} ${NO_MUSIC_OBJECTS}\n` : ""}
 SCENE: ${world}. ${composition.text}${subject}${people ? ` Gesture: ${this.random(mood.gestures)}.` : ` ${NO_PEOPLE}`} ${TIDY}
 DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, ${DETAIL_RULE}.`;
         return { text, people };
@@ -258,18 +268,30 @@ DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, ${DETAIL_RULE}
     // estilo do Mofy. A luz e a cor da foto não passam: quem manda é a paleta do humor.
     private sceneFromPhoto(mood: MoodSpec, music: string, { description, people = false }: CoverReference): { text: string; people: boolean } {
         const text = `REFERENCE: the attached photo${description ? ` shows ${description}` : ""}. Redraw it as the heart of this cover: keep its place or subject, its framing and its recognizable details, drawn as described in RENDERING. Its original light and colors do not carry over: follow LIGHT AND COLOR below.
-${music ? `MUSIC: ${music} Let this music set the atmosphere of the place — the image should feel like it belongs to these songs. Do not draw the artists. ${NO_MUSIC_OBJECTS}\n` : ""}
+${music ? `MUSIC: ${music} ${MUSIC_WEIGHT} ${NO_MUSIC_OBJECTS}\n` : ""}
 SCENE: the place or subject from the photo. ${people ? "Only the people already in the photo; no new characters." : NO_PEOPLE} Do not add objects that are not in the photo; the floor and the ground stay clear.
 DETAIL: ${this.random(this.withoutPeople(mood.symbols, people))}, ${DETAIL_RULE}.`;
         return { text, people };
+    }
+
+    // Gênero + uma música: com letra, só as linhas (o nome da música e do artista puxam para "capa de disco");
+    // sem letra (instrumental, explícita ou não achada), o nome dela.
+    private music({ subgenre, song }: HybridPromptInput): string {
+        const lines = song?.lyrics?.filter(Boolean) ?? [];
+        return [
+            subgenre ? `Genre: ${subgenre}.` : "",
+            lines.length ? `A few lines from one song: "${lines.join(" / ")}".`
+                : song ? `One song: "${song.title}" by ${song.artist}.` : "",
+        ].filter(Boolean).join(" ");
     }
 
     private withoutPeople(options: string[], people: boolean): string[] {
         return people ? options : options.filter(o => !NEEDS_PERSON.test(o));
     }
 
-    private worldsFor(subgenres: string[]): string[] {
-        const text = subgenres.join(" ").toLowerCase();
+    private worldsFor(subgenre: string | null): string[] {
+        const text = (subgenre ?? "").toLowerCase();
+        if (!text) return EVERYDAY_WORLDS;
         const match = GENRE_WORLDS.find(g => g.keys.some(k => text.includes(k)));
         return match?.worlds ?? EVERYDAY_WORLDS;
     }

@@ -19,14 +19,20 @@ describe('ImagePromptService', () => {
         expect(prompt).not.toMatch(/Tensao|Tensão|dread/);
     });
 
-    it('o cenário vem do gênero da playlist, e título e músicas entram no prompt', () => {
+    it('o cenário vem do gênero; da música entra só o trecho da letra, como toque leve', () => {
         const prompt = service.build({
-            ...base, sentiment: 'Melancolia', title: 'Chuva de domingo',
-            subgenres: ['Bossa Nova'], songs: ['Tom Jobim — Wave'],
+            ...base, sentiment: 'Melancolia', subgenre: 'Bossa Nova',
+            song: { title: 'Wave', artist: 'Tom Jobim', lyrics: ['Vou te contar', 'Os olhos já não podem ver'] },
         });
-        expect(prompt).toContain('"Chuva de domingo"');
-        expect(prompt).toContain('Tom Jobim — Wave');
-        expect(prompt).toMatch(/Brazilian city|radio|boardwalk|balcony/);
+        expect(prompt).toContain('"Vou te contar / Os olhos já não podem ver"');
+        expect(prompt).not.toMatch(/Wave|Tom Jobim|Playlist title|Songs:/);
+        expect(prompt).toContain('light hint for the atmosphere');
+        expect(prompt).toMatch(/Brazilian city|kitchen|boardwalk|balcony/);
+    });
+
+    it('sem letra, entra o nome de uma música só', () => {
+        const prompt = service.build({ ...base, sentiment: 'Paz', song: { title: 'Wave', artist: 'Tom Jobim', lyrics: [] } });
+        expect(prompt).toContain('One song: "Wave" by Tom Jobim.');
     });
 
     it('com foto de referência, a composição sempre mostra a pessoa', () => {
@@ -39,7 +45,7 @@ describe('ImagePromptService', () => {
 
     it('com paisagem/objeto, a foto é o cenário e o resto da direção é o mesmo', () => {
         const prompt = service.build({
-            ...base, sentiment: 'Melancolia', subgenres: ['Bossa Nova'],
+            ...base, sentiment: 'Melancolia', subgenre: 'Bossa Nova',
             reference: { kind: 'scene', description: 'a beach at dusk with a lifeguard tower' },
         });
         expect(prompt).toContain('shows a beach at dusk with a lifeguard tower');

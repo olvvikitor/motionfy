@@ -155,7 +155,7 @@ export class PlaylistRepository {
             }),
             this.prisma.track.findMany({
                 where: { spotifyId: { in: spotifyIds } },
-                select: { spotifyId: true, title: true, artist: true, img_url: true },
+                select: { spotifyId: true, title: true, artist: true, img_url: true, explicit: true },
             }),
         ]);
         return { analyses, tracks };

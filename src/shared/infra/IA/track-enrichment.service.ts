@@ -248,7 +248,14 @@ export class TrackEnrichmentService {
 
     // -------------------------------- LRCLIB --------------------------------
 
-    private async getLyrics(track: EnrichableTrack): Promise<{ excerpt: string | null; instrumental: boolean } | null> {
+    // Poucas linhas da letra, sem repetir (capa gerada): o clima de uma música só, não a letra inteira.
+    async lyricLines(track: Pick<Track, 'title' | 'artist'>, count = 4): Promise<string[]> {
+        const lyrics = await this.getLyrics(track).catch(() => null);
+        const lines = (lyrics?.excerpt ?? '').split('\n').map(l => l.trim()).filter(Boolean);
+        return [...new Set(lines)].slice(0, count);
+    }
+
+    private async getLyrics(track: Pick<Track, 'title' | 'artist'>): Promise<{ excerpt: string | null; instrumental: boolean } | null> {
         try {
             const { data } = await axios.get(`${LRCLIB_URL}/get`, {
                 params: { artist_name: this.primaryArtist(track.artist), track_name: this.baseTitle(track.title) },
