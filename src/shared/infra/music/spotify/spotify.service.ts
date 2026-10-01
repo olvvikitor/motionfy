@@ -190,17 +190,4 @@ export class SpotifyProvider implements MusicProviderInterface {
         }
         return { queued };
     }
-
-    async addToQueue(accessToken: string, trackId: string): Promise<void> {
-        try {
-            const token = await this.refreshToken(accessToken);
-            await axios.post(
-                `https://api.spotify.com/v1/me/player/queue?uri=spotify:track:${trackId}`,
-                null,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-        } catch (err) {
-            this.handleAxiosError(err, 'Erro ao adicionar música à fila do Spotify');
-        }
-    }
 }

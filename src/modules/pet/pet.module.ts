@@ -9,5 +9,6 @@ import { PetService } from "./services/pet.service";
     imports: [ConfigModuleAplication, JwtModuleProvider],
     controllers: [PetController],
     providers: [PetRepository, PetService],
+    exports: [PetService],
 })
 export class PetModule {}

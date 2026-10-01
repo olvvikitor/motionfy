@@ -8,7 +8,8 @@ import { TrackInput } from "src/shared/types/TrackInput";
 import { PlaylistRepository } from "../repository/playlist.repository";
 import { SENTIMENT_SEARCH_TERMS } from "../sentiment-search-terms";
 import { yearOf } from "./journey-filters";
-import { distance, FIT_RADIUS, JourneyCandidate, nearestMood, primaryArtist, shuffle, Vector } from "./journey-path";
+import { matchesRequestedGenre, requestQueries } from "./request-style";
+import { distance, FIT_RADIUS, JourneyCandidate, nearestMood, primaryArtist, restedCoverage, shuffle, Vector } from "./journey-path";
 
 const MAX_NEW_CANDIDATES = 30; // teto de faixas classificadas pelo Jev por playlist
 const PER_QUERY = 5; // novas por busca, para espalhar o orçamento entre as paradas
@@ -17,7 +18,7 @@ const JEV_CONCURRENCY = 5;
 // no catálogo do Spotify (as já salvas no banco não contam; o limite de chamadas é baixo e compartilhado).
 const POPULAR_TAGS = 4;
 const POPULAR_PER_TAG = 50;
-const POPULAR_TAG_PAGES = 2; // página sorteada entre as 2 primeiras: variedade sem sair das mais tocadas
+const POPULAR_TAG_PAGES = 5; // página sorteada entre as 5 primeiras (top 250): as 2 primeiras quase não mudam e as populares se repetiam
 const POPULAR_ARTISTS = 5;
 const POPULAR_PER_ARTIST = 10;
 // Descoberta: artistas parecidos (Last.fm) com os artistas dele que servem, que ele ainda não ouve.
@@ -64,6 +65,8 @@ export type PopularContext = {
     tasteIds: Set<string>;
     // A música serve para a playlist (humor da parada ou, em "um humor", dele ou de um próximo) e está no gênero.
     fits: (candidate: JourneyCandidate) => boolean;
+    // Cansaço por música: as cansadas não contam como cobertura (`needed` já é o que falta de descansadas).
+    fatigue: Map<string, number>;
     inScope: (candidate: JourneyCandidate) => boolean;
     // Completa dados que o `inScope` usa (país do artista, no filtro de música nacional), antes do teste.
     annotate?: (candidates: JourneyCandidate[]) => Promise<void>;
@@ -137,7 +140,12 @@ export class CandidateSourcingService {
         const unknown = outside.filter(t => !knownIds.has(t.spotifyId));
         const toClassify = (ctx.eligible ? await ctx.eligible(unknown) : unknown).slice(0, budget);
         const classified: JourneyCandidate[] = [];
-        const fitting = () => [...known, ...classified].filter(c => ctx.inScope(c) && ctx.fits(c)).length;
+        // As do usuário já entraram na conta do `needed`; aqui só as de fora, descansadas e com o limite por artista.
+        const fitting = () => restedCoverage(
+            [...known, ...classified].filter(c => !ctx.tasteIds.has(c.spotifyId)),
+            c => ctx.inScope(c) && ctx.fits(c),
+            ctx.fatigue,
+        );
         for (let i = 0; i < toClassify.length && fitting() < ctx.needed; i += JEV_CONCURRENCY) {
             const batch = await this.classifyAndSave(toClassify.slice(i, i + JEV_CONCURRENCY));
             await ctx.annotate?.(batch);
@@ -160,9 +168,19 @@ export class CandidateSourcingService {
         return [...new Set(genres.map(g => LASTFM_TAGS[g] ?? g.toLowerCase()))];
     }
 
-    // Modo "Eu escolho" com estilo: só busca no Spotify (o acervo do usuário não é
-    // consultado), o Jev confere quais músicas são do estilo pedido e uma amostra
-    // aleatória delas vira candidata. Músicas já analisadas reaproveitam a análise.
+    // Mais tocadas de um gênero no Last.fm, já como faixas do Spotify (as salvas no banco não gastam busca).
+    private async popularOfGenre(genre: string): Promise<TrackInput[]> {
+        const [tag] = this.tagsFor([genre]);
+        const page = 1 + Math.floor(Math.random() * POPULAR_TAG_PAGES);
+        const refs = await this.lastfm.popularByTag(tag, POPULAR_PER_TAG, page).catch((): SongRef[] => []);
+        return this.lastfm.resolvePopular(shuffle(refs), MAX_CATALOG_LOOKUPS);
+    }
+
+    // Modo "Eu escolho" com estilo (o acervo do usuário não é consultado): com gênero reconhecido, as mais
+    // tocadas dele no Last.fm (página sorteada entre as POPULAR_TAG_PAGES primeiras; a busca `genre:` do Spotify
+    // trazia faixas obscuras) e, se o pedido disser mais que o gênero, o resto do texto buscado no Spotify; sem
+    // gênero, só a busca no Spotify. O Jev confere quais músicas são do pedido e uma amostra aleatória delas vira
+    // candidata. Músicas já analisadas (no acervo ou no banco) reaproveitam a análise.
     async fromRequest(
         request: string,
         ctx: SearchContext,
@@ -172,7 +190,10 @@ export class CandidateSourcingService {
         const analyzedById = new Map(analyzed.map(c => [c.spotifyId, c]));
         const found = new Map<string, TrackInput>();
 
-        for (const query of shuffle(this.requestQueries(request, genre))) {
+        if (genre) {
+            for (const track of await this.popularOfGenre(genre)) found.set(track.spotifyId, track);
+        }
+        for (const query of shuffle(requestQueries(request, genre))) {
             if (found.size >= MAX_REQUEST_RESULTS) break;
             for (const track of await this.searchPages(query, ctx)) found.set(track.spotifyId, track);
         }
@@ -183,11 +204,18 @@ export class CandidateSourcingService {
         const scores = await this.aiText.matchSongsToRequest(request, toCheck);
         const matching = shuffle([...found.values()].filter(t => (scores.get(t.spotifyId) ?? 0) >= REQUEST_MATCH_THRESHOLD));
 
+        const outside = matching.filter(t => !analyzedById.has(t.spotifyId)).map(t => t.spotifyId);
+        const fromDb = await this.playlistRepository.getAnalyzedCandidates(outside, new Set());
+        fromDb.forEach(c => analyzedById.set(c.spotifyId, c));
+
         const reused = matching.filter(t => analyzedById.has(t.spotifyId)).map(t => analyzedById.get(t.spotifyId)!);
         const toClassify = matching.filter(t => !analyzedById.has(t.spotifyId)).slice(0, MAX_NEW_CANDIDATES);
 
         const classified = await this.classifyAndSave(toClassify);
-        return { candidates: [...reused, ...classified], checked: toCheck.length };
+        // Com gênero pedido, só fica a que o Jev pôs nesse gênero (o "combina com o pedido" deixava passar reggae
+        // num pedido de MPB).
+        const candidates = [...reused, ...classified].filter(c => matchesRequestedGenre(c, genre));
+        return { candidates, checked: toCheck.length };
     }
 
     // Modo "Eu escolho" sem estilo ("to com raiva e quero me acalmar"): busca no
@@ -244,21 +272,6 @@ export class CandidateSourcingService {
             if (results.length < 10) break;
         }
         return tracks;
-    }
-
-    // O gênero reconhecido pelo Jev (se houver), o pedido inteiro e, se tiver
-    // várias partes ("bossa nova e mpb", "rock, blues"), cada parte.
-    private requestQueries(request: string, genre: string | null): string[] {
-        const parts = request
-            .split(/,|;|\+|\s+e\s+|\s+and\s+/i)
-            .map(p => p.trim())
-            .filter(p => p.length > 1);
-        const genreQueries = genre ? [`genre:"${this.plain(genre)}"`, this.plain(genre)] : [];
-        return [...new Set([...genreQueries, request.trim(), ...(parts.length > 1 ? parts : [])])];
-    }
-
-    private plain(text: string): string {
-        return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     }
 
     private async classifyAndSave(tracks: TrackInput[]): Promise<JourneyCandidate[]> {

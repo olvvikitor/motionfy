@@ -49,6 +49,8 @@ export type LibraryPlaylistsResponse = {
     total: number | null; // só na primeira página
 };
 
+type ShowcaseRow = Awaited<ReturnType<PlaylistRepository['listMofyPlaylistsPage']>>[number];
+
 export type ShowcaseResponse = {
     playlists: ShowcasePlaylist[];
     nextCursor: string | null;
@@ -116,13 +118,38 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
         ]);
         const rows = page.slice(0, limit);
         const nextCursor = page.length > limit ? rows[rows.length - 1].id : null;
+        return { playlists: await this.cards(rows), nextCursor, total };
+    }
+
+    // Feed: playlists criadas por estes usuários antes de `before`, das mais novas, com os dados do card.
+    async feedCards(userIds: string[], before: Date, take: number): Promise<(ShowcasePlaylist & { userId: string })[]> {
+        const rows = await this.repository.listMofyPlaylistsOf(userIds, before, take);
+        const cards = await this.cards(rows);
+        return cards.map((card, i) => ({ ...card, userId: rows[i].userId }));
+    }
+
+    // Músicas guardadas de uma playlist (amigo vendo a playlist que já saiu do Spotify: cada uma abre lá).
+    async tracksOf(ownerId: string, id: string): Promise<LibraryPlaylist['tracks']> {
+        const row = await this.repository.findUserMofyPlaylist(ownerId, id);
+        if (!row) throw new NotFoundException('Playlist não encontrada.');
+        const ids = trackIdsOf(row.trackIds);
+        const tracks = ids.length ? (await this.repository.getTracksForShowcase(ids)).tracks : [];
+        const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
+        return ids.flatMap(tid => {
+            const track = trackById.get(tid);
+            return track ? [{ spotifyId: tid, title: track.title, artist: track.artist, imgUrl: track.img_url ?? '' }] : [];
+        });
+    }
+
+    // Dados do card de cada playlist (só as faixas e análises destas linhas).
+    private async cards(rows: ShowcaseRow[]): Promise<ShowcasePlaylist[]> {
         const allIds = [...new Set(rows.flatMap(r => trackIdsOf(r.trackIds)))];
         const { analyses, tracks } = allIds.length ? await this.repository.getTracksForShowcase(allIds) : { analyses: [], tracks: [] };
         const analysisById = new Map(analyses.map(a => [a.spotifyid, a]));
         const trackById = new Map(tracks.map(t => [t.spotifyId, t]));
         const clusters = await this.centroids.clusters();
 
-        const playlists: ShowcasePlaylist[] = rows.map(row => {
+        return rows.map(row => {
             const ids = trackIdsOf(row.trackIds);
             const items = ids.flatMap(id => {
                 const track = trackById.get(id);
@@ -151,8 +178,6 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
                 ...showcaseStats(row.sentiment ? clusters[row.sentiment] ?? null : null, items),
             };
         });
-
-        return { playlists, nextCursor, total };
     }
 
     // Biblioteca: todas as playlists do usuário (também as que já saíram do Spotify), das mais novas,

@@ -47,6 +47,9 @@ const HISTORY_BONUS = 0.08;
 // Cansaço: cada vez que a música foi sugerida pesa FATIGUE_WEIGHT, decaindo com o tempo.
 const FATIGUE_WEIGHT = 0.25;
 const FATIGUE_DECAY_DAYS = 10;
+// Abaixo disso a música já "descansou" (uma sugestão leva ~9 dias). Cansada só entra quando não sobra
+// descansada que sirva, nem de um humor próximo: senão as mesmas voltavam a cada playlist.
+const RESTED_FATIGUE = 0.1;
 // Variedade dentro da playlist.
 const ARTIST_PENALTY = 0.15; // por música do mesmo artista já escolhida
 const MAX_PER_ARTIST = 2; // só passa disso se não sobrar outra
@@ -95,6 +98,7 @@ export function buildPath(from: Vector, to: Vector, stops: number): Vector[] {
         );
     });
 }
+
 
 // Paradas sem nenhuma candidata que sirva: dentro do raio ou, com `moodOf`, com o rótulo do humor da parada.
 export function findGaps(path: Vector[], candidates: JourneyCandidate[], moodOf?: (point: Vector) => string): number[] {
@@ -155,9 +159,19 @@ export function suggestionFatigue(rows: { spotifyId: string; suggestedAt: Date }
     return fatigue;
 }
 
+
 // Novidade para o usuário: não é dele e nunca foi sugerida a ele (na janela do cansaço).
 export function isNovel(candidate: JourneyCandidate, fatigue: Map<string, number>): boolean {
     return !candidate.fromUserHistory && !fatigue.has(candidate.spotifyId);
+}
+
+export function isRested(candidate: JourneyCandidate, fatigue: Map<string, number>): boolean {
+    return (fatigue.get(candidate.spotifyId) ?? 0) < RESTED_FATIGUE;
+}
+
+// Quantas músicas que servem a playlist consegue usar sem repetir as cansadas (com o limite por artista).
+export function restedCoverage(candidates: JourneyCandidate[], fits: (c: JourneyCandidate) => boolean, fatigue: Map<string, number>): number {
+    return capPerArtist(candidates.filter(c => fits(c) && isRested(c, fatigue))).length;
 }
 
 // Sorteio com peso relativo à melhor (itens em ordem crescente de score).
@@ -236,9 +250,15 @@ export function pickAlongPath(path: Vector[], candidates: JourneyCandidate[], op
             ranked,
         ];
         const layer = layers.find(l => l.some(r => r.fits)) ?? layers.find(l => l.length) ?? [];
-        let fit = layer.filter(r => r.fits);
-        const onMood = fit.filter(r => !offMood(r.candidate));
-        if (onMood.length) fit = onMood;
+        // Descansada do humor > descansada de outro humor que sirva > cansada do humor > qualquer uma que sirva.
+        const rested = (r: { candidate: JourneyCandidate }) => isRested(r.candidate, fatigue);
+        const allFit = layer.filter(r => r.fits);
+        let fit = [
+            allFit.filter(r => rested(r) && !offMood(r.candidate)),
+            allFit.filter(rested),
+            allFit.filter(r => !offMood(r.candidate)),
+        ].find(tier => tier.length) ?? allFit;
+
 
         // A cota de novas não troca uma do humor por uma de outro (fit já está no nível certo).
         const novelBehind = novelPicked < Math.round(noveltyShare * (stop + 1));

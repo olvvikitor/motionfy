@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { Track } from "@prisma/client";
 import { UserRepository } from "../repository/user.repository";
 import { UserResponseDto } from "../dto/UserResponseDto";
@@ -11,7 +11,7 @@ import { TrackAnalysisReadItem } from "src/modules/tracks/repository/TrackReposi
 
 // O humor é recalculado a cada música nova, com as músicas dos últimos 45 min. Sem nenhuma nesse
 // período, fica "sem sentimento definido" (idle) e nenhum humor é criado.
-const MOOD_WINDOW_MINUTES = 45;
+export const MOOD_WINDOW_MINUTES = 45;
 const MOOD_WINDOW_MS = MOOD_WINDOW_MINUTES * 60 * 1000;
 // Histórico sincronizado há menos que isso é reaproveitado (a tela abre várias consultas juntas
 // e o app confere a cada minuto).
@@ -532,18 +532,5 @@ export class UserService {
 
         return tracks.map((track) => this.toAnalyzedTrack(track, bySpotifyId.get(track.spotifyId!))
             ?? { id: track.id, music: track.title, artist: track.artist, img_url: track.img_url ?? "", pending: true });
-    }
-
-    async addTrackToQueue(id: string, trackId: string): Promise<void> {
-        const user = await this.userRepository.getUserById(id);
-        if (!user) throw new NotFoundException('Usuario não encontrado');
-        if (user.provider !== 'spotify') throw new BadRequestException('Disponível apenas para usuários do Spotify');
-        
-        const providerMusic = this.providerMusic.getProvider(user.provider);
-        if (!providerMusic.addToQueue) {
-            throw new BadRequestException('Ação não suportada por este provedor');
-        }
-
-        await providerMusic.addToQueue(user.refreshToken!, trackId);
     }
 }

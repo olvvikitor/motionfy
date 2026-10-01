@@ -11,7 +11,7 @@ import { CandidateSourcingService } from "./candidate-sourcing.service";
 import { CreditService } from "src/modules/credits/credit.service";
 import { durationCost } from "./playlist-pricing";
 import { buildFacets, chosenGenres, FilterFacets, hasFilters, isNationalGenre, JourneyFilters, matchesEra, matchesFilters, yearOf } from "./journey-filters";
-import { buildJourney, buildPath, capPerArtist, distance, findGaps, FIT_RADIUS, isNovel, nearestMood, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
+import { buildJourney, buildPath, capPerArtist, distance, findGaps, FIT_RADIUS, isNovel, isRested, nearestMood, primaryArtist, suggestionFatigue, waypointsAlong, moodAreas, JourneyCandidate, shuffle, stopCountForDuration, totalDurationMs, trackDuration, Vector } from "./journey-path";
 import { MoodCentroidsService } from "./mood-centroids.service";
 
 export type JourneyPlaylistResponse = {
@@ -47,8 +47,6 @@ const NOVELTY_SHARE = 0.6;
 // Sem gênero nos filtros, as músicas de fora ficam nos gêneros principais do usuário.
 const TOP_GENRES = 3;
 const TOP_SUBGENRES = 4;
-// Abaixo disso a música já "descansou" e conta como cobertura da parada.
-const RESTED_FATIGUE = 0.1;
 
 export type JourneyFromOrigin = 'request' | 'current_mood' | 'jev_guess';
 
@@ -292,7 +290,7 @@ export class JourneyPlaylistService {
                 const scope = await this.genreScope(ctx.taste, ctx.filters);
                 const knownArtists = new Set(ctx.taste.topArtists.map(primaryArtist));
                 const base = ctx.pool.filter(c => c.fromUserHistory || (knownArtists.has(primaryArtist(c.artist)) && scope.inScope(c)));
-                const rested = base.filter(c => (ctx.fatigue.get(c.spotifyId) ?? 0) < RESTED_FATIGUE);
+                const rested = base.filter(c => isRested(c, ctx.fatigue));
                 const novel = base.filter(c => isNovel(c, ctx.fatigue));
 
                 let fits: (c: JourneyCandidate) => boolean;
@@ -345,6 +343,7 @@ export class JourneyPlaylistService {
                     analyzed: new Map(ctx.fullPool.map(c => [c.spotifyId, c])),
                     tasteIds: ctx.taste.tasteIds,
                     fits,
+                    fatigue: ctx.fatigue,
                     // Gênero e os outros filtros (BPM, época, música nacional): não gasta o Jev com o que sairia depois.
                     inScope: c => scope.inScope(c) && matchesFilters(c, ctx.filters),
                     // Filtro de música nacional: o país do artista antes do teste acima.

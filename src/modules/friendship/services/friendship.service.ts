@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { FriendshipRepository } from '../repository/friendship.repository';
 import { PrismaService } from 'src/config/prisma.service';
-import { UserService } from 'src/modules/user/services/user.service';
+import { MOOD_WINDOW_MINUTES, UserService } from 'src/modules/user/services/user.service';
+import { MofyPlaylistService } from 'src/modules/playlist/services/mofy-playlist.service';
+import { PetService } from 'src/modules/pet/services/pet.service';
 
 @Injectable()
 export class FriendshipService {
@@ -14,15 +16,19 @@ export class FriendshipService {
         private readonly friendshipRepository: FriendshipRepository,
         private readonly prisma: PrismaService,
         private readonly userService: UserService,
+        private readonly playlists: MofyPlaylistService,
+        private readonly pets: PetService,
     ) { }
 
     // ─── Helpers privados ────────────────────────────────────────────────────
 
     private async assertFriends(userId: string, friendId: string) {
-        const relation = await this.friendshipRepository.findAnyRelation(userId, friendId);
-        if (!relation || relation.status !== 'ACCEPTED') {
-            throw new ForbiddenException('Vocês não são amigos.');
-        }
+        if (!(await this.areFriends(userId, friendId))) throw new ForbiddenException('Vocês não são amigos.');
+    }
+
+    async areFriends(userId: string, otherId: string): Promise<boolean> {
+        const relation = await this.friendshipRepository.findAnyRelation(userId, otherId);
+        return relation?.status === 'ACCEPTED';
     }
 
     // ─── Friendship CRUD ────────────────────────────────────────────────────
@@ -105,64 +111,19 @@ export class FriendshipService {
 
     // ─── Funcionalidades sociais ─────────────────────────────────────────────
 
-    // Feed agregado: evita o front fazer 1 + 2N requisições (amigos, mood e tocando-agora de cada um).
-    // Falha de um amigo (token do Spotify expirado etc.) não derruba o feed inteiro.
-    async getFeed(userId: string) {
-        const friends = await this.getFriends(userId);
-
-        const posts = await Promise.all(
-            friends.map(async (friend) => {
-                const [moodResult, listeningResult] = await Promise.allSettled([
-                    this.userService.getMoodUserToday(friend.id),
-                    this.userService.listeningNow(friend.id),
-                ]);
-
-                const mood = moodResult.status === 'fulfilled' ? moodResult.value ?? null : null;
-                const listening = listeningResult.status === 'fulfilled' ? listeningResult.value : null;
-                const isPlaying = !!listening?.isPlaying;
-                const track = isPlaying && listening && 'tracks' in listening ? listening.tracks?.[0] : undefined;
-
-                return { ...friend, isPlaying, track, mood };
-            }),
-        );
-
-        // Quem está ouvindo agora primeiro, depois por mood score.
-        return posts.sort((a, b) => {
-            if (a.isPlaying !== b.isPlaying) return a.isPlaying ? -1 : 1;
-            return (b.mood?.moodScore ?? 0) - (a.mood?.moodScore ?? 0);
-        });
-    }
-
+    // O humor de um amigo só se recalcula quando o app dele está aberto: ouvindo sem abrir, o último fica parado.
+    // Para quem vê de fora, humor que não se renovou na janela também é "sem humor agora" (idle).
     async getFriendMood(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
-        return this.userService.getMoodUserToday(friendId);
+        const mood = await this.userService.getMoodUserToday(friendId);
+        if (!mood) return mood;
+        const stale = Date.now() - new Date(mood.analyzedAt).getTime() > MOOD_WINDOW_MINUTES * 60_000;
+        return stale ? { ...mood, idle: true } : mood;
     }
 
     async getFriendListeningNow(userId: string, friendId: string) {
         await this.assertFriends(userId, friendId);
         return this.userService.listeningNow(friendId);
-    }
-
-    async compareMood(userId: string, friendId: string) {
-        await this.assertFriends(userId, friendId);
-
-        const [myMood, friendMood, friendInfo] = await Promise.all([
-            this.userService.getMoodUserToday(userId),
-            this.userService.getMoodUserToday(friendId),
-            this.prisma.user.findUnique({
-                where: { id: friendId },
-                select: { display_name: true, img_profile: true },
-            }),
-        ]);
-
-        return {
-            me: myMood,
-            friend: {
-                ...friendMood,
-                display_name: friendInfo?.display_name,
-                img_profile: friendInfo?.img_profile,
-            },
-        };
     }
 
     // ─── Perfil público do amigo ─────────────────────────────────────────────
@@ -185,33 +146,27 @@ export class FriendshipService {
         return this.userService.getUserStats(friendId);
     }
 
-    async toggleReaction(userId: string, moodId: string, emoji: string) {
-        const existing = await this.prisma.moodReaction.findUnique({
-            where: { moodAnalysisId_userId: { moodAnalysisId: moodId, userId } }
-        });
-
-        if (existing) {
-            if (existing.emoji === emoji) {
-                await this.prisma.moodReaction.delete({ where: { id: existing.id } });
-                return { action: 'removed' };
-            } else {
-                await this.prisma.moodReaction.update({ where: { id: existing.id }, data: { emoji } });
-                return { action: 'updated', emoji };
-            }
-        } else {
-            await this.prisma.moodReaction.create({
-                data: { moodAnalysisId: moodId, userId, emoji }
-            });
-            return { action: 'added', emoji };
-        }
+    /** Músicas que o amigo ouviu hoje (as mesmas do "Últimas faixas" do perfil) */
+    async getFriendTodayTracks(userId: string, friendId: string) {
+        await this.assertFriends(userId, friendId);
+        return this.userService.getTodayTracksAnalyzed(friendId);
     }
 
-    async addComment(userId: string, moodId: string, text: string) {
-        return this.prisma.moodComment.create({
-            data: { moodAnalysisId: moodId, userId, text },
-            include: {
-                user: { select: { id: true, display_name: true, img_profile: true } }
-            }
-        });
+    /** Playlists que o amigo criou, como no topo do perfil dele */
+    async getFriendPlaylists(userId: string, friendId: string, cursor?: string, limit?: number) {
+        await this.assertFriends(userId, friendId);
+        return this.playlists.showcase(friendId, cursor, limit);
+    }
+
+    /** Músicas de uma playlist sua ou de um amigo (a que já saiu do Spotify abre música por música) */
+    async getPlaylistTracks(userId: string, ownerId: string, playlistId: string) {
+        if (ownerId !== userId) await this.assertFriends(userId, ownerId);
+        return this.playlists.tracksOf(ownerId, playlistId);
+    }
+
+    /** Bichinho do amigo ({ pet: null } se ele não criou) */
+    async getFriendPet(userId: string, friendId: string) {
+        await this.assertFriends(userId, friendId);
+        return this.pets.get(friendId);
     }
 }

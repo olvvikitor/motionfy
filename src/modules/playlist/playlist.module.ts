@@ -20,5 +20,6 @@ import { PlaylistCoverService } from "./services/playlist-cover.service";
     imports: [ConfigModuleAplication, JwtModuleProvider, AiModule, MusicProviderModule, TracksModule, CreditModule, StorageModule],
     controllers: [PlaylistController, CoverGalleryController],
     providers: [PlaylistRepository, CandidateSourcingService, JourneyPlaylistService, MofyPlaylistService, PlaylistCoverService, ArtistCountryService, MoodCentroidsService],
+    exports: [MofyPlaylistService],
 })
 export class PlaylistModule {}

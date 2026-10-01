@@ -6,6 +6,8 @@ import {
     FIT_RADIUS,
     capPerArtist,
     isNovel,
+    isRested,
+    restedCoverage,
     NEIGHBOR_RADIUS,
     songKey,
     moodAreas,
@@ -162,6 +164,12 @@ describe('journey-path', () => {
         expect(fatigue.has('d')).toBe(false);
     });
 
+    it('música cansada perde para uma alternativa razoável', () => {
+        const pool = [candidate('cansada', FROM), candidate('alt', { a: 0.1, b: 1 })];
+        const [pick] = pickAlongPath([FROM], pool, { fatigue: new Map([['cansada', 0.5]]) });
+        expect(pick.candidate.spotifyId).toBe('alt');
+    });
+
     it('isNovel: nem do usuário nem sugerida antes', () => {
         const fatigue = new Map([['cansada', 0.2]]);
         expect(isNovel(candidate('x', FROM), fatigue)).toBe(true);
@@ -169,10 +177,47 @@ describe('journey-path', () => {
         expect(isNovel(candidate('cansada', FROM), fatigue)).toBe(false);
     });
 
-    it('música cansada perde para uma alternativa razoável', () => {
-        const pool = [candidate('cansada', FROM), candidate('alt', { a: 0.1, b: 1 })];
-        const [pick] = pickAlongPath([FROM], pool, { fatigue: new Map([['cansada', 0.5]]) });
-        expect(pick.candidate.spotifyId).toBe('alt');
+    it('isRested: abaixo de RESTED_FATIGUE (sugerida há ~10 dias ou nunca)', () => {
+        const fatigue = new Map([['ontem', 0.24], ['velha', 0.05]]);
+        expect(isRested(candidate('nunca', FROM), fatigue)).toBe(true);
+        expect(isRested(candidate('velha', FROM), fatigue)).toBe(true);
+        expect(isRested(candidate('ontem', FROM), fatigue)).toBe(false);
+    });
+
+    it('restedCoverage: só conta as que servem, descansadas e no máximo 2 por artista', () => {
+        const fatigue = new Map([['cansada', 2]]);
+        const list = [
+            candidate('cansada', FROM),
+            candidate('x1', FROM, { artist: 'X' }),
+            candidate('x2', FROM, { artist: 'X' }),
+            candidate('x3', FROM, { artist: 'X' }),
+            candidate('outro-humor', FROM, { dominantSentiment: 'Y' }),
+        ];
+        expect(restedCoverage(list, c => c.dominantSentiment === 'X', fatigue)).toBe(2);
+    });
+
+    it('cansada fica de fora enquanto houver descansada que sirva, mesmo bem mais longe', () => {
+        const pool = [candidate('cansada', FROM), candidate('descansada', { a: 0.4, b: 1 })];
+        const [pick] = pickAlongPath([FROM], pool, { fatigue: new Map([['cansada', 0.25]]) });
+        expect(pick.candidate.spotifyId).toBe('descansada');
+    });
+
+    it('descansada de humor próximo vem antes da cansada do humor da parada', () => {
+        const pool = [
+            candidate('cansada', FROM, { dominantSentiment: 'Paz' }),
+            candidate('vizinha', FROM, { dominantSentiment: 'Amor', artist: 'Outro' }),
+        ];
+        const [pick] = pickAlongPath([FROM], pool, { moodOf: () => 'Paz', fits: () => true, fatigue: new Map([['cansada', 1]]) });
+        expect(pick.candidate.spotifyId).toBe('vizinha');
+    });
+
+    it('sem descansada, a menos cansada do humor volta', () => {
+        const pool = [
+            candidate('muito', FROM, { dominantSentiment: 'Paz' }),
+            candidate('pouco', FROM, { dominantSentiment: 'Paz', artist: 'Outro' }),
+        ];
+        const [pick] = pickAlongPath([FROM], pool, { moodOf: () => 'Paz', fatigue: new Map([['muito', 2], ['pouco', 0.25]]) });
+        expect(pick.candidate.spotifyId).toBe('pouco');
     });
 
     it('música cansada volta se a alternativa está fora do raio', () => {
@@ -364,6 +409,7 @@ describe('humor da parada (moodOf)', () => {
         expect(findGaps([FROM], [far], () => 'Paz')).toEqual([]);
         expect(findGaps([FROM], [far])).toEqual([0]);
     });
+
 });
 
 describe('fluxo entre músicas', () => {

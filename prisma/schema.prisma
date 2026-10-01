@@ -32,6 +32,8 @@ model User {
   pet          Pet?
   reactions    MoodReaction[]
   comments     MoodComment[]
+  playlistReactions PlaylistReaction[]
+  playlistComments  PlaylistComment[]
 
   sentFriendRequests     Friendship[] @relation("FriendshipRequester")
   receivedFriendRequests Friendship[] @relation("FriendshipAddressee")
@@ -142,12 +144,15 @@ model MoodAnalysis {
   image_mood      String?
   coreAxes        Json
   emotions        Json
-  analyzedAt      DateTime @default(now())
+  analyzedAt      DateTime @default(now()) // renovado enquanto o humor segue
+  startedAt       DateTime @default(now()) // quando o humor começou (feed: "foi de X para Y")
   tracksAnalyzeds Json
   userId          String
   user            User           @relation(fields: [userId], references: [id])
   reactions       MoodReaction[]
   comments        MoodComment[]
+
+  @@index([userId, startedAt])
 }
 
 // Playlists criadas na conta do Mofy no Spotify (o usuário recebe o link; não precisa de login no Spotify).
@@ -167,6 +172,8 @@ model MofyPlaylist {
   createdAt         DateTime @default(now())
   removedAt         DateTime?
   user              User     @relation(fields: [userId], references: [id])
+  reactions         PlaylistReaction[]
+  comments          PlaylistComment[]
 
   @@index([userId, createdAt])
   @@index([userId, tracksHash])
@@ -246,4 +253,31 @@ model Pet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
+}
+
+// Reações e comentários nas playlists do feed (os do humor ficam em MoodReaction/MoodComment).
+model PlaylistReaction {
+  id             String       @id @default(uuid())
+  mofyPlaylistId String
+  userId         String
+  emoji          String
+  createdAt      DateTime     @default(now())
+
+  mofyPlaylist   MofyPlaylist @relation(fields: [mofyPlaylistId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mofyPlaylistId, userId])
+}
+
+model PlaylistComment {
+  id             String       @id @default(uuid())
+  mofyPlaylistId String
+  userId         String
+  text           String
+  createdAt      DateTime     @default(now())
+
+  mofyPlaylist   MofyPlaylist @relation(fields: [mofyPlaylistId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([mofyPlaylistId, createdAt])
 }

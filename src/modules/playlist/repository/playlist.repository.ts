@@ -102,6 +102,19 @@ export class PlaylistRepository {
         });
     }
 
+    // Feed: playlists destes usuários criadas antes de `before`, das mais novas (mesmos campos do card).
+    async listMofyPlaylistsOf(userIds: string[], before: Date, take: number) {
+        return this.prisma.mofyPlaylist.findMany({
+            where: { userId: { in: userIds }, createdAt: { lt: before } },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            take,
+            select: {
+                id: true, userId: true, spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
+                trackIds: true, coverUrl: true, createdAt: true, removedAt: true,
+            },
+        });
+    }
+
     // Playlist do usuário pelo id do Mofy, mesmo a que já saiu do Spotify (para gerar de novo).
     async findUserMofyPlaylist(userId: string, id: string) {
         return this.prisma.mofyPlaylist.findFirst({
