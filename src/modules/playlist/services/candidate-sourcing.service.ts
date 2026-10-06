@@ -274,7 +274,8 @@ export class CandidateSourcingService {
         return tracks;
     }
 
-    private async classifyAndSave(tracks: TrackInput[]): Promise<JourneyCandidate[]> {
+    // Analisa no Jev e guarda faixa e análise (populares novas; músicas da playlist trazida pelo link).
+    async classifyAndSave(tracks: TrackInput[]): Promise<JourneyCandidate[]> {
         const results: JourneyCandidate[] = [];
 
         for (let i = 0; i < tracks.length; i += JEV_CONCURRENCY) {

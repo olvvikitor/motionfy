@@ -10,7 +10,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor() {
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
+      // Render exige SSL; o Postgres local do docker-compose não tem (DATABASE_SSL=false).
+      ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
       keepAlive: true,

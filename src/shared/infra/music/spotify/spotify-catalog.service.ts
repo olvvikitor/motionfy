@@ -10,6 +10,7 @@ const CACHE_MAX = 10_000;
 const DEFAULT_BLOCK_S = 60; // 429 sem Retry-After
 
 export type SongRef = { title: string; artist: string };
+export type PublicPlaylist = { name: string; tracks: TrackInput[] };
 
 // ---------------------------------------------------------------------------
 // Catálogo do Spotify com token do app (client credentials): busca músicas sem
@@ -66,6 +67,96 @@ export class SpotifyCatalogService {
             console.warn(`[SpotifyCatalog] Spotify em espera (limite de chamadas) até ${new Date(this.blockedUntil).toLocaleTimeString('pt-BR')}: ${blockedSkips} música(s) ficaram para depois.`);
         }
         return results;
+    }
+
+    // Playlist pública de qualquer pessoa, pelo id: nome e músicas (na ordem, até `maxTracks`). Lê a página
+    // do player embutido (não gasta o limite da API e não depende de a playlist ser do app); sem ela, tenta a
+    // API. Faixa que não está no banco vem completa do Spotify (até `maxLookups`); as outras só com título,
+    // artista e duração. null = playlist privada, apagada ou inexistente.
+    async getPlaylist(playlistId: string, maxTracks: number, maxLookups: number): Promise<PublicPlaylist | null> {
+        const listed = await this.playlistFromEmbed(playlistId).catch((err) => {
+            console.warn(`[SpotifyCatalog] player embutido não leu a playlist ${playlistId}:`, err?.message ?? err);
+            return undefined;
+        }) ?? await this.playlistFromApi(playlistId);
+        if (!listed) return null;
+
+        const items = [...new Map(listed.tracks.map((t) => [t.spotifyId, t])).values()].slice(0, maxTracks);
+        const known = await this.findByIds(items.map((t) => t.spotifyId));
+        let lookups = 0;
+        const tracks: TrackInput[] = [];
+        for (let i = 0; i < items.length; i += RESOLVE_CONCURRENCY) {
+            tracks.push(...await Promise.all(items.slice(i, i + RESOLVE_CONCURRENCY).map(async (item) => {
+                const fromDb = known.get(item.spotifyId);
+                if (fromDb) return fromDb;
+                if (lookups >= maxLookups || this.isBlocked()) return item;
+                lookups++;
+                const response = await this.get(`https://api.spotify.com/v1/tracks/${item.spotifyId}`, {}).catch(() => null);
+                return response?.data?.id ? toTrackInput(response.data) : item;
+            })));
+        }
+        return { name: listed.name, tracks };
+    }
+
+    // Página do player embutido: o Next.js dela traz a playlist em __NEXT_DATA__.
+    private async playlistFromEmbed(playlistId: string): Promise<PublicPlaylist | null> {
+        const response = await axios.get<string>(`https://open.spotify.com/embed/playlist/${playlistId}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Mofy/1.0)', 'Accept-Language': 'pt-BR' },
+            responseType: 'text',
+            timeout: 15_000,
+            validateStatus: (status) => status < 500,
+        });
+        if (response.status === 404) return null;
+        const json = /<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/.exec(response.data)?.[1];
+        if (!json) throw new Error(`sem __NEXT_DATA__ (${response.status})`);
+        const entity = JSON.parse(json)?.props?.pageProps?.state?.data?.entity;
+        if (!entity || !Array.isArray(entity.trackList)) return null;
+        return {
+            name: String(entity.name ?? entity.title ?? 'Playlist'),
+            tracks: entity.trackList.flatMap((t: any) => {
+                const id = /^spotify:track:([A-Za-z0-9]+)$/.exec(t?.uri ?? '')?.[1];
+                if (!id || !t.title) return [];
+                return [minimalTrack(id, String(t.title), String(t.subtitle ?? '').replace(/\s+/g, ' ').trim() || 'Unknown', t.isExplicit ?? null, t.duration ?? null)];
+            }),
+        };
+    }
+
+    // Reserva: API com o token do app (só playlists públicas; no Development Mode pode vir sem as músicas).
+    private async playlistFromApi(playlistId: string): Promise<PublicPlaylist | null> {
+        const response = await this.get(`https://api.spotify.com/v1/playlists/${playlistId}`, { market: 'BR' }).catch((err) => {
+            if (err instanceof CatalogBlockedError) throw err;
+            return null;
+        });
+        const data = response?.data;
+        if (!data?.id) return null;
+        const page = data.items ?? data.tracks;
+        return {
+            name: String(data.name ?? 'Playlist'),
+            tracks: (page?.items ?? []).flatMap((entry: any) => {
+                const track = entry?.item ?? entry?.track;
+                return track?.id && track.type !== 'episode' ? [toTrackInput(track)] : [];
+            }),
+        };
+    }
+
+    // Faixas já salvas, pelo id do Spotify.
+    private async findByIds(spotifyIds: string[]): Promise<Map<string, TrackInput>> {
+        if (!spotifyIds.length) return new Map();
+        const rows = await this.prisma.track.findMany({
+            where: { spotifyId: { in: spotifyIds } },
+            select: { spotifyId: true, title: true, artist: true, album: true, img_url: true, isrc: true, explicit: true, releaseDate: true, durationMs: true },
+        });
+        return new Map(rows.map((row) => [row.spotifyId!, {
+            spotifyId: row.spotifyId!,
+            title: row.title,
+            artist: row.artist,
+            album: row.album ?? '',
+            img_url: row.img_url ?? '',
+            isrc: row.isrc,
+            explicit: row.explicit,
+            releaseDate: row.releaseDate,
+            durationMs: row.durationMs,
+            createdAt: new Date(),
+        }]));
     }
 
     private async resolveSong(song: SongRef, known: Map<string, TrackInput>): Promise<TrackInput | null> {
@@ -186,6 +277,11 @@ function toTrackInput(track: any): TrackInput {
         durationMs: track.duration_ms ?? null,
         createdAt: new Date(),
     };
+}
+
+// Faixa só com o que a lista da playlist traz (sem álbum nem capa).
+function minimalTrack(spotifyId: string, title: string, artist: string, explicit: boolean | null, durationMs: number | null): TrackInput {
+    return { spotifyId, title, artist, album: '', img_url: '', isrc: null, explicit, releaseDate: null, durationMs, createdAt: new Date() };
 }
 
 const songKey = (song: SongRef) => `${normalize(song.artist)}|${normalize(song.title)}`;

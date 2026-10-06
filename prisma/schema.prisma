@@ -169,6 +169,9 @@ model MofyPlaylist {
   fromSentiment     String?  // partida, na jornada; igual ao sentiment em "um humor"
   trackIds          Json?    // ids do Spotify, na ordem
   coverUrl          String?  // capa enviada ou gerada (sem ela, o card usa a da música mais forte)
+  // Playlist do próprio usuário no Spotify, trazida pelo link: não fica na conta do Mofy (nunca é apagada
+  // nem gerada de novo lá) e a capa gerada só fica no Mofy, para baixar.
+  imported          Boolean  @default(false)
   createdAt         DateTime @default(now())
   removedAt         DateTime?
   user              User     @relation(fields: [userId], references: [id])

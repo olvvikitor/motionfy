@@ -51,6 +51,16 @@ export class TrackRepository {
     // Faixa que já existe fica como está; ouvida repetida (mesmo usuário, faixa e hora) é ignorada.
     async saveTracksAndHistory(userId: string, tracks: TrackInput[]): Promise<void> {
         if (!tracks.length) return;
+        await this.saveTracks(tracks);
+        await this.prisma.listeningHistory.createMany({
+            data: tracks.map((t) => ({ userId, trackId: t.spotifyId, playedAt: t.createdAt })),
+            skipDuplicates: true,
+        });
+    }
+
+    // Só as faixas, numa consulta (a que já existe fica como está).
+    async saveTracks(tracks: TrackInput[]): Promise<void> {
+        if (!tracks.length) return;
         const unique = [...new Map(tracks.map((t) => [t.spotifyId, t])).values()];
         await this.prisma.track.createMany({
             data: unique.map((t) => ({
@@ -64,10 +74,6 @@ export class TrackRepository {
                 releaseDate: t.releaseDate ?? null,
                 durationMs: t.durationMs ?? null,
             })),
-            skipDuplicates: true,
-        });
-        await this.prisma.listeningHistory.createMany({
-            data: tracks.map((t) => ({ userId, trackId: t.spotifyId, playedAt: t.createdAt })),
             skipDuplicates: true,
         });
     }

@@ -15,11 +15,12 @@ import { JourneyPlaylistService } from "./services/journey-playlist.service";
 import { MofyPlaylistService } from "./services/mofy-playlist.service";
 import { MoodCentroidsService } from "./services/mood-centroids.service";
 import { PlaylistCoverService } from "./services/playlist-cover.service";
+import { PlaylistImportService } from "./services/playlist-import.service";
 
 @Module({
     imports: [ConfigModuleAplication, JwtModuleProvider, AiModule, MusicProviderModule, TracksModule, CreditModule, StorageModule],
     controllers: [PlaylistController, CoverGalleryController],
-    providers: [PlaylistRepository, CandidateSourcingService, JourneyPlaylistService, MofyPlaylistService, PlaylistCoverService, ArtistCountryService, MoodCentroidsService],
+    providers: [PlaylistRepository, CandidateSourcingService, JourneyPlaylistService, MofyPlaylistService, PlaylistCoverService, PlaylistImportService, ArtistCountryService, MoodCentroidsService],
     exports: [MofyPlaylistService],
 })
 export class PlaylistModule {}

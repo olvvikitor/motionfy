@@ -3,10 +3,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { UploadFile } from 'src/shared/infra/storage/interfaces/file-storage.interface';
 import { JwtAuthGuard } from 'src/shared/auth/jwt/authGuardService';
 import type { MRequest } from 'src/modules/user/controllers/user.controller';
-import { GenerateCoverDto, JourneyPathQueryDto, JourneyPlaylistDto, MofyPlaylistIdParamDto, PlaylistIdParamDto, QueueJourneyDto, ReuseCoverDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
+import { GenerateCoverDto, ImportPlaylistDto, JourneyPathQueryDto, JourneyPlaylistDto, MofyPlaylistIdParamDto, PlaylistIdParamDto, QueueJourneyDto, ReuseCoverDto, ShowcaseQueryDto, SpotifyPlaylistDto } from '../dtos/journey-playlist.dto';
 import { JourneyPlaylistService } from '../services/journey-playlist.service';
 import { MofyPlaylistService } from '../services/mofy-playlist.service';
 import { PlaylistCoverService } from '../services/playlist-cover.service';
+import { PlaylistImportService } from '../services/playlist-import.service';
 
 // Imagem enviada (capa pronta ou foto de referência): JPEG, PNG ou WEBP até 5 MB.
 const IMAGE_UPLOAD = {
@@ -23,6 +24,7 @@ export class PlaylistController {
         private readonly journeyPlaylist: JourneyPlaylistService,
         private readonly mofyPlaylist: MofyPlaylistService,
         private readonly cover: PlaylistCoverService,
+        private readonly importer: PlaylistImportService,
     ) { }
 
     @Post('journey-playlist')
@@ -71,6 +73,14 @@ export class PlaylistController {
     @UseGuards(JwtAuthGuard)
     async listLibraryPlaylists(@Req() req: MRequest, @Query() query: ShowcaseQueryDto) {
         return await this.mofyPlaylist.library(req.user!.id, query.cursor, query.limit);
+    }
+
+    // Playlist do próprio usuário no Spotify, pelo link: lê o humor das músicas e guarda na Biblioteca
+    // (a capa vem depois, pelas rotas de capa com o id do Spotify).
+    @Post('mofy-playlists/import')
+    @UseGuards(JwtAuthGuard)
+    async importPlaylist(@Req() req: MRequest, @Body() dto: ImportPlaylistDto) {
+        return await this.importer.import(req.user!.id, dto.link);
     }
 
     // "Abrir no Spotify": link da playlist, gerada de novo (com a capa) se já não estiver na conta do Mofy.

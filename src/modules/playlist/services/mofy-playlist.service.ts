@@ -24,6 +24,7 @@ export type ShowcasePlaylist = ShowcaseStats & {
     playlistId: string;
     url: string;
     onSpotify: boolean; // false = já saiu da conta do Mofy: sem link, dá para gerar de novo
+    imported: boolean; // playlist do próprio usuário, trazida pelo link (o link é o dela)
     title: string;
     sentiment: string | null;
     fromSentiment: string | null;
@@ -40,6 +41,8 @@ export type LibraryPlaylist = {
     fromSentiment: string | null;
     coverUrl: string | null;
     createdAt: Date;
+    imported: boolean;
+    url: string | null; // só na trazida pelo link: a playlist dela no Spotify
     tracks: { spotifyId: string; title: string; artist: string; imgUrl: string }[];
 };
 
@@ -168,7 +171,8 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
                 id: row.id,
                 playlistId: row.spotifyPlaylistId,
                 url: row.url,
-                onSpotify: !row.removedAt,
+                onSpotify: row.imported || !row.removedAt,
+                imported: row.imported,
                 title: row.title ?? 'Playlist do Mofy',
                 sentiment: row.sentiment,
                 fromSentiment: row.fromSentiment,
@@ -200,6 +204,8 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
             fromSentiment: row.fromSentiment,
             coverUrl: row.coverUrl,
             createdAt: row.createdAt,
+            imported: row.imported,
+            url: row.imported ? row.url : null,
             tracks: trackIdsOf(row.trackIds).flatMap(id => {
                 const track = trackById.get(id);
                 return track ? [{ spotifyId: id, title: track.title, artist: track.artist, imgUrl: track.img_url ?? '' }] : [];
@@ -214,6 +220,8 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
     async open(userId: string, id: string): Promise<MofyPlaylistResponse> {
         const row = await this.repository.findUserMofyPlaylist(userId, id);
         if (!row) throw new NotFoundException('Playlist não encontrada.');
+        // Trazida pelo link: é do usuário no Spotify, abre a dele.
+        if (row.imported) return { url: row.url, playlistId: row.spotifyPlaylistId, reused: true };
         if (!row.removedAt) {
             if (await this.account.isFollowing(row.spotifyPlaylistId) !== false) {
                 return { url: row.url, playlistId: row.spotifyPlaylistId, reused: true };
@@ -228,6 +236,7 @@ export class MofyPlaylistService implements OnModuleInit, OnModuleDestroy {
     async recreate(userId: string, id: string): Promise<MofyPlaylistResponse> {
         const row = await this.repository.findUserMofyPlaylist(userId, id);
         if (!row) throw new NotFoundException('Playlist não encontrada.');
+        if (row.imported) throw new HttpException('Essa playlist é sua no Spotify: abra por lá.', HttpStatus.UNPROCESSABLE_ENTITY);
 
         const trackIds = trackIdsOf(row.trackIds);
         if (!trackIds.length) throw new HttpException('Essa playlist não tem músicas guardadas para gerar de novo.', HttpStatus.UNPROCESSABLE_ENTITY);

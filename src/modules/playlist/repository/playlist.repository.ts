@@ -56,14 +56,14 @@ export class PlaylistRepository {
     // igual vira playlist nova, senão título, humor e capa da antiga seriam sobrescritos.
     async findRecentMofyPlaylist(userId: string, tracksHash: string, since: Date) {
         return this.prisma.mofyPlaylist.findFirst({
-            where: { userId, tracksHash, removedAt: null, createdAt: { gte: since } },
+            where: { userId, tracksHash, imported: false, removedAt: null, createdAt: { gte: since } },
             orderBy: { createdAt: 'desc' },
         });
     }
 
     // Só quem criou a playlist pode mudar a capa dela.
     async findOwnedMofyPlaylist(userId: string, spotifyPlaylistId: string) {
-        return this.prisma.mofyPlaylist.findFirst({ where: { userId, spotifyPlaylistId, removedAt: null }, select: { id: true, sentiment: true, title: true, trackIds: true } });
+        return this.prisma.mofyPlaylist.findFirst({ where: { userId, spotifyPlaylistId, removedAt: null }, select: { id: true, sentiment: true, title: true, trackIds: true, imported: true } });
     }
 
     async getFacePhotoPath(userId: string): Promise<string | null> {
@@ -71,8 +71,28 @@ export class PlaylistRepository {
         return user?.face_photo_path ?? null;
     }
 
-    async countMofyPlaylistsSince(userId: string, since: Date): Promise<number> {
-        return this.prisma.mofyPlaylist.count({ where: { userId, createdAt: { gte: since } } });
+    // Criadas na conta do Mofy (imported false) ou trazidas pelo link (true) desde `since`: cada uma tem o seu limite.
+    async countMofyPlaylistsSince(userId: string, since: Date, imported = false): Promise<number> {
+        return this.prisma.mofyPlaylist.count({ where: { userId, imported, createdAt: { gte: since } } });
+    }
+
+    // Playlist do Spotify que o usuário já tem no Mofy (criada aqui ou trazida pelo link).
+    async findUserPlaylistBySpotifyId(userId: string, spotifyPlaylistId: string) {
+        return this.prisma.mofyPlaylist.findFirst({
+            where: { userId, spotifyPlaylistId, removedAt: null },
+            select: { id: true, imported: true, coverUrl: true },
+        });
+    }
+
+    // Playlist do usuário trazida pelo link: nova ou atualizada (nome, músicas e humor de agora).
+    async saveImportedPlaylist(existingId: string | null, data: {
+        userId: string; spotifyPlaylistId: string; url: string; tracksHash: string;
+        title: string; sentiment: string; trackIds: string[];
+    }) {
+        const fields = { ...data, fromSentiment: data.sentiment, imported: true };
+        return existingId
+            ? this.prisma.mofyPlaylist.update({ where: { id: existingId }, data: fields, select: { id: true, coverUrl: true } })
+            : this.prisma.mofyPlaylist.create({ data: fields, select: { id: true, coverUrl: true } });
     }
 
     async saveMofyPlaylist(data: {
@@ -97,7 +117,7 @@ export class PlaylistRepository {
             ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             select: {
                 id: true, spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
-                trackIds: true, coverUrl: true, createdAt: true, removedAt: true,
+                trackIds: true, coverUrl: true, createdAt: true, removedAt: true, imported: true,
             },
         });
     }
@@ -110,7 +130,7 @@ export class PlaylistRepository {
             take,
             select: {
                 id: true, userId: true, spotifyPlaylistId: true, url: true, title: true, sentiment: true, fromSentiment: true,
-                trackIds: true, coverUrl: true, createdAt: true, removedAt: true,
+                trackIds: true, coverUrl: true, createdAt: true, removedAt: true, imported: true,
             },
         });
     }
@@ -119,7 +139,7 @@ export class PlaylistRepository {
     async findUserMofyPlaylist(userId: string, id: string) {
         return this.prisma.mofyPlaylist.findFirst({
             where: { id, userId },
-            select: { id: true, spotifyPlaylistId: true, url: true, title: true, trackIds: true, coverUrl: true, removedAt: true },
+            select: { id: true, spotifyPlaylistId: true, url: true, title: true, trackIds: true, coverUrl: true, removedAt: true, imported: true },
         });
     }
 
@@ -174,10 +194,11 @@ export class PlaylistRepository {
         return { analyses, tracks };
     }
 
-    // Playlists antigas ainda na conta do Mofy (de todos os usuários), das mais velhas.
+    // Playlists antigas ainda na conta do Mofy (de todos os usuários), das mais velhas. As trazidas pelo
+    // link são do usuário: nunca saem.
     async listExpiredMofyPlaylists(before: Date, take: number) {
         return this.prisma.mofyPlaylist.findMany({
-            where: { createdAt: { lt: before }, removedAt: null },
+            where: { createdAt: { lt: before }, removedAt: null, imported: false },
             orderBy: { createdAt: 'asc' },
             select: { id: true, spotifyPlaylistId: true },
             take,

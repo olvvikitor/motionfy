@@ -1,0 +1,57 @@
+x-local-db: &local-db
+  # Sobrescreve o DATABASE_URL do .env (Render) para usar o Postgres do compose.
+  DATABASE_URL: postgresql://${POSTGRES_USER:-mofy}:${POSTGRES_PASSWORD:-mofy}@db:5432/${POSTGRES_DB:-mofy}
+  DATABASE_SSL: "false"
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mofy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mofy}
+      POSTGRES_DB: ${POSTGRES_DB:-mofy}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Aplica as migrations do Prisma antes da API subir.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    image: mofy-api-migrate
+    env_file: .env
+    environment:
+      <<: *local-db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      target: runtime
+    image: mofy-api
+    env_file: .env
+    environment:
+      <<: *local-db
+      PORT: 3000
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:

@@ -163,3 +163,10 @@ export class JourneyPathQueryDto {
     @IsIn(EMOTION_CLUSTERS, { message: `Sentimento de chegada inválido. Use um de: ${EMOTION_CLUSTERS.join(', ')}.` })
     to!: string;
 }
+
+// Link de uma playlist do próprio usuário no Spotify (open.spotify.com/playlist/…, spotify.link/…).
+export class ImportPlaylistDto {
+    @IsString({ message: 'Cole o link da playlist.' })
+    @Length(10, 500, { message: 'Cole o link da playlist.' })
+    link!: string;
+}

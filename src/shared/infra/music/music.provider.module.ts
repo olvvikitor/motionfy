@@ -9,6 +9,6 @@ import { YtMusicService } from "./yt/Ytmusice.service";
     imports:[],
     providers:[SpotifyProvider,SpotifyCatalogService,SpotifyMofyAccountService,LastFmProvider,YtMusicService,MusicProviderFactory],
     controllers:[],
-    exports:[MusicProviderFactory,LastFmProvider,SpotifyMofyAccountService],
+    exports:[MusicProviderFactory,LastFmProvider,SpotifyMofyAccountService,SpotifyCatalogService],
 })
 export class MusicProviderModule{}

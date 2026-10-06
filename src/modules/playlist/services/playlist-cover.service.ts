@@ -83,12 +83,12 @@ export class PlaylistCoverService {
     ) { }
 
     async upload(userId: string, playlistId: string, file: UploadFile): Promise<CoverResponse> {
-        await this.ensureOwner(userId, playlistId);
+        const owned = await this.ensureOwner(userId, playlistId);
         const cover = await toSpotifyCover(file.buffer).catch((err) => {
             if (err instanceof HttpException) throw err;
             throw new BadRequestException('Não deu para ler essa imagem. Use JPEG, PNG ou WEBP.');
         });
-        await this.account.setCover(playlistId, cover);
+        await this.applyOnSpotify(owned, playlistId, cover);
         await this.saveProfileArt(userId, playlistId, file.buffer);
         return { preview: `data:image/jpeg;base64,${cover}` };
     }
@@ -111,14 +111,14 @@ export class PlaylistCoverService {
     // Usa numa playlist nova a capa de outra playlist do usuário (grátis). A origem vem pelo id do Mofy,
     // nunca por URL: só capas dele, e a API não busca endereço qualquer. O card guarda a mesma URL.
     async reuse(userId: string, playlistId: string, fromId: string): Promise<CoverResponse> {
-        await this.ensureOwner(userId, playlistId);
+        const owned = await this.ensureOwner(userId, playlistId);
         const source = await this.repository.findUserMofyPlaylist(userId, fromId);
         if (!source?.coverUrl) throw new NotFoundException('Capa não encontrada.');
         const image = await fetchCover(source.coverUrl).catch(() => {
             throw new BadRequestException('Não deu para abrir essa capa agora. Tente de novo.');
         });
         const cover = await toSpotifyCover(image);
-        await this.account.setCover(playlistId, cover);
+        await this.applyOnSpotify(owned, playlistId, cover);
         await this.repository.setMofyPlaylistCover(userId, playlistId, source.coverUrl);
         return { preview: `data:image/jpeg;base64,${cover}` };
     }
@@ -156,7 +156,7 @@ export class PlaylistCoverService {
             // Uma chamada só, já quadrada: a mesma imagem vai para o Spotify e para o card.
             const image = await this.aiImage.generateImage(prompt, reference?.image);
             const cover = await toSpotifyCover(image);
-            await this.account.setCover(playlistId, cover);
+            await this.applyOnSpotify(owned, playlistId, cover);
             const imageUrl = await this.saveProfileArt(userId, playlistId, image);
             await this.repository.logCoverGeneration({
                 userId, mofyPlaylistId: owned.id, title: owned.title, sentiment,
@@ -233,6 +233,12 @@ export class PlaylistCoverService {
             console.error('[PlaylistCover] capa aplicada no Spotify, mas a arte do perfil não foi salva:', error?.message ?? error);
             return null;
         }
+    }
+
+    // Só a playlist da conta do Mofy recebe a capa no Spotify; a trazida pelo link é do usuário (o Mofy não
+    // tem como mudar a capa dela): a capa fica no Mofy, para baixar.
+    private async applyOnSpotify(owned: { imported: boolean }, playlistId: string, cover: string): Promise<void> {
+        if (!owned.imported) await this.account.setCover(playlistId, cover);
     }
 
     private async ensureOwner(userId: string, playlistId: string) {
